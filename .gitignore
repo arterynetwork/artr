@@ -1,0 +1,13 @@
+# GoLand settings
+.idea/
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Android artifacts
+*.jar
+*.aar
