@@ -156,10 +156,6 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 	power := k.power(ctx, delegation.Int64(), mobile)
 	if k.has(ctx, accAddr) {
 		err = k.update(ctx, accAddr, func(d *types.D) {
-			if len(d.PubKey) != 0 {
-				k.dropFromIndex(ctx, consAddressIdxKey(consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(d.PubKey))))
-			}
-
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
 			d.Mobile = mobile
@@ -580,11 +576,6 @@ func consAddressIdxKey(address sdk.ConsAddress) []byte {
 	copy(result[:pfxLen], IdxPrefixConsAddress)
 	copy(result[pfxLen:], address.Bytes())
 	return result
-}
-
-func (k Keeper) dropFromIndex(ctx sdk.Context, key []byte) {
-	store := ctx.KVStore(k.indexStoreKey)
-	store.Delete(key)
 }
 
 func (k Keeper) addToIndex(ctx sdk.Context, key []byte, value []byte) {

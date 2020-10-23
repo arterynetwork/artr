@@ -351,6 +351,45 @@ func (s Suite) TestDoubleSwitchOnWithJail() {
 	s.Empty(reb.ValidatorUpdates)
 }
 
+func (s Suite) TestNodeNodeLeap() {
+	proposerKey  := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
+	user         := s.user(2)
+	_, pubkey, _ := app.NewTestConsPubAddress()
+
+	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey, false))
+
+	validator := abci.Validator{
+		Address:              pubkey.Address().Bytes(),
+		Power:                10,
+	}
+	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: true}}
+
+	s.nextBlock(proposerKey, votes, nil)
+	s.nextBlock(proposerKey, votes, nil)
+
+	data, err := s.k.Get(s.ctx, user)
+	s.NoError(err)
+	s.Equal(int64(2), data.OkBlocksInRow)
+
+	_, newPubkey, _ := app.NewTestConsPubAddress()
+	s.NoError(s.k.SwitchOff(s.ctx, user))
+	s.NoError(s.k.SwitchOn(s.ctx, user, newPubkey, false))
+
+	s.nextBlock(proposerKey, votes, nil)
+
+	data, err = s.k.Get(s.ctx, user)
+	s.NoError(err)
+	s.Equal(int64(3), data.OkBlocksInRow)
+
+	validator.Address = newPubkey.Address().Bytes()
+	votes = []abci.VoteInfo{{Validator: validator, SignedLastBlock: true}}
+	s.nextBlock(proposerKey, votes, nil)
+
+	data, err = s.k.Get(s.ctx, user)
+	s.NoError(err)
+	s.Equal(int64(4), data.OkBlocksInRow)
+}
+
 func (s *Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzantine []abci.Evidence) (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)

@@ -61,6 +61,7 @@ const oneDay = util.BlocksOneDay
 const twoWeeks = 14 * oneDay
 
 func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
+	if uartrs.IsZero() { return nil }
 	var (
 		store   = ctx.KVStore(k.mainStoreKey)
 		byteKey = []byte(acc)
@@ -184,6 +185,7 @@ func (k Keeper) PerformRevoking(ctx sdk.Context, payload []byte) error {
 }
 
 func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
+	if uartrs.IsZero() { return nil }
 	var (
 		store       = ctx.KVStore(k.mainStoreKey)
 		byteKey     = []byte(acc)
@@ -200,19 +202,30 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	k.Logger(ctx).Debug(fmt.Sprintf("Fees: %v", fees))
 
 	totalFee := int64(0)
-	outputs  := make([]bank.Output, len(fees))
-	eAttrs   := make([]sdk.Attribute, 2 * len(fees) + 2)
-	for i, fee := range fees {
+	outputs  := make([]bank.Output, 0, len(fees))
+	eAttrs   := make([]sdk.Attribute, 0, 2 * len(fees) + 2)
+	eAttrs = append(eAttrs,
+		sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
+		sdk.NewAttribute(types.AttributeKeyUcoins, "" /* will set later */),
+	)
+	for _, fee := range fees {
 		x := fee.Ratio.MulInt64(uartrs.Int64()).Int64()
+		if x == 0 { continue }
 		totalFee += x
-		outputs[i] = bank.NewOutput(fee.Beneficiary, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x))))
-		eAttrs[2*i+2] = sdk.NewAttribute(types.AttributeKeyCommissionTo, fee.Beneficiary.String())
-		eAttrs[2*i+3] = sdk.NewAttribute(types.AttributeKeyCommissionAmount, fmt.Sprintf("%d", x))
+		outputs = append(outputs, bank.NewOutput(fee.Beneficiary, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x)))))
+		eAttrs = append(eAttrs,
+			sdk.NewAttribute(types.AttributeKeyCommissionTo, fee.Beneficiary.String()),
+			sdk.NewAttribute(types.AttributeKeyCommissionAmount, fmt.Sprintf("%d", x)),
+		)
 	}
-	inputs := []bank.Input{bank.NewInput(acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(totalFee))))}
+	if totalFee != 0 {
+		inputs := []bank.Input{bank.NewInput(acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(totalFee))))}
 
-	err = k.bankKeeper.InputOutputCoins(ctx, inputs, outputs)
-	if err != nil { return err }
+		err = k.bankKeeper.InputOutputCoins(ctx, inputs, outputs)
+		if err != nil {
+			return err
+		}
+	}
 
 	if store.Has(byteKey) {
 		byteItem = store.Get(byteKey)
@@ -228,8 +241,8 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	delegation := uartrs.SubRaw(totalFee)
 	if err = k.delegate(ctx, acc, delegation); err != nil { return err }
 
-	eAttrs[0] = sdk.NewAttribute(types.AttributeKeyAccount, acc.String())
-	eAttrs[1] = sdk.NewAttribute(types.AttributeKeyUcoins, delegation.String())
+	eAttrs[1].Value = delegation.String()
+
 	ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeDelegate, eAttrs...))
 
 	store.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
@@ -334,6 +347,7 @@ func (k Keeper) getDelegated(ctx sdk.Context, acc sdk.AccAddress) (delegated sdk
 }
 
 func (k Keeper) delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
+	if uartrs.IsZero() { return nil }
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs))
 	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
@@ -356,6 +370,7 @@ func (k Keeper) delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 }
 
 func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) error {
+	if uartrds.IsZero() { return nil }
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, uartrds))
 	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
@@ -378,6 +393,7 @@ func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) err
 }
 
 func (k Keeper) undelegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
+	if uartrs.IsZero() { return nil }
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, uartrs))
 	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
@@ -405,6 +421,8 @@ func (k Keeper) undelegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) 
 }
 
 func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
+	if ucoins.IsZero() { return }
+
 	profile := k.profileKeeper.GetProfile(ctx, acc)
 	if profile == nil {
 		k.Logger(ctx).Error("profile not found, not accruing", "acc", acc)

@@ -7,6 +7,8 @@ import (
 // RegisterCodec registers concrete types on codec
 func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgSetProfile{}, "profile/SetProfile", nil)
+	cdc.RegisterConcrete(MsgSetNickname{}, "profile/SetNickname", nil)
+	cdc.RegisterConcrete(MsgSetCardNumber{}, "profile/SetCardNumber", nil)
 	cdc.RegisterConcrete(MsgCreateAccount{}, "profile/CreateAccount", nil)
 	cdc.RegisterConcrete(MsgCreateAccountWithProfile{}, "profile/CreateAccountWithProfile", nil)
 }

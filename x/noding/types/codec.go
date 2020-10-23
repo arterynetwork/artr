@@ -9,6 +9,7 @@ import (
 func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MsgSwitchOn{}, strings.Join([]string{ModuleName, SwitchOnConst}, "/"), nil)
 	cdc.RegisterConcrete(MsgSwitchOff{}, strings.Join([]string{ModuleName, SwitchOffConst}, "/"), nil)
+	cdc.RegisterConcrete(MsgUnjail{}, "noding/Unjail", nil)
 	cdc.RegisterConcrete(AllowedQueryRes{}, "noding/AllowedQueryRes", nil)
 }
 

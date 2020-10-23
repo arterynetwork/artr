@@ -11,9 +11,27 @@ import (
 // BeginBlocker check for infraction evidence or downtime of validators
 // on every begin block
 func BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock, k Keeper) {
-	if err := payProposerReward(ctx, req.Header.ProposerAddress, k); err != nil { panic(err) }
-	if err := markStrokesAndTicks(ctx, req.LastCommitInfo.Votes, k); err != nil { panic(err) }
-	if err := punishWrongdoers(ctx, req.ByzantineValidators, k); err != nil { panic(err) }
+	if err := payProposerReward(ctx, req.Header.ProposerAddress, k); err != nil {
+		k.Logger(ctx).Error(
+			"Couldn't pay proposer reward",
+			"address", req.Header.ProposerAddress,
+			"error", err,
+		)
+	}
+	if err := markStrokesAndTicks(ctx, req.LastCommitInfo.Votes, k); err != nil {
+		k.Logger(ctx).Error(
+			"Couldn't update statistics",
+			"votes", req.LastCommitInfo.Votes,
+			"error", err,
+		)
+	}
+	if err := punishWrongdoers(ctx, req.ByzantineValidators, k); err != nil {
+		k.Logger(ctx).Error(
+			"Byzantine behavior detected",
+			"evidences", req.ByzantineValidators,
+			"error", err,
+		)
+	}
 }
 
 // EndBlocker called every block, process inflation, update validator set.
