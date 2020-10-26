@@ -48,7 +48,7 @@ func (s *HandlerSuite) TestUnjail() {
 
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, user2, pubkey, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil { panic(err) }
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),

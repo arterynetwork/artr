@@ -12,6 +12,7 @@ const (
 	ClusterStoreKey   = types.ClusterStoreKey
 	DefaultParamspace = types.DefaultParamspace
 	QuerierRoute      = types.QuerierRoute
+	RevokeHookName    = types.RevokeHookName
 )
 
 var (

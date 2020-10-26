@@ -34,6 +34,7 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetCmdInfo(queryRoute, cdc),
 			GetCmdProposer(queryRoute, cdc),
 			GetCmdIsAllowed(queryRoute, cdc),
+			GetCmdOperator(queryRoute, cdc),
 		)...,
 	)
 
@@ -152,4 +153,49 @@ func GetCmdIsAllowed(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			return cliCtx.PrintOutput(out)
 		},
 	}
+}
+
+func GetCmdOperator(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	var hex bool
+
+	result := &cobra.Command{
+		Use: "whois [consensus address]",
+		Short: "find account address by attached node consensus address",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			accAddress := args[0]
+			var format string
+			if hex {
+				format = types.QueryOperatorFormatHex
+			} else {
+				format = types.QueryOperatorFormatBech32
+			}
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryOperator,
+					format,
+					accAddress,
+				}, "/",
+			))
+			if err != nil {
+				if err == types.ErrNotFound {
+					fmt.Println("no data")
+				} else {
+					fmt.Printf("could not get operator account for node %s:\n%s\n", accAddress, err.Error())
+				}
+				return nil
+			}
+
+			var out = sdk.AccAddress(res)
+			return cliCtx.PrintOutput(out)
+		},
+	}
+
+	result.Flags().BoolVarP(&hex, "hex", "x", false, "consensus address in hex format instead of bech32")
+
+	return result
 }

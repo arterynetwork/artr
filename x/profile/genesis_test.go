@@ -48,7 +48,6 @@ func (s Suite) TestCleanGenesis() {
 func (s Suite) TestFullData() {
 	_, _, newAcc := authtypes.KeyTestPubAddr()
 	s.k.CreateAccountWithProfile(s.ctx, newAcc, app.DefaultGenesisUsers["user13"], types.Profile{
-		AutoRedeligate: true,
 		AutoPay:        true,
 		ActiveUntil:    42,
 		Noding:         true,
@@ -96,5 +95,6 @@ func (s Suite) checkExportImport() {
 			profile.CardStoreKey:  app.DummyDecoder,
 			params.StoreKey:       app.DummyDecoder,
 		},
+		make(map[string][][]byte, 0),
 	)
 }

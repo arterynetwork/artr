@@ -51,15 +51,15 @@ func (s *Suite) TestSwitchOn() {
 	for i := 0; i < 3; i++ {
 		_, pubkeys[i], _ = app.NewTestConsPubAddress()
 	}
-	s.Equal(noding.ErrNotQualified, s.k.SwitchOn(s.ctx, s.user(15), pubkeys[0], false))
-	s.NoError(s.k.SwitchOn(s.ctx, s.user(2), pubkeys[1], false))
-	s.NoError(s.k.SwitchOn(s.ctx, s.user(3), pubkeys[2], true))
+	s.Equal(noding.ErrNotQualified, s.k.SwitchOn(s.ctx, s.user(15), pubkeys[0]))
+	s.NoError(s.k.SwitchOn(s.ctx, s.user(2), pubkeys[1]))
+	s.NoError(s.k.SwitchOn(s.ctx, s.user(3), pubkeys[2]))
 
 	resp := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.Equal(
 		[]abci.ValidatorUpdate{
 			{PubKey: tmtypes.TM2PB.PubKey(pubkeys[1]), Power: 10},
-			{PubKey: tmtypes.TM2PB.PubKey(pubkeys[2]), Power: 1},
+			{PubKey: tmtypes.TM2PB.PubKey(pubkeys[2]), Power: 10},
 		},
 		resp.ValidatorUpdates,
 	)
@@ -73,7 +73,7 @@ func (s *Suite) TestAddToStaff() {
 	s.True(qualified, "despite of rules")
 
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	s.NoError(s.k.SwitchOn(s.ctx, s.user(15), pubkey, false))
+	s.NoError(s.k.SwitchOn(s.ctx, s.user(15), pubkey))
 	resp := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.Equal(
 		[]abci.ValidatorUpdate{
@@ -90,8 +90,8 @@ func (s *Suite) TestRemoveFromStaff() {
 	}
 	_ = s.k.AddToStaff(s.ctx, s.user(2))
 	_ = s.k.AddToStaff(s.ctx, s.user(15))
-	_ = s.k.SwitchOn(s.ctx, s.user(2), pubkeys[0], false)
-	_ = s.k.SwitchOn(s.ctx, s.user(15), pubkeys[1], false)
+	_ = s.k.SwitchOn(s.ctx, s.user(2), pubkeys[0])
+	_ = s.k.SwitchOn(s.ctx, s.user(15), pubkeys[1])
 
 	s.nextBlock(pubkeys[0], []abci.VoteInfo{
 		{
@@ -126,7 +126,7 @@ func (s *Suite) TestProposerAward() {
 	balance0 := s.app.GetAccountKeeper().GetAccount(s.ctx, s.user(2)).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
 	_ = s.app.GetSupplyKeeper().SendCoinsFromAccountToModule(
 		s.ctx, s.user(1), auth.FeeCollectorName,
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(10_000000))),
@@ -143,7 +143,7 @@ func (s *Suite) TestProposerAward() {
 
 func (s *Suite) TestByzantine() {
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),
@@ -183,9 +183,9 @@ func (s *Suite) TestByzantine() {
 	s.Equal([]abci.ValidatorUpdate{{PubKey: tmtypes.TM2PB.PubKey(pubkey), Power: 0}}, resp.ValidatorUpdates)
 
 	// Banned node cannot be switched on by any means
-	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey, false))
+	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey))
 	if err := s.k.AddToStaff(s.ctx, s.user(2)); err != nil { panic(err) }
-	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey, false))
+	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey))
 	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
 		s.False(isValidator)
 	}
@@ -194,7 +194,7 @@ func (s *Suite) TestByzantine() {
 func (s *Suite) TestJailing() {
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),
@@ -249,7 +249,7 @@ func (s *Suite) TestJailedValidatorPowerUpdate() {
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
 	user2 := s.user(2)
-	if err := s.k.SwitchOn(s.ctx, user2, pubkey, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil { panic(err) }
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),
@@ -267,10 +267,10 @@ func (s *Suite) TestJailedValidatorPowerUpdate() {
 	if err := s.app.GetBankKeeper().SetCoins(
 		s.ctx, user2,
 		s.app.GetBankKeeper().GetCoins(s.ctx, user2).Add(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(50_000_000000)),
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(117_700_000000)),
 		),
 	); err != nil { panic(err) }
-	if err := s.app.GetDelegatingKeeper().Delegate(s.ctx, user2, sdk.NewInt(50_000_000000)); err != nil { panic(err) }
+	if err := s.app.GetDelegatingKeeper().Delegate(s.ctx, user2, sdk.NewInt(117_700_000000)); err != nil { panic(err) }
 
 	s.ctx = s.ctx.WithBlockHeight(122)
 	s.NoError(s.k.Unjail(s.ctx, s.user(2)))
@@ -279,8 +279,8 @@ func (s *Suite) TestJailedValidatorPowerUpdate() {
 	}
 	resp, _ = s.nextBlock(proposerKey, nil, nil)
 	s.Equal([]abci.ValidatorUpdate{
-		{PubKey: tmtypes.TM2PB.PubKey(proposerKey), Power: 20},
-		{PubKey: tmtypes.TM2PB.PubKey(pubkey), Power: 20},
+		{PubKey: tmtypes.TM2PB.PubKey(proposerKey), Power: 15},
+		{PubKey: tmtypes.TM2PB.PubKey(pubkey), Power: 15},
 	}, resp.ValidatorUpdates)
 }
 
@@ -288,7 +288,7 @@ func (s *Suite) TestSwitchOnAfterSwitchOffWhileJailed() {
 	user2 := s.user(2)
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	s.NoError(s.k.SwitchOn(s.ctx, user2, pubkey, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user2, pubkey))
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),
@@ -304,7 +304,7 @@ func (s *Suite) TestSwitchOnAfterSwitchOffWhileJailed() {
 	s.False(isValidator)
 
 	s.NoError(s.k.SwitchOff(s.ctx, user2))
-	s.NoError(s.k.SwitchOn(s.ctx, user2, pubkey, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user2, pubkey))
 
 	isValidator, err = s.k.IsValidator(s.ctx, user2)
 	s.NoError(err)
@@ -321,10 +321,10 @@ func (s Suite) TestDoubleSwitchOn() {
 	user := s.user(2)
 	_, pubkey1, _ := app.NewTestConsPubAddress()
 	_, pubkey2, _ := app.NewTestConsPubAddress()
-	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey1, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey1))
 
 	s.nextBlock(proposerKey, nil, nil)
-	s.Equal(noding.ErrAlreadyOn, s.k.SwitchOn(s.ctx, user, pubkey2, false))
+	s.Equal(noding.ErrAlreadyOn, s.k.SwitchOn(s.ctx, user, pubkey2))
 	reb, _ := s.nextBlock(proposerKey, nil, nil)
 	s.Empty(reb.ValidatorUpdates)
 }
@@ -335,7 +335,7 @@ func (s Suite) TestDoubleSwitchOnWithJail() {
 	user := s.user(2)
 	_, pubkey1, consAddr := app.NewTestConsPubAddress()
 	_, pubkey2, _ := app.NewTestConsPubAddress()
-	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey1, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey1))
 
 	votes := []abci.VoteInfo{{Validator: abci.Validator{Address: consAddr}, SignedLastBlock: false}}
 	s.nextBlock(proposerKey, votes, nil)
@@ -346,7 +346,7 @@ func (s Suite) TestDoubleSwitchOnWithJail() {
 	reb, _ := s.nextBlock(proposerKey, nil, nil)
 	s.Equal([]abci.ValidatorUpdate{{PubKey: tmtypes.TM2PB.PubKey(pubkey1), Power: 0}}, reb.ValidatorUpdates)
 
-	s.Equal(noding.ErrAlreadyOn, s.k.SwitchOn(s.ctx, user, pubkey2, false))
+	s.Equal(noding.ErrAlreadyOn, s.k.SwitchOn(s.ctx, user, pubkey2))
 	reb, _ = s.nextBlock(proposerKey, nil, nil)
 	s.Empty(reb.ValidatorUpdates)
 }
@@ -356,7 +356,7 @@ func (s Suite) TestNodeNodeLeap() {
 	user         := s.user(2)
 	_, pubkey, _ := app.NewTestConsPubAddress()
 
-	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey))
 
 	validator := abci.Validator{
 		Address:              pubkey.Address().Bytes(),
@@ -373,9 +373,22 @@ func (s Suite) TestNodeNodeLeap() {
 
 	_, newPubkey, _ := app.NewTestConsPubAddress()
 	s.NoError(s.k.SwitchOff(s.ctx, user))
-	s.NoError(s.k.SwitchOn(s.ctx, user, newPubkey, false))
+	s.NoError(s.k.SwitchOn(s.ctx, user, newPubkey))
 
-	s.nextBlock(proposerKey, votes, nil)
+	ebr, _ := s.nextBlock(proposerKey, votes, nil)
+	s.Equal(
+		[]abci.ValidatorUpdate{
+			{
+				PubKey: tmtypes.TM2PB.PubKey(pubkey),
+				Power:  0,
+			},
+			{
+				PubKey: tmtypes.TM2PB.PubKey(newPubkey),
+				Power:  10,
+			},
+		},
+		ebr.ValidatorUpdates,
+	)
 
 	data, err = s.k.Get(s.ctx, user)
 	s.NoError(err)

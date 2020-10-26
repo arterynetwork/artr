@@ -8,15 +8,15 @@ import (
 type D struct {
 	// Power - voting power (depends on delegated funds)
 	Power             int64                    `json:"power"`
-	// Mobile - is the validator node hosted at a mobile device (not at a desktop machine)
-	Mobile            bool                     `json:"mobile"`
 	// Status - if the validator is on (true) or off (false)
 	Status            bool                     `json:"status"`
 	// LastPower - voting power that the validator had during the last block signing.
 	// It must be 0 if the validator was not chosen for signing.
-	LastPower         int64                    `json:"chosen"`
+	LastPower         int64                    `json:"last_power"`
 	// PubKey - consensus public key of assigned node (bech32)
 	PubKey            string                   `json:"pub_key"`
+	// LastPubKey - last known to TM consensus public key of assigned node (bech32)
+	LastPubKey        string                   `json:"last_pub_key"`
 	// Strokes - how many times has that validator missed a block
 	Strokes           int64                    `json:"strokes"`
 	// OkBlocksInRow - how many blocks the validator successfully signed (in row, i.e. without being missing).
@@ -43,10 +43,9 @@ type D struct {
 	JailCount         int64                    `json:"jail_count"`
 }
 
-func NewD(power int64, mobile bool, pubKey string) D {
+func NewD(power int64, pubKey string) D {
 	return D {
 		Power:             power,
-		Mobile:            mobile,
 		Status:            true,
 		LastPower:         0,
 		PubKey:            pubKey,
@@ -64,7 +63,7 @@ func NewD(power int64, mobile bool, pubKey string) D {
 }
 
 func (d D) IsActive() bool {
-	return d.Status && !d.Jailed && !d.BannedForLife
+	return d.Status && !d.Jailed && !d.BannedForLife && d.Power != 0
 }
 
 type KeyedD struct {

@@ -11,7 +11,6 @@ import (
 
 type Validator struct {
 	Account           sdk.AccAddress  `json:"account"`
-	Mobile            bool            `json:"mobile,omitempty"`
 	Pubkey            string          `json:"pubkey,omitempty"`
 	Strokes           int64           `json:"strokes,omitempty"`
 	OkBlocksInRow     int64           `json:"ok_blocks_in_row,omitempty"`
@@ -24,11 +23,11 @@ type Validator struct {
 	ProposedCount     int64           `json:"proposed_count,omitempty"`
 	JailCount         int64           `json:"jail_count,omitempty"`
 	SwitchedOn        bool            `json:"switched_on,omitempty"`
+	ProposedBlocks    []uint64        `json:"proposed_blocks,omitempty"`
 }
 
 func (v Validator) ToD() D {
 	return D{
-		Mobile:            v.Mobile,
 		PubKey:            v.Pubkey,
 		Strokes:           v.Strokes,
 		OkBlocksInRow:     v.OkBlocksInRow,
@@ -44,10 +43,9 @@ func (v Validator) ToD() D {
 	}
 }
 
-func GenesisValidatorFromD(acc sdk.AccAddress, d D) Validator {
+func GenesisValidatorFromD(acc sdk.AccAddress, d D, proposedBlocks []uint64) Validator {
 	return Validator{
 		Account:           acc,
-		Mobile:            d.Mobile,
 		Pubkey:            d.PubKey,
 		Strokes:           d.Strokes,
 		OkBlocksInRow:     d.OkBlocksInRow,
@@ -60,6 +58,7 @@ func GenesisValidatorFromD(acc sdk.AccAddress, d D) Validator {
 		ProposedCount:     d.ProposedCount,
 		JailCount:         d.JailCount,
 		SwitchedOn:        d.Jailed && d.Status,
+		ProposedBlocks:    proposedBlocks,
 	}
 }
 

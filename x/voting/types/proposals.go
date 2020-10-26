@@ -122,7 +122,7 @@ type SoftwareUpgradeProposalParams struct {
 	Height   int64  `json:"height" yaml:"height"`
 	// Binaries - a link (with a checksum) to a JSON file containing upgrade data (binary URIs and so on)
 	// Please refer to https://github.com/regen-network/cosmosd#auto-download
-	Info string `json:"binaries" yaml:"height"`
+	Info string `json:"binaries" yaml:"binaries"`
 }
 
 func (p SoftwareUpgradeProposalParams) String() string {

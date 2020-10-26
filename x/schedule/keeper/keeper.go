@@ -140,6 +140,8 @@ func (k Keeper) DeleteAllTasksOnBlock(ctx sdk.Context, block uint64, event strin
 
 // Perfoms a sheduled tasks for block height. Tasks removed from store after completion
 func (k Keeper) PerfomSchedule(ctx sdk.Context, block uint64) {
+	// We can ignore InitialHeight here, because all performed tasks are removed from KVStore
+
 	store := ctx.KVStore(k.storeKey)
 
 	blockBuf := make([]byte, 8)
@@ -162,10 +164,22 @@ func (k Keeper) PerfomSchedule(ctx sdk.Context, block uint64) {
 	for _, task := range items {
 		hook := k.eventHooks[task.HandlerName]
 		if hook != nil {
-			//ctx.Logger().Error(task.HandlerName)
-			hook(ctx, task.Data)
+			performSchedule(ctx, task, hook, k.Logger(ctx))
 		}
 	}
 
 	store.Delete(blockBuf)
+}
+
+func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context, data []byte), logger log.Logger) {
+	logger.Debug("perform schedule", "task", task.HandlerName)
+	defer func(task string) {
+		if err := recover(); err != nil {
+			logger.Error("recovered from panic",
+				"task", task,
+				"error", err,
+			)
+		}
+	} (task.HandlerName)
+	hook(ctx, task.Data)
 }

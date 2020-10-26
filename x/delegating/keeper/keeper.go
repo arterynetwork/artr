@@ -116,7 +116,7 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		return err
 	}
 	store.Set(byteKey, byteItem)
-	err = k.scheduleKeeper.ScheduleTask(ctx, uint64(height), "delegating/revoke", &byteKey)
+	err = k.scheduleKeeper.ScheduleTask(ctx, uint64(height), types.RevokeHookName, &byteKey)
 	if err != nil {
 		k.Logger(ctx).Error(err.Error())
 		return err
@@ -124,64 +124,8 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 	return nil
 }
 
-func (k Keeper) PerformRevoking(ctx sdk.Context, payload []byte) error {
-	var (
-		acc          = sdk.AccAddress(payload)
-		mainStore    = ctx.KVStore(k.mainStoreKey)
-		clusterStore = ctx.KVStore(k.clusterStoreKey)
-		byteKey      = []byte(acc)
-
-		byteItem []byte
-		item     types.Record
-		err      error
-	)
-
-	if !mainStore.Has(byteKey) { return nil	}
-	if err = k.cdc.UnmarshalBinaryLengthPrefixed(mainStore.Get(byteItem), &item); err != nil { return err }
-	sort.Slice(item.Requests, func(i, j int) bool {
-		return item.Requests[i].HeightToImplementAt < item.Requests[j].HeightToImplementAt
-	})
-
-	n := 0
-	for _, req := range item.Requests {
-		if req.HeightToImplementAt > ctx.BlockHeight() { break }
-
-		nextPayment := ctx.BlockHeight() + oneDay
-		if err = k.accruePart(ctx, acc, &item, nextPayment); err != nil { return err }
-		if err = k.undelegate(ctx, acc, req.MicroCoins); err != nil { return err }
-		n += 1
-	}
-	if n == 0 {
-		return nil
-	}
-	item.Requests = item.Requests[n:]
-	if d, _ := k.getDelegated(ctx, acc); d.IsZero() && item.Cluster != never {
-		cluster := getCluster(item.Cluster)
-		var items []sdk.AccAddress
-		err := k.cdc.UnmarshalBinaryLengthPrefixed(clusterStore.Get(cluster), &items)
-		if err != nil {
-			return nil
-		}
-		for i, x := range items {
-			if x.Equals(acc) {
-				items[i] = items[len(items)-1]
-				items = items[:len(items)-1]
-				break
-			}
-		}
-		if items == nil {
-			clusterStore.Delete(cluster)
-		} else {
-			clusterStore.Set(cluster, k.cdc.MustMarshalBinaryLengthPrefixed(items))
-		}
-		item.Cluster = never
-	}
-	if item.IsEmpty() {
-		mainStore.Delete(byteKey)
-	} else {
-		mainStore.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
-	}
-	return nil
+func (k Keeper) MustPerformRevoking(ctx sdk.Context, payload []byte) {
+	if err := k.performRevoking(ctx, payload); err != nil { panic(err) }
 }
 
 func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
@@ -250,9 +194,14 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 }
 
 func (k Keeper) Accrue(ctx sdk.Context) error {
+	height := ctx.BlockHeight()
+	if height <= k.scheduleKeeper.GetParams(ctx).InitialHeight {
+		k.Logger(ctx).Debug("Accrue: fast-forward, doing nothing")
+		return nil
+	}
 	var (
 		store   = ctx.KVStore(k.clusterStoreKey)
-		byteKey = getCluster(ctx.BlockHeight())
+		byteKey = getCluster(height)
 
 		targets []sdk.AccAddress
 		err     error
@@ -337,6 +286,67 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (types.Quer
 
 //----------------------------------------------------------------------------------------------------------------------
 // PRIVATE FUNCTIONS
+
+func (k Keeper) performRevoking(ctx sdk.Context, payload []byte) error {
+	var (
+		acc          = sdk.AccAddress(payload)
+		mainStore    = ctx.KVStore(k.mainStoreKey)
+		clusterStore = ctx.KVStore(k.clusterStoreKey)
+		byteKey      = []byte(acc)
+
+		byteItem []byte
+		item     types.Record
+		err      error
+	)
+
+	if !mainStore.Has(byteKey) { return nil	}
+	byteItem = mainStore.Get(byteKey)
+	if err = k.cdc.UnmarshalBinaryLengthPrefixed(byteItem, &item); err != nil { return err }
+	sort.Slice(item.Requests, func(i, j int) bool {
+		return item.Requests[i].HeightToImplementAt < item.Requests[j].HeightToImplementAt
+	})
+
+	n := 0
+	for _, req := range item.Requests {
+		if req.HeightToImplementAt > ctx.BlockHeight() { break }
+
+		nextPayment := ctx.BlockHeight() + oneDay
+		if err = k.accruePart(ctx, acc, &item, nextPayment); err != nil { return err }
+		if err = k.undelegate(ctx, acc, req.MicroCoins); err != nil { return err }
+		n += 1
+	}
+	if n == 0 {
+		return nil
+	}
+	item.Requests = item.Requests[n:]
+	if d, _ := k.getDelegated(ctx, acc); d.IsZero() && item.Cluster != never {
+		cluster := getCluster(item.Cluster)
+		var items []sdk.AccAddress
+		err := k.cdc.UnmarshalBinaryLengthPrefixed(clusterStore.Get(cluster), &items)
+		if err != nil {
+			return nil
+		}
+		for i, x := range items {
+			if x.Equals(acc) {
+				items[i] = items[len(items)-1]
+				items = items[:len(items)-1]
+				break
+			}
+		}
+		if items == nil {
+			clusterStore.Delete(cluster)
+		} else {
+			clusterStore.Set(cluster, k.cdc.MustMarshalBinaryLengthPrefixed(items))
+		}
+		item.Cluster = never
+	}
+	if item.IsEmpty() {
+		mainStore.Delete(byteKey)
+	} else {
+		mainStore.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
+	}
+	return nil
+}
 
 func (k Keeper) getDelegated(ctx sdk.Context, acc sdk.AccAddress) (delegated sdk.Int, undelegating sdk.Int) {
 	coins := k.accKeeper.GetAccount(ctx, acc).GetCoins()
@@ -443,11 +453,6 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 		sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
 		sdk.NewAttribute(types.AttributeKeyUcoins, ucoins.String()),
 	))
-
-	if profile.AutoRedeligate {
-		err = k.Delegate(ctx, acc, ucoins)
-		if err != nil { panic(err) }
-	}
 }
 
 func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment int64) error {

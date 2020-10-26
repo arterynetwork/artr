@@ -75,5 +75,6 @@ func (s Suite) checkExportImport() {
 			vpn.StoreKey:    app.DummyDecoder,
 			params.StoreKey: app.DummyDecoder,
 		},
+		make(map[string][][]byte, 0),
 	)
 }

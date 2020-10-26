@@ -7,6 +7,10 @@ const (
 	QueryInfo     = "info"
 	QueryProposer = "proposer"
 	QueryAllowed  = "allowed"
+	QueryOperator = "operator"
+
+	QueryOperatorFormatHex    = "hex"
+	QueryOperatorFormatBech32 = "bech32"
 )
 
 type AllowedQueryRes struct {

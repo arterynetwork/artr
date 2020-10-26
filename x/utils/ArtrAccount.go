@@ -19,7 +19,6 @@ var _ exported.GenesisAccount = (*ArtrAccount)(nil)
 // implements Account.
 type ArtrAccount struct {
 	auth.BaseAccount
-	AutoRedeligate bool   `json:"auto_redeligate" yaml:"auto_redeligate"`
 	ActiveUntil    uint64 `json:"active_until" yaml:"active_until"`
 	Noding         bool   `json:"noding" yaml:"noding"`
 }
@@ -36,7 +35,6 @@ func NewArtrAccount(address sdk.AccAddress, coins sdk.Coins,
 			AccountNumber: accountNumber,
 			Sequence:      sequence,
 		},
-		AutoRedeligate: false,
 		ActiveUntil:    0,
 		Noding:         false,
 	}

@@ -13,7 +13,7 @@ const (
 
 // Parameter store keys
 var (
-// KeyParamName          = []byte("ParamName")
+	KeyInitialHeight = []byte("InitialHeight")
 )
 
 // ParamKeyTable for schedule module
@@ -23,7 +23,7 @@ func ParamKeyTable() params.KeyTable {
 
 // Params - used for initializing default parameter for schedule at genesis
 type Params struct {
-	// KeyParamName string `json:"key_param_name"`
+	InitialHeight int64 `json:"initial_height"`
 }
 
 // NewParams creates a new Params object
@@ -34,17 +34,25 @@ func NewParams() Params {
 // String implements the stringer interface for Params
 func (p Params) String() string {
 	return fmt.Sprintf(`
-	`)
+InitialHeight: %d
+	`, p.InitialHeight)
 }
 
 // ParamSetPairs - Implements params.ParamSet
 func (p *Params) ParamSetPairs() params.ParamSetPairs {
 	return params.ParamSetPairs{
-		// params.NewParamSetPair(KeyParamName, &p.ParamName),
+		params.NewParamSetPair(KeyInitialHeight, &p.InitialHeight, validateInitialHeight),
 	}
 }
 
 // DefaultParams defines the parameters for this module
 func DefaultParams() Params {
 	return NewParams()
+}
+
+func validateInitialHeight(i interface{}) error {
+	val, ok := i.(int64)
+	if !ok { return fmt.Errorf("unexpected InitialHeight type: %T", i) }
+	if val < 0 { return fmt.Errorf("initial height must be non-negative") }
+	return nil
 }

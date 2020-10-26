@@ -16,7 +16,6 @@ var (
 type MsgSwitchOn struct {
 	AccAddress sdk.AccAddress	`json:"acc_address"`
 	PubKey     crypto.PubKey	`json:"pub_key"`
-	Mobile     bool           	`json:"mobile"`
 }
 
 type MsgSwitchOff struct {
@@ -27,11 +26,10 @@ type MsgUnjail struct {
 	AccAddress sdk.AccAddress `json:"acc_address"`
 }
 
-func NewMsgSwitchOn(accAddr sdk.AccAddress, pubKey crypto.PubKey, mobile bool) MsgSwitchOn {
+func NewMsgSwitchOn(accAddr sdk.AccAddress, pubKey crypto.PubKey) MsgSwitchOn {
 	return MsgSwitchOn{
 		AccAddress: accAddr,
 		PubKey:     pubKey,
-		Mobile:     mobile,
 	}
 }
 

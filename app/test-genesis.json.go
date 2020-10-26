@@ -81,10 +81,6 @@ const defaultGenesis = `{
             "address": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
             "coins": [
               {
-                "denom": "stake",
-                "amount": "100000000"
-              },
-              {
                 "denom": "uartr",
                 "amount": "1000000000000"
               }
@@ -99,10 +95,6 @@ const defaultGenesis = `{
           "value": {
             "address": "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
             "coins": [
-              {
-                "denom": "stake",
-                "amount": "100000000"
-              },
               {
                 "denom": "uartr",
                 "amount": "1000000000000"
@@ -445,7 +437,6 @@ const defaultGenesis = `{
 	  "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
 	  "profile": {
 	    "nickname": "user1",
-	    "auto_redeligate": false,
 	    "active_until": "9000",
 	    "noding": true,
 	    "validator": true
@@ -455,7 +446,6 @@ const defaultGenesis = `{
 	  "address": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
 	  "profile": {
 	    "nickname": "user2",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -463,7 +453,6 @@ const defaultGenesis = `{
 	  "address": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu",
 	  "profile": {
 	    "nickname": "user3",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -471,7 +460,6 @@ const defaultGenesis = `{
 	  "address": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
 	  "profile": {
 	    "nickname": "user4",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -479,7 +467,6 @@ const defaultGenesis = `{
 	  "address": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
 	  "profile": {
 	    "nickname": "user5",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -487,7 +474,6 @@ const defaultGenesis = `{
 	  "address": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
 	  "profile": {
 	    "nickname": "user6",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -495,7 +481,6 @@ const defaultGenesis = `{
 	  "address": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
 	  "profile": {
 	    "nickname": "user7",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -503,7 +488,6 @@ const defaultGenesis = `{
 	  "address": "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
 	  "profile": {
 	    "nickname": "user8",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -511,7 +495,6 @@ const defaultGenesis = `{
 	  "address": "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
 	  "profile": {
 	    "nickname": "user9",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -519,7 +502,6 @@ const defaultGenesis = `{
 	  "address": "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
 	  "profile": {
 	    "nickname": "user10",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -527,7 +509,6 @@ const defaultGenesis = `{
 	  "address": "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
 	  "profile": {
 	    "nickname": "user11",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -535,7 +516,6 @@ const defaultGenesis = `{
 	  "address": "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
 	  "profile": {
 	    "nickname": "user12",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -543,7 +523,6 @@ const defaultGenesis = `{
 	  "address": "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
 	  "profile": {
 	    "nickname": "user13",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -551,7 +530,6 @@ const defaultGenesis = `{
 	  "address": "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
 	  "profile": {
 	    "nickname": "user14",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	},
@@ -559,7 +537,6 @@ const defaultGenesis = `{
 	  "address": "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf",
 	  "profile": {
 	    "nickname": "user15",
-	    "auto_redeligate": false,
 	    "active_until": "9000"
 	  }
 	}

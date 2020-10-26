@@ -37,8 +37,6 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 }
 
 func GetCmdOn(cdc *codec.Codec) *cobra.Command {
-	var mobile bool
-
 	result := cobra.Command{
 		Use: "on [public key]",
 		Short: "Switch noding on",
@@ -54,7 +52,7 @@ func GetCmdOn(cdc *codec.Codec) *cobra.Command {
 				return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("cannot parse public key: %s", args[0]))
 			}
 
-			msg := types.NewMsgSwitchOn(accAddr, pubKey, mobile)
+			msg := types.NewMsgSwitchOn(accAddr, pubKey)
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
@@ -62,7 +60,6 @@ func GetCmdOn(cdc *codec.Codec) *cobra.Command {
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
 	}
-	result.Flags().BoolVarP(&mobile,"mobile", "m", false, "node is a mobile device, not a desktop machine")
 	return &result
 }
 

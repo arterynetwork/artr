@@ -132,5 +132,6 @@ func (s Suite) checkExportImport() {
 			schedule.StoreKey: app.DummyDecoder,
 			params.StoreKey:   app.DummyDecoder,
 		},
+		make(map[string][][]byte, 0),
 	)
 }

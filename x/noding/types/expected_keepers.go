@@ -1,10 +1,12 @@
 package types
 
 import (
-	referral "github.com/arterynetwork/artr/x/referral/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	supply "github.com/cosmos/cosmos-sdk/x/supply/exported"
+
+	referral "github.com/arterynetwork/artr/x/referral/types"
+	"github.com/arterynetwork/artr/x/schedule"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -22,6 +24,7 @@ type ReferralKeeper interface {
 
 type ScheduleKeeper interface {
 	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
+	GetParams(ctx sdk.Context) schedule.Params
 }
 
 type SupplyKeeper interface {

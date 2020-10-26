@@ -337,6 +337,7 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(voting.HookName, app.votingKeeper.ProcessSchedule)
 	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
 	app.scheduleKeeper.AddHook(earning.ContinueHookName, app.earningKeeper.MustPerformContinue)
+	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
 
 	app.referralKeeper.AddHook(referral.StatusUpdatedCallback, app.nodingKeeper.OnStatusUpdate)
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)

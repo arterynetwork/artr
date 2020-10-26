@@ -4,7 +4,8 @@ import "fmt"
 
 // GenesisState - all schedule state that must be provided at genesis
 type GenesisState struct {
-	Tasks []GenesisSchedule `json:"tasks"`
+	Params Params            `json:"params"`
+	Tasks  []GenesisSchedule `json:"tasks"`
 }
 
 type GenesisSchedule struct {
@@ -13,9 +14,10 @@ type GenesisSchedule struct {
 }
 
 // NewGenesisState creates a new GenesisState object
-func NewGenesisState(tasks []GenesisSchedule) GenesisState {
+func NewGenesisState(params Params, tasks []GenesisSchedule) GenesisState {
 	return GenesisState{
-		Tasks: tasks,
+		Params: params,
+		Tasks:  tasks,
 	}
 }
 

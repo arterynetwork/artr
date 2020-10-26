@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"sort"
 
@@ -53,7 +55,8 @@ func NewKeeper(
 	return keeper
 }
 
-var IdxPrefixConsAddress = []byte{0x01}
+var IdxPrefixNodeOperator  = []byte{0x01}
+var IdxPrefixBlockProposer = []byte{0x02}
 
 // Logger returns a module-specific logger.
 func (k Keeper) Logger(ctx sdk.Context) log.Logger {
@@ -105,19 +108,19 @@ func (k Keeper) IsBanned(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) 
 	return record.BannedForLife, nil
 }
 
-func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (result sdk.AccAddress, found bool, err error) {
-	result, found = k.getFromIndex(ctx, consAddressIdxKey(consAddr))
+func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (result sdk.AccAddress, found bool, active bool, err error) {
+	result, found = k.getNodeOperatorFromIndex(ctx, consAddr)
 	if found {
 		var data types.D
 		data, err = k.Get(ctx, result)
-		if err == nil && !data.IsActive() {
-			found = false
+		if err == nil && data.IsActive() {
+			active = consAddr.Equals(consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(data.PubKey)))
 		}
 	}
 	return
 }
 
-func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.PubKey, mobile bool) error {
+func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.PubKey) error {
 	isBanned, err := k.IsBanned(ctx, accAddr)
 	if err != nil { return err }
 	if isBanned { return types.ErrBannedForLifetime }
@@ -133,12 +136,12 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 	}
 
 	consAddr := sdk.GetConsAddress(key)
-	_, found, err := k.GetValidatorByConsAddr(ctx, consAddr)
+	_, found, active, err := k.GetValidatorByConsAddr(ctx, consAddr)
 	if err != nil {
 		k.Logger(ctx).Error("couldn't Get validator by consensus address", "consAddr", consAddr)
 		return err
 	}
-	if found {
+	if found && active {
 		k.Logger(ctx).Error("validator with same public key already exists", "pubKey", key)
 		return types.ErrPubkeyBusy
 	}
@@ -153,20 +156,19 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 		return types.ErrNotQualified
 	}
 
-	power := k.power(ctx, delegation.Int64(), mobile)
+	power := k.power(ctx, delegation.Int64())
 	if k.has(ctx, accAddr) {
 		err = k.update(ctx, accAddr, func(d *types.D) {
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
-			d.Mobile = mobile
 			d.Power  = power
 		})
 	} else {
-		err = k.set(ctx, accAddr, types.NewD(power, mobile, bech32FromCryptoPubKey(key)))
+		err = k.set(ctx, accAddr, types.NewD(power, bech32FromCryptoPubKey(key)))
 	}
 	if err != nil { return err }
 
-	k.addToIndex(ctx, consAddressIdxKey(consAddressFromCryptoBubKey(key)), accAddr.Bytes())
+	k.addToIndex(ctx, nodeOperatorIdxKey(consAddressFromCryptoBubKey(key)), accAddr.Bytes())
 	return nil
 }
 
@@ -225,7 +227,7 @@ func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 		return nil
 	}
 
-	newPower := k.power(ctx, delegation.Int64(), record.Mobile)
+	newPower := k.power(ctx, delegation.Int64())
 	dPower := newPower - record.Power
 	if dPower == 0 { return nil }
 
@@ -251,14 +253,20 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &data)
 		if data.IsActive() {
 			active = append(active, types.NewKeyedD(addr, data))
+			consAddress := consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(data.PubKey))
+			k.addNodeOperatorToIndex(ctx, consAddress, addr)
 		} else {
 			if data.LastPower != 0 {
-				if len(data.PubKey) == 0 { panic("non-zero LastPower is impossible without PubKey") }
+				if len(data.LastPubKey) == 0 { panic("non-zero LastPower is impossible without LastPubKey") }
+
 				result = append(result, abci.ValidatorUpdate{
-					PubKey: abciPubKeyFromBech32(data.PubKey),
+					PubKey: abciPubKeyFromBech32(data.LastPubKey),
 					Power:  0,
 				})
-				if err := k.update(ctx, addr, func(d *types.D) { d.LastPower = 0 }); err != nil {
+				if err := k.update(ctx, addr, func(d *types.D) {
+					d.LastPower = 0
+					d.LastPubKey = ""
+				}); err != nil {
 					defer it.Close()
 					return nil, err
 				}
@@ -290,27 +298,58 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 
 	for i = 0; i < n; i++ {
 		d := active[i]
-		if d.LastPower != d.Power {
-			if len(d.PubKey) == 0 { panic("validator cannot be active without PubKey") }
-			result = append(result, abci.ValidatorUpdate{
-				PubKey: abciPubKeyFromBech32(d.PubKey),
-				Power:  d.Power,
-			})
-			if err := k.update(ctx, d.Account, func(d *types.D) { d.LastPower = d.Power }); err != nil { return nil, err }
+		if len(d.PubKey) == 0 { panic("validator cannot be active without PubKey") }
+		if d.PubKey != d.LastPubKey {
+			if len(d.LastPubKey) != 0 {
+				result = append(result, abci.ValidatorUpdate{
+					PubKey: abciPubKeyFromBech32(d.LastPubKey),
+					Power:  0,
+				})
+			}
+		} else if d.LastPower == d.Power {
+			continue
 		}
+
+		result = append(result, abci.ValidatorUpdate{
+			PubKey: abciPubKeyFromBech32(d.PubKey),
+			Power:  d.Power,
+		})
+		if err := k.update(ctx, d.Account, func(d *types.D) {
+			d.LastPower  = d.Power
+			d.LastPubKey = d.PubKey
+		}); err != nil { return nil, err }
 	}
 	for ; i < len(active); i++ {
 		d := active[i]
 		if d.LastPower != 0 {
 			result = append(result, abci.ValidatorUpdate{
-				PubKey: abciPubKeyFromBech32(d.PubKey),
+				PubKey: abciPubKeyFromBech32(d.LastPubKey),
 				Power:  0,
 			})
-			if err := k.update(ctx, d.Account, func(d *types.D) { d.LastPower = 0 }); err != nil { return nil, err }
+			if err := k.update(ctx, d.Account, func(d *types.D) {
+				d.LastPower  = 0
+				d.LastPubKey = ""
+			}); err != nil { return nil, err }
 		}
 	}
 
-	return result, nil
+	// Just in case an operator switches node off and another one switches it on immediately
+	unique := make([]abci.ValidatorUpdate, 0, len(result))
+	for _, x := range result {
+		found := false
+		for j, y := range unique {
+			if bytes.Equal(x.PubKey.Data, y.PubKey.Data) {
+				unique[j] = x
+				found = true
+				break
+			}
+		}
+		if !found {
+			unique = append(unique, x)
+		}
+	}
+
+	return unique, nil
 }
 
 // GetActiveValidators - returns all potential (i.e. switched on and not jailed) validators. Not just a top N, that is
@@ -328,7 +367,7 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) 
 		}
 		if !value.IsActive() { continue }
 		addr := sdk.AccAddress(it.Key())
-		result = append(result, types.GenesisValidatorFromD(addr, value))
+		result = append(result, types.GenesisValidatorFromD(addr, value, k.GetBlocksProposedBy(ctx, addr)))
 	}
 
 	return result, nil
@@ -347,7 +386,7 @@ func (k Keeper) GetNonActiveValidators(ctx sdk.Context) ([]types.Validator, erro
 		}
 		if value.IsActive() { continue }
 		addr := sdk.AccAddress(it.Key())
-		result = append(result, types.GenesisValidatorFromD(addr, value))
+		result = append(result, types.GenesisValidatorFromD(addr, value, k.GetBlocksProposedBy(ctx, addr)))
 	}
 
 	return result, nil
@@ -358,7 +397,10 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 		pubkey := cryptoPubKeyFromBech32(v.Pubkey)
 
 		if err := k.set(ctx, v.Account, v.ToD()); err != nil { return err }
-		if err := k.SwitchOn(ctx, v.Account, pubkey, v.Mobile); err != nil { return err }
+		for _, h := range v.ProposedBlocks {
+			k.addProposerToIndex(ctx, int64(h), v.Account)
+		}
+		if err := k.SwitchOn(ctx, v.Account, pubkey); err != nil { return err }
 	}
 	return nil
 }
@@ -366,6 +408,9 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Validator) error {
 	for _, v := range validators {
 		if err := k.set(ctx, v.Account, v.ToD()); err != nil { return err }
+		for _, h := range v.ProposedBlocks {
+			k.addProposerToIndex(ctx, int64(h), v.Account)
+		}
 	}
 	return nil
 }
@@ -378,7 +423,7 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
-		 if d.MissedBlocksInRow >= int64(p.JailAfter) {
+		if d.MissedBlocksInRow >= int64(p.JailAfter) {
 			d.Power = 0
 			d.Jailed = true
 			d.UnjailAt = ctx.BlockHeight() + p.UnjailAfter
@@ -428,7 +473,7 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 	q, delegation, reason, err := k.IsQualified(ctx, acc)
 	if err != nil { return err }
 	if q {
-		data.Power = k.power(ctx, delegation.Int64(), data.Mobile)
+		data.Power = k.power(ctx, delegation.Int64())
 	} else {
 		k.Logger(ctx).Info("banishing from validators", "acc", acc, "reason", reason)
 		data.Status = false
@@ -444,6 +489,7 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err error) {
+	k.addProposerToIndex(ctx, ctx.BlockHeight() - 1, acc)
 	if err := k.update(ctx, acc, func(d *types.D) { d.ProposedCount++ }); err != nil { return err }
 
 	all := k.supplyKeeper.GetModuleAccount(ctx, k.feeCollectorName).GetCoins()
@@ -454,12 +500,7 @@ func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err erro
 }
 
 func (k Keeper) GetBlockProposer(ctx sdk.Context, height int64) (sdk.AccAddress, error) {
-	if height > 0 {
-		ctx = ctx.WithBlockHeight(height)
-	}
-	consAddr := sdk.ConsAddress(ctx.BlockHeader().ProposerAddress)
-	result, found, err := k.GetValidatorByConsAddr(ctx, consAddr)
-	if err != nil { return nil, err }
+	result, found := k.getProposerFromIndex(ctx, height)
 	if !found { return nil, types.ErrNotFound }
 	return result, nil
 }
@@ -490,6 +531,17 @@ func (k Keeper) RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) (err error)
 	}
 
 	return nil
+}
+
+func (k Keeper) GetBlocksProposedBy(ctx sdk.Context, acc sdk.AccAddress) (heights []uint64) {
+	it := sdk.KVStorePrefixIterator(ctx.KVStore(k.indexStoreKey), IdxPrefixBlockProposer)
+	defer it.Close()
+	for ; it.Valid(); it.Next() {
+		if bytes.Equal(it.Value(), acc.Bytes()) {
+			heights = append(heights, binary.BigEndian.Uint64(it.Key()[len(IdxPrefixBlockProposer):]))
+		}
+	}
+	return heights
 }
 
 //----------------------------------------------------------------------------------
@@ -539,19 +591,12 @@ func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *typ
 	return nil
 }
 
-func (k Keeper) power(_ sdk.Context, delegated int64, mobile bool) int64 {
-	const e_desktop = 10
-	const e_mobile  = 1
-
-	var e int64; if mobile { e = e_mobile } else { e = e_desktop }
-
-	if delegated >= 500_000_000000 { return 15 * e }
-	if delegated >= 100_000_000000 { return  5 * e }
-	if delegated >=  50_000_000000 { return  2 * e }
-	if delegated >=  10_000_000000 { return      e }
-
-	// Suppose it's a staff validator, otherwise we shouldn't reach here
-	return e
+func (k Keeper) power(_ sdk.Context, delegated int64) int64 {
+	if delegated >= 100_000_000000 {
+		return 15
+	} else {
+		return 10
+	}
 }
 
 func abciPubKeyFromBech32(bech32 string) abci.PubKey {
@@ -570,12 +615,38 @@ func consAddressFromCryptoBubKey(key crypto.PubKey) sdk.ConsAddress {
 	return sdk.ConsAddress(key.Address().Bytes())
 }
 
-func consAddressIdxKey(address sdk.ConsAddress) []byte {
-	pfxLen := len(IdxPrefixConsAddress)
+func nodeOperatorIdxKey(address sdk.ConsAddress) []byte {
+	pfxLen := len(IdxPrefixNodeOperator)
 	result := make([]byte, pfxLen + len(address.Bytes()))
-	copy(result[:pfxLen], IdxPrefixConsAddress)
+	copy(result[:pfxLen], IdxPrefixNodeOperator)
 	copy(result[pfxLen:], address.Bytes())
 	return result
+}
+
+func proposerIdxKey(height int64) []byte {
+	n := len(IdxPrefixBlockProposer)
+	key := make([]byte, n + 8)
+	copy(key[:n], IdxPrefixBlockProposer)
+	binary.BigEndian.PutUint64(key[n:], uint64(height))
+	return key
+}
+
+func (k Keeper) addNodeOperatorToIndex(ctx sdk.Context, consAddr sdk.ConsAddress, accAddr sdk.AccAddress) {
+	k.addToIndex(ctx, nodeOperatorIdxKey(consAddr), accAddr.Bytes())
+}
+
+func (k Keeper) getNodeOperatorFromIndex(ctx sdk.Context, consAddr sdk.ConsAddress) (sdk.AccAddress, bool) {
+	return k.getFromIndex(ctx, nodeOperatorIdxKey(consAddr))
+}
+
+func (k Keeper) addProposerToIndex(ctx sdk.Context, height int64, proposer sdk.AccAddress) {
+	if height > k.scheduleKeeper.GetParams(ctx).InitialHeight {
+		k.addToIndex(ctx, proposerIdxKey(height), proposer.Bytes())
+	}
+}
+
+func (k Keeper) getProposerFromIndex(ctx sdk.Context, height int64) (sdk.AccAddress, bool) {
+	return k.getFromIndex(ctx, proposerIdxKey(height))
 }
 
 func (k Keeper) addToIndex(ctx sdk.Context, key []byte, value []byte) {

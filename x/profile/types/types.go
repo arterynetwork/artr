@@ -6,7 +6,6 @@ import (
 )
 
 type Profile struct {
-	AutoRedeligate bool   `json:"auto_redeligate" yaml:"auto_redeligate"`
 	AutoPay        bool   `json:"autopay" yaml:"autopay"`
 	ActiveUntil    uint64 `json:"active_until" yaml:"active_until"`
 	Noding         bool   `json:"noding" yaml:"noding"`
@@ -19,7 +18,6 @@ type Profile struct {
 
 func (p Profile) String() string {
 	return strings.TrimSpace(fmt.Sprintf(
-		"AutoRedeligate: %t\n"+
 			"AutoPayment: %t\n"+
 			"ActiveUntil: %d\n"+
 			"Noding: %t\n"+
@@ -28,7 +26,6 @@ func (p Profile) String() string {
 			"Validator: %t\n"+
 			"Nilname: %s\n"+
 			"CardNumber: %012d",
-		p.AutoRedeligate,
 		p.AutoPay,
 		p.ActiveUntil,
 		p.Noding,

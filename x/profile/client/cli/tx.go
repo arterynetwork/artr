@@ -78,8 +78,6 @@ func GetSetProfileCmd(cdc *codec.Codec) *cobra.Command {
 					switch strings.ToLower(com[0]) {
 					case "nickname":
 						profile.Nickname = com[1]
-					case "auto_redeligate":
-						profile.AutoRedeligate = com[1] == "yes"
 					case "autopay":
 						profile.AutoPay = com[1] == "yes"
 					case "noding":
@@ -189,8 +187,6 @@ func GetCreateAccountWithProfileCmd(cdc *codec.Codec) *cobra.Command {
 					switch strings.ToLower(com[0]) {
 					case "nickname":
 						profile.Nickname = com[1]
-					case "auto_redeligate":
-						profile.AutoRedeligate = com[1] == "yes"
 					case "autopay":
 						profile.AutoPay = com[1] == "yes"
 					case "noding":

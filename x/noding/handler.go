@@ -26,7 +26,7 @@ func NewHandler(k Keeper) sdk.Handler {
 }
 
 func handleMsgSwitchOn(ctx sdk.Context, k Keeper, msg MsgSwitchOn) (*sdk.Result, error) {
-	err := k.SwitchOn(ctx, msg.AccAddress, msg.PubKey, msg.Mobile)
+	err := k.SwitchOn(ctx, msg.AccAddress, msg.PubKey)
 	if err != nil {
 		return nil, err
 	}

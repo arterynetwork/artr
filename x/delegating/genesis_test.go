@@ -81,5 +81,7 @@ func (s Suite) checkExportImport() {
 			delegating.ClusterStoreKey: app.DummyDecoder,
 			schedule.StoreKey:          app.DummyDecoder,
 			params.StoreKey:            app.DummyDecoder,
-		},)
+		},
+		make(map[string][][]byte, 0),
+	)
 }

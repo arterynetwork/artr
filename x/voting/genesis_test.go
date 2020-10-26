@@ -113,5 +113,6 @@ func (s Suite) checkExportImport() {
 		map[string]app.Decoder{
 			voting.StoreKey: app.DummyDecoder,
 		},
+		make(map[string][][]byte, 0),
 	)
 }

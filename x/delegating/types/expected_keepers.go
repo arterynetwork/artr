@@ -1,13 +1,15 @@
 package types
 
 import (
-	"github.com/arterynetwork/artr/x/bank"
-	profile "github.com/arterynetwork/artr/x/profile/types"
-	referral "github.com/arterynetwork/artr/x/referral/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	auth "github.com/cosmos/cosmos-sdk/x/auth/exported"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	supply "github.com/cosmos/cosmos-sdk/x/supply/exported"
+
+	"github.com/arterynetwork/artr/x/bank"
+	profile "github.com/arterynetwork/artr/x/profile/types"
+	referral "github.com/arterynetwork/artr/x/referral/types"
+	"github.com/arterynetwork/artr/x/schedule"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -24,6 +26,7 @@ type AccountKeeper interface {
 
 type ScheduleKeeper interface {
 	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
+	GetParams(ctx sdk.Context) schedule.Params
 }
 
 type SupplyKeeper interface {

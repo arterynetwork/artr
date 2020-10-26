@@ -461,6 +461,7 @@ func (k Keeper) SetActive(ctx sdk.Context, acc sdk.AccAddress, value bool) error
 }
 
 func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
+	if ctx.BlockHeight() <= k.scheduleKeeper.GetParams(ctx).InitialHeight { return nil }
 	var (
 		ca              = k.GetParams(ctx).CompanyAccounts
 		sender          = ca.StatusBonuses

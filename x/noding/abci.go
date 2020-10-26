@@ -43,10 +43,9 @@ func EndBlocker(ctx sdk.Context, k Keeper) []abci.ValidatorUpdate {
 
 func findValidatorAccAddress(ctx sdk.Context, k Keeper, validator abci.Validator) (sdk.AccAddress, error) {
 	consAddr := sdk.ConsAddress(validator.Address)
-	accAddr, _, err := k.GetValidatorByConsAddr(ctx, consAddr)
-	if err != nil { return nil, sdkerrors.Wrap(err, "couldn't find validator") }
-	// If validator has been just jailed, then found is false, but accAddr isn't empty.
-	if accAddr.Empty() { return nil, errors.New("validator not found for consensus address " + consAddr.String())}
+	accAddr, found, _, err := k.GetValidatorByConsAddr(ctx, consAddr)
+	if err != nil { return accAddr, sdkerrors.Wrap(err, "couldn't find validator") }
+	if !found { return nil, errors.New("validator not found for consensus address " + consAddr.String())}
 	return accAddr, nil
 }
 
@@ -77,7 +76,7 @@ func markStrokesAndTicks(ctx sdk.Context, votes []abci.VoteInfo, k Keeper) error
 }
 
 func payProposerReward(ctx sdk.Context, consAddr sdk.ConsAddress, k Keeper) error {
-	accAddr, found, err := k.GetValidatorByConsAddr(ctx, consAddr)
+	accAddr, found, _, err := k.GetValidatorByConsAddr(ctx, consAddr)
 	if err != nil { return err }
 	if !found { return types.ErrNotFound }
 	if err = k.PayProposerReward(ctx, accAddr); err != nil { return err }

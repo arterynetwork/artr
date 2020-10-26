@@ -132,7 +132,7 @@ func DummyDecoder(_ []byte) (string, error) {
 	return "", fmt.Errorf("not implemented")
 }
 
-func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDecoders, valueDecoders map[string]Decoder) {
+func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDecoders, valueDecoders map[string]Decoder, ignorePrefixes map[string][][]byte) {
 	ctx := app.NewContext(true, abci.Header{Height: app.LastBlockHeight()})
 	app.EndBlocker(ctx, abci.RequestEndBlock{Height: ctx.BlockHeight()})
 	ctx = ctx.WithBlockHeight(ctx.BlockHeight() + 1)
@@ -167,7 +167,7 @@ func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDeco
 	for _, key := range storeKeys {
 		store1 := ctx.KVStore(app.GetKeys()[key])
 		store2 := ctx2.KVStore(app2.GetKeys()[key])
-		kvA, kvB := diffKVStores(store1, store2)
+		kvA, kvB := diffKVStores(store1, store2, ignorePrefixes[key])
 		dkvA := decodeKVPairs(kvA, keyDecoders[key], valueDecoders[key])
 		dkvB := decodeKVPairs(kvB, keyDecoders[key], valueDecoders[key])
 		assert.Empty(t, dkvA, "bad pair(s) in original %s kvstore", key)
@@ -206,14 +206,24 @@ func decodeKVPairs(kvz []kv.Pair, keyDecoder func([]byte)(string, error), valDec
 	return result
 }
 
-func diffKVStores(a, b sdk.KVStore) (kvAs, kvBs []kv.Pair) {
+func diffKVStores(a, b sdk.KVStore, ignore [][]byte) (kvAs, kvBs []kv.Pair) {
 	iterA := a.Iterator(nil, nil)
 	iterB := b.Iterator(nil, nil)
 
 	for {
-		if !iterA.Valid() && !iterB.Valid() {
-			break
+		shouldIgnore := func(key []byte) bool {
+			for _, prefix := range ignore {
+				if len(key) >= len(prefix) && bytes.Equal(prefix, key[:len(prefix)]) {
+					return true
+				}
+			}
+			return false
 		}
+		for iterA.Valid() && shouldIgnore(iterA.Key()) { iterA.Next() }
+		for iterB.Valid() && shouldIgnore(iterB.Key()) { iterB.Next() }
+
+		if !iterA.Valid() && !iterB.Valid() { break }
+
 		var kvA, kvB kv.Pair
 		if !iterA.Valid() {
 			for ; iterB.Valid(); iterB.Next() {

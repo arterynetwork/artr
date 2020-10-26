@@ -1,13 +1,16 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/x/noding/types"
 	"fmt"
+	"strconv"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"strconv"
+
+	"github.com/arterynetwork/artr/x/noding/types"
 )
 
 // NewQuerier creates a new querier for noding clients.
@@ -24,6 +27,7 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryProposer(ctx, k, path[1:])
 		case types.QueryAllowed:
 			return queryAllowed(ctx, k, path[1:])
+		case types.QueryOperator: return queryOperator(ctx, k, path[1:])
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown noding query endpoint")
 		}
@@ -118,4 +122,30 @@ func queryAllowed(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 	}
 
 	return res, nil
+}
+
+func queryOperator(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
+	if len(path) < 2 {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "not enough arguments")
+	}
+
+	var (
+		consAddress sdk.ConsAddress
+		err error
+	)
+	if path[0] == types.QueryOperatorFormatHex {
+		consAddress, err = sdk.ConsAddressFromHex(path[1])
+	} else {
+		consAddress, err = sdk.ConsAddressFromBech32(path[1])
+	}
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, fmt.Sprintf("cannot parse address (%s): %s", path[0], path[1]))
+	}
+
+	data, found := k.getNodeOperatorFromIndex(ctx, consAddress)
+	if !found {
+		return nil, sdkerrors.Wrapf(types.ErrNotFound, "cannot find data by consensus address: %s", consAddress.String())
+	}
+
+	return data, nil
 }

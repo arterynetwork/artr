@@ -1,6 +1,9 @@
+// +build testing
+
 package noding_test
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 
@@ -51,18 +54,18 @@ func (s Suite) TestBlocksInRowAndJail() {
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 	_, user3key, user3ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key, false); err != nil { panic(err) }
-	if err := s.k.SwitchOn(s.ctx, user3, user3key, true); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil { panic(err) }
 
 	s.nextBlock(user1key, []abci.VoteInfo{
 		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
 		{Validator: abci.Validator{Address: user2ca, Power: 10}, SignedLastBlock: true},
-		{Validator: abci.Validator{Address: user3ca, Power: 1}, SignedLastBlock: false},
+		{Validator: abci.Validator{Address: user3ca, Power: 10}, SignedLastBlock: false},
 	}, nil)
 	s.nextBlock(user1key, []abci.VoteInfo{
 		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
 		{Validator: abci.Validator{Address: user2ca, Power: 10}, SignedLastBlock: false},
-		{Validator: abci.Validator{Address: user3ca, Power: 1}, SignedLastBlock: false},
+		{Validator: abci.Validator{Address: user3ca, Power: 10}, SignedLastBlock: false},
 	}, nil)
 	{
 		d, _ := s.k.Get(s.ctx, user3)
@@ -77,7 +80,7 @@ func (s Suite) TestJailAndSwitchOff() {
 	user1ca := sdk.ConsAddress(user1key.Address().Bytes())
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key, false); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
 
 	s.nextBlock(user1key, []abci.VoteInfo{
 		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
@@ -103,12 +106,12 @@ func (s Suite) TestByzantine() {
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 	_, user3key, user3ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key, false); err != nil { panic(err) }
-	if err := s.k.SwitchOn(s.ctx, user3, user3key, true); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil { panic(err) }
 
 	val1 := abci.Validator{Address: user1ca, Power: 10}
 	val2 := abci.Validator{Address: user2ca, Power: 10}
-	val3 := abci.Validator{Address: user3ca, Power: 1}
+	val3 := abci.Validator{Address: user3ca, Power: 10}
 
 	s.nextBlock(
 		user1key,
@@ -160,13 +163,43 @@ func (s Suite) TestStaff() {
 	s.checkExportImport()
 }
 
+func (s Suite) TestProposers() {
+	user1 := app.DefaultGenesisUsers["user1"]
+	user2 := app.DefaultGenesisUsers["user2"]
+	user1key := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
+	_, user2key, _ := app.NewTestConsPubAddress()
+	s.NoError(s.k.SwitchOn(s.ctx, user2, user2key))
+
+	s.nextBlock(user1key, nil, nil)
+	s.nextBlock(user2key, nil, nil)
+	s.Equal([]uint64{1}, s.k.GetBlocksProposedBy(s.ctx, user1))
+	s.Equal([]uint64{2}, s.k.GetBlocksProposedBy(s.ctx, user2))
+
+	s.checkExportImport()
+}
+
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
 		[]string{
 			noding.StoreKey,
+			noding.IdxStoreKey,
 		},
 		map[string]app.Decoder{
 			noding.StoreKey: app.AccAddressDecoder,
+			noding.IdxStoreKey: func(bz []byte)(string, error) {
+				switch bz[0] {
+				case 0x01:
+					if len(bz) != 21 { return "", fmt.Errorf("wrong address length") }
+					consAddr := sdk.ConsAddress(bz[1:])
+					return consAddr.String(), nil
+				case 0x02:
+					if len(bz) != 9 { return "", fmt.Errorf("wrongth height length")}
+					height := binary.BigEndian.Uint64(bz[1:])
+					return fmt.Sprintf("H %d", height), nil
+				default:
+					return "", fmt.Errorf("unknown prefix")
+				}
+			},
 		},
 		map[string]app.Decoder{
 			noding.StoreKey: func(bz []byte)(string, error){
@@ -175,10 +208,15 @@ func (s Suite) checkExportImport() {
 				if err != nil { return "", err }
 				return fmt.Sprintf("%+v", value), nil
 			},
-		},)
+			noding.IdxStoreKey: app.AccAddressDecoder,
+		},
+		map[string][][]byte{
+			noding.IdxStoreKey: {{0x01}},
+		},
+	)
 }
 
-func (s Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzantine []abci.Evidence) (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
+func (s *Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzantine []abci.Evidence) (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
 	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
