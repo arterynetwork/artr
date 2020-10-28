@@ -552,11 +552,7 @@ func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc sdk.AccAddress, company
 			excess = excess.Add(toAncestors[i])
 			continue
 		}
-		if (i < 2) ||
-			(i < 4) && (data.Status >= types.Leader) ||
-			(i < 6) && (data.Status >= types.Master) ||
-			(i < 8) && (data.Status >= types.Champion) ||
-			data.Status >= types.Businessman {
+		if i < data.Status.LinesOpened() {
 			result = append(result, types.ReferralFee{Beneficiary: ancestor, Ratio: toAncestors[i]})
 		} else {
 			excess = excess.Add(toAncestors[i])

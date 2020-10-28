@@ -342,6 +342,8 @@ func NewArteryApp(
 	app.referralKeeper.AddHook(referral.StatusUpdatedCallback, app.nodingKeeper.OnStatusUpdate)
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
 
+	app.upgradeKeeper.SetUpgradeHandler("1.1.1", NopUpgradeHandler)
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
