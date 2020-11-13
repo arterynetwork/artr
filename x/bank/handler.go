@@ -1,25 +1,30 @@
 package bank
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/tendermint/tendermint/libs/log"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank/internal/keeper"
 	"github.com/arterynetwork/artr/x/bank/internal/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"strings"
 )
 
 // NewHandler returns a handler for "bank" type messages.
-func NewHandler(k keeper.Keeper) sdk.Handler {
+func NewHandler(k keeper.Keeper, sk types.SupplyKeeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
 
 		switch msg := msg.(type) {
 		case types.MsgSend:
-			return handleMsgSend(ctx, k, msg)
+			return handleMsgSend(ctx, k, sk, msg)
 
 		case types.MsgMultiSend:
-			return handleMsgMultiSend(ctx, k, msg)
+			return handleMsgMultiSend(ctx, k, sk, msg)
 
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized bank message type: %T", msg)
@@ -28,7 +33,7 @@ func NewHandler(k keeper.Keeper) sdk.Handler {
 }
 
 // Handle MsgSend.
-func handleMsgSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgSend) (*sdk.Result, error) {
+func handleMsgSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper, msg types.MsgSend) (*sdk.Result, error) {
 	if !k.GetSendEnabled(ctx) {
 		return nil, types.ErrSendDisabled
 	}
@@ -49,7 +54,10 @@ func handleMsgSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgSend) (*sdk.Re
 		}
 	}
 
-	err := k.SendCoins(ctx, msg.FromAddress, msg.ToAddress, msg.Amount)
+	amount := msg.Amount.AmountOf(util.ConfigMainDenom)
+	_, err := util.PayTxFee(ctx, sk, logger(ctx), msg.FromAddress, amount)
+	if err != nil { return nil, err }
+	err = k.SendCoins(ctx, msg.FromAddress, msg.ToAddress, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, amount)))
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +73,7 @@ func handleMsgSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgSend) (*sdk.Re
 }
 
 // Handle MsgMultiSend.
-func handleMsgMultiSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgMultiSend) (*sdk.Result, error) {
+func handleMsgMultiSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper, msg types.MsgMultiSend) (*sdk.Result, error) {
 	// NOTE: totalIn == totalOut should already have been checked
 	if !k.GetSendEnabled(ctx) {
 		return nil, types.ErrSendDisabled
@@ -77,6 +85,8 @@ func handleMsgMultiSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgMultiSend
 				return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "tying to send forbidden denom")
 			}
 		}
+		_, err := util.PayTxFee(ctx, sk, logger(ctx), in.Address, in.Coins.AmountOf(util.ConfigMainDenom))
+		if err != nil { return nil, err }
 	}
 
 	for _, out := range msg.Outputs {
@@ -98,4 +108,8 @@ func handleMsgMultiSend(ctx sdk.Context, k keeper.Keeper, msg types.MsgMultiSend
 	)
 
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
+}
+
+func logger(ctx sdk.Context) log.Logger {
+	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }

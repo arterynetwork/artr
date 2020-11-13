@@ -60,16 +60,6 @@ func GetPayForSubscriptionCmd(cdc *codec.Codec) *cobra.Command {
 			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			// Get prices
-			prices, err := getPrices(cdc, &cliCtx)
-
-			if err != nil {
-				return err
-			}
-
-			//prices.VPN = prices.Subscription
-			txBldr = txBldr.WithFees(
-				util.CalculateFee(sdk.NewInt(prices.Subscription)).String() + util.ConfigMainDenom)
 
 			amount, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -101,17 +91,6 @@ func GetPayForVPNCmd(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			// Get prices
-			prices, err := getPrices(cdc, &cliCtx)
-
-			if err != nil {
-				return err
-			}
-
-			// fee
-			txBldr = txBldr.WithFees(
-				util.CalculateFee(sdk.NewInt(amount*prices.VPN/util.GBSize)).String() + util.ConfigMainDenom)
-
 			// build and sign the transaction, then broadcast to Tendermint
 			msg := types.NewMsgPayVPN(cliCtx.FromAddress, amount)
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
@@ -136,17 +115,6 @@ func GetPayForStorageCmd(cdc *codec.Codec) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			// Get prices
-			prices, err := getPrices(cdc, &cliCtx)
-
-			if err != nil {
-				return err
-			}
-
-			// fee
-			txBldr = txBldr.WithFees(
-				util.CalculateFee(sdk.NewInt(amount*prices.Storage/util.GBSize)).String() + util.ConfigMainDenom)
 
 			// build and sign the transaction, then broadcast to Tendermint
 			msg := types.NewMsgPayStorage(cliCtx.FromAddress, amount)

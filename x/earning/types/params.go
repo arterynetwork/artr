@@ -1,12 +1,14 @@
 package types
 
 import (
-	"github.com/arterynetwork/artr/util"
+	"errors"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-
 	"github.com/cosmos/cosmos-sdk/x/params"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 // Default parameter namespace
@@ -118,7 +120,13 @@ func validateSigners(value interface{}) error {
 func (p StateParams) Validate() error {
 	if err := validateLocked(p.Locked); err != nil { return err }
 	if err := validatePointCost(p.VpnPointCost); err != nil { return err }
+	if p.Locked && p.VpnPointCost.IsNullValue() {
+		return errors.New("missing VpnPointCost")
+	}
 	if err := validatePointCost(p.StoragePointCost); err != nil { return err }
+	if p.Locked && p.StoragePointCost.IsNullValue() {
+		return errors.New("missing StoragePointCost")
+	}
 	if err := validateItemsPerBlock(p.ItemsPerBlock); err != nil { return err }
 	if p.Locked && p.ItemsPerBlock < 1 {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("items per block number must be positive: %d", p.ItemsPerBlock))
@@ -136,7 +144,7 @@ func validateLocked(value interface{}) error {
 func validatePointCost(value interface{}) error {
 	q, ok := value.(util.Fraction)
 	if !ok { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected point cost type: %T", value)) }
-	if q.IsNegative() { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("point cost must be non-negative: %v", q)) }
+	if !q.IsNullValue() && q.IsNegative() { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("point cost must be non-negative: %v", q)) }
 	return nil
 }
 

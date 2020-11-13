@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"github.com/arterynetwork/artr/util"
 	"bufio"
 
 	"github.com/spf13/cobra"
@@ -52,8 +51,6 @@ func SendTxCmd(cdc *codec.Codec) *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			txBldr = txBldr.WithFees(util.CalculateFeeString(coins))
 
 			// build and sign the transaction, then broadcast to Tendermint
 			msg := types.NewMsgSend(cliCtx.GetFromAddress(), to, coins)

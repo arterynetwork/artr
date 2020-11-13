@@ -111,7 +111,7 @@ func (AppModule) Route() string {
 
 // NewHandler returns an sdk.Handler for the delegating module.
 func (am AppModule) NewHandler() sdk.Handler {
-	return NewHandler(am.keeper)
+	return NewHandler(am.keeper, am.supplyKeeper)
 }
 
 // QuerierRoute returns the delegating module's querier route name.

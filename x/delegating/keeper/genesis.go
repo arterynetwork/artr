@@ -45,15 +45,20 @@ func (k Keeper) InitRevokeRequests(ctx sdk.Context, revoking []types.Revoke) {
 	store := ctx.KVStore(k.mainStoreKey)
 	for _, req := range revoking {
 		byteKey := []byte(req.Account)
-		byteItem := store.Get(byteKey)
+
 		var item types.Record
-		k.cdc.MustUnmarshalBinaryLengthPrefixed(byteItem, &item)
+		if store.Has(byteKey) {
+			byteItem := store.Get(byteKey)
+			k.cdc.MustUnmarshalBinaryLengthPrefixed(byteItem, &item)
+		} else {
+			item = types.NewRecord()
+		}
+
 		item.Requests = append(item.Requests, types.RevokeRequest{
 			HeightToImplementAt: req.Height,
 			MicroCoins:          sdk.NewInt(req.Amount),
 		})
-		byteItem = k.cdc.MustMarshalBinaryLengthPrefixed(item)
-		store.Set(byteKey, byteItem)
+		store.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
 	}
 }
 

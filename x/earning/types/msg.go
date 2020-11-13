@@ -111,7 +111,7 @@ func (msg MsgRun) ValidateBasic() error {
 	if !msg.FundPart.IsPositive() {
 		return fmt.Errorf("fund part must be positive")
 	}
-	if msg.FundPart.GT(util.FractionFromInt64(1)) {
+	if msg.FundPart.GT(util.FractionInt(1)) {
 		return fmt.Errorf("fund part must be less than or equal 1")
 	}
 	if msg.AccountPerBlock <= 0 {

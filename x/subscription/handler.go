@@ -1,12 +1,13 @@
 package subscription
 
 import (
-	"github.com/arterynetwork/artr/x/subscription/types"
 	"bytes"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/arterynetwork/artr/x/subscription/types"
 )
 
 // NewHandler creates an sdk.Handler for all the subscription type messages

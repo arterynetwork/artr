@@ -32,6 +32,7 @@ func initDefaultGenesisUsers() {
 		"user13": accAddr("artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq"),
 		"user14": accAddr("artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun"),
 		"user15": accAddr("artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf"),
+		"root":   accAddr("artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"),
 	}
 }
 func accAddr(s string) sdk.AccAddress {
@@ -433,6 +434,13 @@ const defaultGenesis = `{
 		"card_magic": "112233592347"
       },
       "profiles": [
+		{
+			"address": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+			"profile": {
+				"nickname": "root",
+				"active_unitl": "9000"
+			}
+		},
         {
 	  "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
 	  "profile": {

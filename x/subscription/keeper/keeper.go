@@ -108,9 +108,10 @@ func (k Keeper) PayForSubscription(ctx sdk.Context, addr sdk.AccAddress, storage
 
 	// Total price
 	amount := sdk.NewInt(int64(price) * int64(course))
-	txFee := util.CalculateFee(amount)
 
 	// Total price without fee - we calc MLM reward based on this price
+	txFee, err := util.PayTxFee(ctx, k.supplyKeeper, k.Logger(ctx), addr, amount)
+	if err != nil { return err }
 	amount = amount.Sub(txFee)
 
 	totalFee, err := k.payUpFees(ctx, addr, amount, types.EventTypeFee)
@@ -203,7 +204,8 @@ func (k Keeper) payForService(ctx sdk.Context, addr sdk.AccAddress, amount int64
 		int64(price) *
 		int64(course) / util.GBSize)
 
-	txFee := util.CalculateFee(amountPrice)
+	txFee, err := util.PayTxFee(ctx, k.supplyKeeper, k.Logger(ctx), addr, amountPrice)
+	if err != nil { return err }
 	amountPriceWithFee := amountPrice.Sub(txFee)
 
 	//totalFee, err := k.payUpFees(ctx, addr, amountPriceWithFee, types.EventTypeFee)
@@ -212,7 +214,7 @@ func (k Keeper) payForService(ctx sdk.Context, addr sdk.AccAddress, amount int64
 	//	return err
 	//}
 
-	err := k.supplyKeeper.SendCoinsFromAccountToModule(ctx, addr, moduleName,
+	err = k.supplyKeeper.SendCoinsFromAccountToModule(ctx, addr, moduleName,
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, amountPriceWithFee)))
 
 	if err != nil {

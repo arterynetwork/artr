@@ -59,6 +59,9 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 		if !gov.Contains(msg.Params.(types.AddressProposalParams).Address) {
 			return nil, types.ErrProposalGovernorNotExists
 		}
+		if len(gov) == 1 {
+			return nil, types.ErrProposalGovernorLast
+		}
 	}
 
 	proposal := types.Proposal{
@@ -73,8 +76,9 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 	k.SetCurrentProposal(ctx, proposal)
 
 	// Set empty lists of voters
-	k.SetAgreed(ctx, types.Government{msg.Author})
-	k.SetDisagreed(ctx, types.NewEmptyGovernment())
+	agreed, disagreed := types.Government{msg.Author}, types.NewEmptyGovernment()
+	k.SetAgreed(ctx, agreed)
+	k.SetDisagreed(ctx, disagreed)
 	k.ScheduleEnding(ctx, endBLock)
 	k.SetStartBlock(ctx)
 
@@ -85,6 +89,12 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 			sdk.NewAttribute(types.AttributeKeyTypeCode, fmt.Sprint(msg.TypeCode)),
 		),
 	)
+
+	complete, agree := k.Validate(gov, agreed, disagreed)
+
+	if complete {
+		k.EndProposal(ctx, proposal, agree)
+	}
 
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

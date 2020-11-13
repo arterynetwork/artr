@@ -84,6 +84,125 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	s.Empty(revoking)
 }
 
+func (s *Suite) TestAccrueAfterRevoke() {
+	user := app.DefaultGenesisUsers["user1"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(850_000000))),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000)))
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	t := 0
+	for ; t < util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(3_500000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	for ; t < 14 * util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(399_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	for ; t < 15 * util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(402_500000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+}
+
+func (s *Suite) TestAccrueOnRevoke() {
+	user := app.DefaultGenesisUsers["user1"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(850_000000))),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	t := 0
+
+	for ; t < util.BlocksOneDay / 2; t++ { s.nextBlock() }
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(850_000000))),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+	acc, err := s.k.GetAccumulation(s.ctx, user)
+	s.NoError(err)
+	s.Equal(int64(2_975000), acc.CurrentUartrs)
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000)))
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_975000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	// 2 weeks later
+	for ; t < util.BlocksOneDay * 29 / 2; t++ { s.nextBlock() }
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_975000)), // 2.975 + 14 * 3.5 + 350
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+	acc, err = s.k.GetAccumulation(s.ctx, user)
+	s.NoError(err)
+	s.Equal(int64(util.BlocksOneDay * 29 / 2), acc.StartHeight)
+	s.Equal(int64(0), acc.CurrentUartrs)
+
+	// Half a day later
+	for ; t < util.BlocksOneDay * 15; t++ { s.nextBlock() }
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_975000)), // The same because accrue time has changed
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(500_000000)),
+		),
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+}
 
 var bbHeader = abci.RequestBeginBlock{
 	Header: abci.Header{

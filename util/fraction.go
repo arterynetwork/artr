@@ -3,13 +3,16 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"regexp"
-	"strconv"
+	"strings"
+
+	"github.com/pkg/errors"
 )
 
 type Fraction struct {
-	num   int64
-	denom int64
+	num   *big.Int
+	denom *big.Int
 }
 
 func (x Fraction) MarshalJSON() ([]byte, error) {
@@ -43,8 +46,8 @@ func (x Fraction) MarshalYAML() (string, error) { return x.String(), nil }
 
 func NewFraction(num int64, denom int64) Fraction {
 	return Fraction{
-		num:   num,
-		denom: denom,
+		num:   big.NewInt(num),
+		denom: big.NewInt(denom),
 	}
 }
 
@@ -56,21 +59,24 @@ func Permille(x int64) Fraction {
 	return NewFraction(x, 1000)
 }
 
-func FractionFromInt64(x int64) Fraction { return NewFraction(x, 1) }
+func FractionInt(x int64) Fraction { return NewFraction(x, 1) }
 
-func FractionZero() Fraction { return FractionFromInt64(0) }
+func FractionZero() Fraction { return FractionInt(0) }
 
 func ParseFraction(s string) (Fraction, error) {
 	var (
-		num, denom int64
+		num   = &big.Int{}
+		denom = &big.Int{}
 		err error
 	)
+
+	if s == "nil" { return Fraction{}, nil }
 
 	// Try percent notation first
 	pattern := regexp.MustCompile(`^(-?\d+)%$`)
 	match := pattern.FindStringSubmatch(s)
 	if len(match) > 0 {
-		denom = 100
+		denom = big.NewInt(100)
 	} else {
 		pattern = regexp.MustCompile(`^(-?\d+)(?:/(\d+))?$`)
 		match = pattern.FindStringSubmatch(s)
@@ -78,78 +84,112 @@ func ParseFraction(s string) (Fraction, error) {
 			return Fraction{}, fmt.Errorf("invalid fraction format, 'x%' or 'x/y' expected: " + s)
 		}
 		if len(match) > 2 {
-			denom, err = strconv.ParseInt(match[2], 10, 64)
+			err =  denom.UnmarshalText([]byte(match[2]))
 			if err != nil { return Fraction{}, err }
 		} else {
-			denom = 1
+			denom = big.NewInt(1)
 		}
 	}
 
-	num, err = strconv.ParseInt(match[1], 10, 64)
+	err = num.UnmarshalText([]byte(match[1]))
 	if err != nil { return Fraction{}, err }
 
-	return NewFraction(num, denom), nil
+	return Fraction{num, denom}, nil
 }
 
 func (x Fraction) String() string {
-	if x.denom == 100 {
-		return fmt.Sprintf("%d%%", x.num)
-	}
-	return fmt.Sprintf("%d/%d", x.num, x.denom)
-}
+	if x.IsNullValue(){ return "nil" }
+	sb := strings.Builder{}
 
-func (x Fraction) Float64() float64 {
-	return float64(x.num) / float64(x.denom)
+	bytes, err := x.num.MarshalText()
+	if err != nil { panic(errors.Wrap(err, "couldn't marshal numerator")) }
+	sb.Write(bytes)
+
+	if x.denom != nil && x.denom.IsInt64() && x.denom.Int64() == 100 {
+		sb.WriteRune('%')
+	} else {
+		sb.WriteRune('/')
+		bytes, err = x.denom.MarshalText()
+		if err != nil { panic(errors.Wrap(err, "couldn't marshal denominator")) }
+		sb.Write(bytes)
+	}
+	return sb.String()
 }
 
 func (x Fraction) Int64() int64 {
-	return x.num / x.denom
+	return (&big.Int{}).Quo(x.num, x.denom).Int64()
 }
 
 func (x Fraction) Reduce() Fraction {
-	if x.denom < 0 {
-		x = NewFraction(-x.num, -x.denom)
+	if x.denom.Sign() < 0 {
+		x.num.Neg(x.num)
+		x.denom.Neg(x.denom)
 	}
-	q := gcd(x.num, x.denom)
-	return NewFraction(x.num / q, x.denom / q)
+	q := (&big.Int{}).GCD(nil, nil, x.num, x.denom)
+	x.num.Quo(x.num, q)
+	x.denom.Quo(x.denom, q)
+	return x
 }
 
 func (x Fraction) Mul(y Fraction) Fraction {
-	return NewFraction(x.num * y.num, x.denom * y.denom).Reduce()
+	return Fraction{
+		(&big.Int{}).Mul(x.num, y.num),
+		(&big.Int{}).Mul(x.denom, y.denom),
+	}.Reduce()
 }
 
 func (x Fraction) MulInt64(y int64) Fraction {
-	return x.Mul(NewFraction(y, 1))
+	return x.Mul(FractionInt(y))
 }
 
 func (x Fraction) Div(y Fraction) Fraction {
-	return NewFraction(x.num * y.denom, x.denom * y.num).Reduce()
+	return Fraction{
+		(&big.Int{}).Mul(x.num, y.denom),
+		(&big.Int{}).Mul(x.denom, y.num),
+	}.Reduce()
 }
 
 func (x Fraction) DivInt64(y int64) Fraction {
-	return x.Div(NewFraction(y, 1))
+	return x.Div(FractionInt(y))
+}
+
+func (x Fraction) Neg() Fraction {
+	return Fraction{
+		(&big.Int{}).Neg(x.num),
+		(&big.Int{}).Set(x.denom),
+	}
 }
 
 func (x Fraction) Add(y Fraction) Fraction {
-	denom := lcm(x.denom, y.denom)
-	return NewFraction(x.num * denom/x.denom + y.num * denom/y.denom, denom)
+	comDenom := lcm(x.denom, y.denom)
+
+	a := &big.Int{}
+	a.Mul(x.num, comDenom)
+	a.Quo(a, x.denom)
+	b := &big.Int{}
+	b.Mul(y.num, comDenom)
+	b.Quo(b, y.denom)
+	return Fraction{a.Add(a, b),comDenom}
 }
 
 func (x Fraction) Sub(y Fraction) Fraction {
-	denom := lcm(x.denom, y.denom)
-	return NewFraction(x.num * denom/x.denom - y.num * denom/y.denom, denom)
+	return x.Add(y.Neg())
+}
+
+func (x Fraction) IsNullValue() bool {
+	return x.num == nil && x.denom == nil
 }
 
 func (x Fraction) IsZero() bool {
-	return x.num == 0
+	return x.num.Sign() == 0
 }
 
 func (x Fraction) IsNegative() bool {
-	return x.num < 0 && x.denom > 0 || x.num > 0 && x.denom < 0
+	return x.num.Sign() * x.denom.Sign() < 0
 }
 
 func (x Fraction) IsPositive() bool {
-	return x.num > 0 && x.denom > 0 || x.num < 0 && x.denom < 0
+	return x.num.Sign() * x.denom.Sign() > 0
 }
 
 func (x Fraction) GT(y Fraction) bool { return x.Sub(y).IsPositive() }
@@ -157,34 +197,12 @@ func (x Fraction) LT(y Fraction) bool { return y.GT(x) }
 func (x Fraction) GTE(y Fraction) bool { return !x.LT(y) }
 func (x Fraction) LTE(y Fraction) bool { return !x.GT(y) }
 
-func gcd(x int64, y int64) int64 {
-	if x < 0 {
-		x = -x
+func lcm(x *big.Int, y *big.Int) *big.Int {
+	res := &big.Int{}
+	res.Mul(x, y)
+	res.Quo(res, (&big.Int{}).GCD(nil, nil, x, y))
+	if res.Sign() < 0 {
+		res.Neg(res)
 	}
-	if y < 0 {
-		y = -y
-	}
-	if x == 0 {
-		return y
-	}
-	if y == 0 {
-		return x
-	}
-	for {
-		q := x / y
-		r := x - q * y
-		if r == 0 {
-			return y
-		}
-		x, y = y, r
-	}
+	return res
 }
-
-func lcm(x int64, y int64) int64 {
-	r := x * y / gcd(x, y)
-	if r < 0 {
-		r = -r
-	}
-	return r
-}
-

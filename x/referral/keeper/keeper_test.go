@@ -3,6 +3,8 @@
 package keeper_test
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -22,9 +24,11 @@ import (
 
 func TestReferralKeeper(t *testing.T) {
 	suite.Run(t, new(Suite))
+	suite.Run(t, new(StatusUpgradeSuite))
+	suite.Run(t, new(StatusBonusSuite))
 }
 
-type Suite struct {
+type BaseSuite struct {
 	suite.Suite
 
 	app       *app.ArteryApp
@@ -37,8 +41,8 @@ type Suite struct {
 	accKeeper auth.AccountKeeper
 }
 
-func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
+func (s *BaseSuite) setupTest(genesis json.RawMessage) {
+	s.app, s.cleanup = app.NewAppFromGenesis(genesis)
 
 	s.cdc       = s.app.Codec()
 	s.ctx       = s.app.NewContext(true, abci.Header{Height: 1})
@@ -47,9 +51,13 @@ func (s *Suite) SetupTest() {
 	s.accKeeper = s.app.GetAccountKeeper()
 }
 
-func (s *Suite) TearDownTest() {
+func (s *BaseSuite) TearDownTest() {
 	s.cleanup()
 }
+
+type Suite struct { BaseSuite }
+
+func (s *Suite) SetupTest() { s.setupTest(nil) }
 
 func (s *Suite) TestAppendChild() {
 	accounts := [12]sdk.AccAddress{}
@@ -790,110 +798,117 @@ func (s *Suite) TestStatusDowngrade() {
 	}
 }
 
-func (s *Suite) TestStatusUpgradeDowngrade() {
-	root := app.DefaultGenesisUsers["user15"]
-	var heads [3]sdk.AccAddress
-	for i := 0; i < 3; i++ {
-		_, _, heads[i] = authtypes.KeyTestPubAddr()
-		if err := s.setBalance(heads[i], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1)))); err != nil { panic(err) }
-		if err := s.k.AppendChild(s.ctx, root, heads[i]); err != nil { panic(err) }
-		if err := s.k.SetActive(s.ctx, heads[i], true); err != nil { panic(err) }
-		for j := 0; j < 2_000; j++ {
-			_, _, tail := authtypes.KeyTestPubAddr()
-			if err := s.setBalance(tail, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1)))); err != nil { panic(err) }
-			if err := s.k.AppendChild(s.ctx, heads[i], tail); err != nil { panic(err) }
-			if err := s.k.SetActive(s.ctx, tail, true); err != nil { panic(err) }
-		}
-	}
+type StatusUpgradeSuite struct {
+	BaseSuite
+	heads	[3]sdk.AccAddress
+}
 
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusChampion, status)
-	}
+func (s *StatusUpgradeSuite) SetupTest() {
+	data, err := ioutil.ReadFile("test-genesis-status-upgrade.json")
+	if err != nil { panic(err) }
+	s.setupTest(json.RawMessage(data))
+
+	s.heads[0] = accAddr("artr1847dh25pq47cysckpa05lh7yt7ckuqs8r6gsgu")
+	s.heads[1] = accAddr("artr1ykm27k4ju4whlmre776s9s55gjscvvrfzy9ejx")
+	s.heads[2] = accAddr("artr1utkd2et99v496k973qvpgn7w6d6zr83feclmnc")
+}
+
+func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
+	root := app.DefaultGenesisUsers["user15"]
+
+	var (
+		status types.Status
+		err    error
+		data   types.R
+	)
+
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusChampion, status)
 
 	// Jump to next level
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))); err != nil { panic(err) }
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusBusinessman, status)
-	}
+	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusBusinessman, status)
 
 	// Jump several levels at once
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_000_000_000000)))); err != nil { panic(err) }
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusHero, status)
-	}
+	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusHero, status)
 
 	// Step back
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))); err != nil { panic(err) }
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusHero, status)
-	}
-	if data, err := s.get(root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusHero, data.Status)
-		s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
-	}
+	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusHero, status)
+
+	data, err = s.get(root)
+	s.NoError(err)
+	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
 
 	// Jump to the top (downgrade should be cancelled)
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))); err != nil { panic(err) }
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusAbsoluteChampion, status)
-	}
-	if data, err := s.get(root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusAbsoluteChampion, data.Status)
-		s.Equal(int64(-1), data.StatusDowngradeAt)
-	}
+	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusAbsoluteChampion, status)
+	data, err = s.get(root)
+	s.NoError(err)
+	s.Equal(referral.StatusAbsoluteChampion, data.Status)
+	s.Equal(int64(-1), data.StatusDowngradeAt)
 
 	// Loose one of teams - should fall to the bottom
-	if err := s.k.SetActive(s.ctx, heads[2], false); err != nil { panic(err) }
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusAbsoluteChampion, status)
-	}
-	if data, err := s.get(root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusAbsoluteChampion, data.Status)
-		s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
-	}
+	s.NoError(s.k.SetActive(s.ctx, s.heads[2], false))
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusAbsoluteChampion, status)
+	data, err = s.get(root)
+	s.NoError(err)
+	s.Equal(referral.StatusAbsoluteChampion, data.Status)
+	s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
 
 	// One month later ...
 	s.ctx = s.ctx.WithBlockHeight(referral.StatusDowngradeAfter)
 	s.nextBlock()
-	if status, err := s.k.GetStatus(s.ctx, root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusHero, status)
-	}
-	if data, err := s.get(root); err != nil { panic(err) } else {
-		s.Equal(referral.StatusHero, data.Status)
-		s.Equal(int64(1+ 2* referral.StatusDowngradeAfter), data.StatusDowngradeAt)
-	}
+	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(err)
+	s.Equal(referral.StatusHero, status)
+	data, err = s.get(root)
+	s.NoError(err)
+	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(int64(1+ 2* referral.StatusDowngradeAfter), data.StatusDowngradeAt)
 }
 
-func (s *Suite) TestStatusBonus() {
+type StatusBonusSuite struct { BaseSuite }
+
+func (s *StatusBonusSuite) SetupTest() {
+	data, err := ioutil.ReadFile("test-genesis-status-bonus.json")
+	if err != nil { panic(err) }
+	s.setupTest(json.RawMessage(data))
+}
+
+func (s *StatusBonusSuite) TestStatusBonus() {
 	lvl5 := app.DefaultGenesisUsers["user14"]
 	lvl7 := app.DefaultGenesisUsers["user15"]
 	topR := s.k.GetParams(s.ctx).CompanyAccounts.TopReferrer
+	s.nextBlock()
 
-	for _, root := range []sdk.AccAddress{lvl5, lvl7} {
-		for i := 0; i < 3; i++ {
-			_, _, head := authtypes.KeyTestPubAddr()
-			if err := s.setBalance(head, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1)))); err != nil { panic(err) }
-			if err := s.k.AppendChild(s.ctx, root, head); err != nil { panic(err) }
-			if err := s.k.SetActive(s.ctx, head, true); err != nil { panic(err) }
-			for j := 0; j < 2_000; j++ {
-				_, _, tail := authtypes.KeyTestPubAddr()
-				if err := s.setBalance(tail, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1)))); err != nil { panic(err) }
-				if err := s.k.AppendChild(s.ctx, head, tail); err != nil { panic(err) }
-				if err := s.k.SetActive(s.ctx, tail, true); err != nil { panic(err) }
-			}
-		}
-	}
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, lvl5, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))); err != nil { panic(err) }
-	if err := s.app.GetBankKeeper().SetCoins(s.ctx, lvl7, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))); err != nil { panic(err) }
+	var (
+		status types.Status
+		err    error
+	)
+	status, err = s.k.GetStatus(s.ctx, lvl7)
+	s.NoError(err)
+	s.Equal(referral.StatusTopLeader, status)
 
-	if status, err := s.k.GetStatus(s.ctx, lvl5); err != nil { panic(err) } else {
-		s.Equal(referral.StatusBusinessman, status)
-	}
-	if status, err := s.k.GetStatus(s.ctx, lvl7); err != nil { panic(err) } else {
-		s.Equal(referral.StatusTopLeader, status)
-	}
+	status, err = s.k.GetStatus(s.ctx, lvl5)
+	s.NoError(err)
+	s.Equal(referral.StatusBusinessman, status)
 
-	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5 * util.GBSize); err != nil { panic(err) }
+	err = s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5 * util.GBSize)
+	s.NoError(err)
 	course, price, _, _, _, _ := s.app.GetSubscriptionKeeper().GetPrices(s.ctx)
 	payment := int64(course * price)
 	total := util.Percent(5).MulInt64(payment - util.CalculateFee(sdk.NewInt(payment)).Int64()).Int64()
@@ -926,7 +941,7 @@ func (s *Suite) TestStatusBonus() {
 
 // ----- private functions ------------
 
-func (s *Suite) setBalance(acc sdk.AccAddress, coins sdk.Coins) error {
+func (s *BaseSuite) setBalance(acc sdk.AccAddress, coins sdk.Coins) error {
 	item := s.accKeeper.GetAccount(s.ctx, acc)
 	if item == nil {
 		item = s.accKeeper.NewAccountWithAddress(s.ctx, acc)
@@ -939,7 +954,7 @@ func (s *Suite) setBalance(acc sdk.AccAddress, coins sdk.Coins) error {
 	return nil
 }
 
-func (s *Suite) get(acc sdk.AccAddress) (types.R, error) {
+func (s *BaseSuite) get(acc sdk.AccAddress) (types.R, error) {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
 	valueBytes := store.Get(keyBytes)
@@ -948,7 +963,7 @@ func (s *Suite) get(acc sdk.AccAddress) (types.R, error) {
 	return value, err
 }
 
-func (s *Suite) set(acc sdk.AccAddress, value types.R) error {
+func (s *BaseSuite) set(acc sdk.AccAddress, value types.R) error {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
 	valueBytes, err := s.cdc.MarshalBinaryLengthPrefixed(value)
@@ -959,7 +974,7 @@ func (s *Suite) set(acc sdk.AccAddress, value types.R) error {
 	return nil
 }
 
-func (s *Suite) update(acc sdk.AccAddress, callback func(*types.R)) error {
+func (s *BaseSuite) update(acc sdk.AccAddress, callback func(*types.R)) error {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
 	valueBytes := store.Get(keyBytes)
@@ -982,9 +997,18 @@ var bbHeader = abci.RequestBeginBlock{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 	},
 }
-func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
+func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
 	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
 	return ebr, bbr
 }
+
+func accAddr(s string) sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(s)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+

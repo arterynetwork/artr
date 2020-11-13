@@ -32,6 +32,8 @@ type ScheduleKeeper interface {
 type SupplyKeeper interface {
 	GetSupply(ctx sdk.Context) supply.SupplyI
 	SetSupply(ctx sdk.Context, supply supply.SupplyI)
+
+	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 }
 
 type BankKeeper interface {

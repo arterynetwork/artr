@@ -343,13 +343,14 @@ func NewArteryApp(
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
 
 	app.upgradeKeeper.SetUpgradeHandler("1.1.1", NopUpgradeHandler)
+	app.upgradeKeeper.SetUpgradeHandler("1.1.2", CliWarningUpgradeHandler)
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
 		schedule.NewAppModule(app.scheduleKeeper),
 		auth.NewAppModule(app.accountKeeper),
-		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
+		bank.NewAppModule(app.bankKeeper, app.accountKeeper, app.supplyKeeper),
 		upgrade.NewAppModule(app.upgradeKeeper),
 		profile.NewAppModule(app.profileKeeper, app.accountKeeper),
 		supply.NewAppModule(app.supplyKeeper, app.accountKeeper),

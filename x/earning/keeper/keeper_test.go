@@ -212,7 +212,7 @@ func (s *Suite) TestLowMoney() {
 		earning.ErrNoMoney,
 		s.k.Run(s.ctx, prettyMuch, 100, earning.NewPoints(2, 2), 3),
 	)
-	s.NoError(s.k.Run(s.ctx, util.FractionFromInt64(1), 100, earning.NewPoints(2, 2), 3))
+	s.NoError(s.k.Run(s.ctx, util.FractionInt(1), 100, earning.NewPoints(2, 2), 3))
 	s.nextBlock()
 
 	// Assert nothing's payed, but list's unlocked

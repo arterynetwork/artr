@@ -12,4 +12,5 @@ var (
 	ErrNoActiveProposals         = sdkerrors.Register(ModuleName, 4, "no active proposals to vote")
 	ErrProposalGovernorExists    = sdkerrors.Register(ModuleName, 5, "candidate already in government list")
 	ErrProposalGovernorNotExists = sdkerrors.Register(ModuleName, 6, "candidate not in government list")
+	ErrProposalGovernorLast      = sdkerrors.Register(ModuleName, 7, "cannot remove the last governor")
 )

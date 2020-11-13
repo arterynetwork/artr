@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params"
 
 	"github.com/arterynetwork/artr/app"
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/delegating"
 	"github.com/arterynetwork/artr/x/schedule"
 )
@@ -48,6 +49,14 @@ func (s Suite) TestDelegateAndRevoke() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	if err := s.k.Delegate(s.ctx, user1, sdk.NewInt(10_000000)); err != nil { panic(err) }
 	if err := s.k.Revoke(s.ctx, user1, sdk.NewInt(5_000000)); err != nil { panic(err) }
+	s.checkExportImport()
+}
+
+func (s *Suite) TestRevokeAll() {
+	user := app.DefaultGenesisUsers["user1"]
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_500000)))
+	s.True(s.app.GetAccountKeeper().GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigDelegatedDenom).IsZero())
 	s.checkExportImport()
 }
 
