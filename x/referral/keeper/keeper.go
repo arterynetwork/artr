@@ -510,6 +510,27 @@ func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
 	return k.bankKeeper.InputOutputCoins(ctx, []bank.Input{bank.NewInput(sender, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(total))))}, outputs)
 }
 
+func (k Keeper) Iterate(ctx sdk.Context, callback func(r types.R)(checkForStatusUpdate bool)) {
+	bu := newBunchUpdater(k, ctx)
+	store := ctx.KVStore(k.storeKey)
+	it := store.Iterator(nil, nil)
+	defer func() {
+		if it != nil { it.Close() }
+	}()
+	for ; it.Valid(); it.Next() {
+		var acc sdk.AccAddress = it.Key()
+		var item types.R
+		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &item)
+		if callback(item) {
+			err := bu.update(acc, true, func(_ *types.R) {})
+			if err != nil { panic(err) }
+		}
+	}
+	it.Close(); it = nil
+	err := bu.commit()
+	if err != nil { panic(err) }
+}
+
 //----------------------------------------------------------------------------------------------------------------------
 // PRIVATE FUNCTIONS
 

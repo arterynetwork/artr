@@ -6,89 +6,72 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-var statusRequirements = map[types.Status]func(value types.R, bu bunchUpdater) (types.StatusCheckResult, error) {
-	types.Lucky: func (_ types.R, _ bunchUpdater) (types.StatusCheckResult, error) {
+var statusRequirements = map[types.Status]func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	types.Lucky: func (_ types.R, _ *bunchUpdater) (types.StatusCheckResult, error) {
 		return types.NewStatusCheckResult(), nil
 	},
-	types.Leader: func (value types.R, _ bunchUpdater) (types.StatusCheckResult, error) {
-		var (
-			result = types.NewStatusCheckResult()
-			criterion string
-		)
-
-		criterion = "2 active accounts in the 1st line"
-		if value.ActiveReferralsCount[1] >= 2 {
-			result.Criteria[criterion] = true
-		} else {
-			result.Criteria[criterion] = false
-			result.Overall             = false
-		}
-
-		criterion = "4 active accounts in the 2nd line"
-		if value.ActiveReferralsCount[2] >= 4 {
-			result.Criteria[criterion] = true
-		} else {
-			result.Criteria[criterion] = false
-			result.Overall             = false
-		}
-
-		return result, nil
+	types.Leader: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsXByX(value, bu, 2, 2)
 	},
-	types.Master: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error) {
-		var (
-			result = types.NewStatusCheckResult()
-			criterion string
-		)
-
-		criterion = "3 active account with 3 active referrals each in the 1st line"
-		if value.ActiveReferralsCount[1] < 3 {
-			result.Criteria[criterion] = false
-			result.Overall = false
-			return result, nil
-		}
-		triples := 0
-		for _, childAcc := range value.Referrals {
-			child, err := bu.get(childAcc)
-			if err != nil {
-				return result, err
-			}
-			if !child.Active {
-				continue
-			}
-			if child.ActiveReferralsCount[1] >= 3 {
-				triples++
-				if triples >= 3 {
-					result.Criteria[criterion] = true
-					return result, nil
-				}
-			}
-		}
-
-		result.Criteria[criterion] = false
-		result.Overall = false
-		return result, nil
+	types.Master: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsXByX(value, bu, 3, 3)
 	},
-	types.Champion: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Champion: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.Master.LinesOpened(), 0, 15)
 	},
-	types.Businessman: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Businessman: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.Champion.LinesOpened(), 150_000_000000, 60)
 	},
-	types.Professional: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Professional: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.Businessman.LinesOpened(), 300_000_000000, 200)
 	},
-	types.TopLeader: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.TopLeader: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.Professional.LinesOpened(), 1_000_000_000000, 500)
 	},
-	types.Hero: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Hero: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.TopLeader.LinesOpened(), 2_000_000_000000, 1_000)
 	},
-	types.AbsoluteChampion: func (value types.R, bu bunchUpdater) (types.StatusCheckResult, error)  {
+	types.AbsoluteChampion: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
 		return statusRequirementsCore(value, bu, types.Hero.LinesOpened(), 5_000_000_000000, 2_000)
 	},
 }
 
-func statusRequirementsCore(value types.R, bu bunchUpdater, linesOpen int, coins int64, leg int) (types.StatusCheckResult, error) {
+func statusRequirementsXByX(value types.R, bu *bunchUpdater, count int, size int) (types.StatusCheckResult, error) {
+	var (
+		result = types.NewStatusCheckResult()
+		criterion string
+	)
+
+	criterion = fmt.Sprintf("%d active accounts with %d active referrals each in the 1st line", count, size)
+	if value.ActiveReferralsCount[1] < count || value.ActiveReferralsCount[2] < count*size {
+		result.Criteria[criterion] = false
+		result.Overall = false
+		return result, nil
+	}
+	found := 0
+	for _, childAcc := range value.Referrals {
+		child, err := bu.get(childAcc)
+		if err != nil {
+			return result, err
+		}
+		if !child.Active {
+			continue
+		}
+		if child.ActiveReferralsCount[1] >= size {
+			found++
+			if found >= count {
+				result.Criteria[criterion] = true
+				return result, nil
+			}
+		}
+	}
+
+	result.Criteria[criterion] = false
+	result.Overall = false
+	return result, nil
+}
+
+func statusRequirementsCore(value types.R, bu *bunchUpdater, linesOpen int, coins int64, leg int) (types.StatusCheckResult, error) {
 	var (
 		result = types.NewStatusCheckResult()
 		criterion string

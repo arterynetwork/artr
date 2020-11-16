@@ -55,4 +55,5 @@ type (
 	NetworkAward      = types.NetworkAward
 	StatusCheckResult = types.StatusCheckResult
 	Status            = types.Status
+	DataRecord        = types.R
 )

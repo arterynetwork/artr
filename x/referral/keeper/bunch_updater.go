@@ -54,8 +54,8 @@ type bunchUpdater struct {
 	callbacks callbacks
 }
 
-func newBunchUpdater(k Keeper, ctx sdk.Context) bunchUpdater {
-	return bunchUpdater{
+func newBunchUpdater(k Keeper, ctx sdk.Context) *bunchUpdater {
+	return &bunchUpdater{
 		k:         k,
 		ctx:       ctx,
 		data:      nil,
@@ -106,7 +106,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 	}
 	callback(&value)
 	if checkForStatusUpdate {
-		checkResult, err := statusRequirements[value.Status](value, *bu)
+		checkResult, err := statusRequirements[value.Status](value, bu)
 		if err != nil { return err }
 		if !checkResult.Overall {
 			if value.StatusDowngradeAt == -1 {
@@ -141,7 +141,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 					break
 				}
 				nextStatus++
-				checkResult, err = statusRequirements[nextStatus](value, *bu)
+				checkResult, err = statusRequirements[nextStatus](value, bu)
 				if err != nil {
 					return err
 				}
