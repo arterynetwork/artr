@@ -3,14 +3,16 @@ package keeper
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/x/auth"
 	"strings"
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/arterynetwork/artr/x/profile/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+
+	"github.com/arterynetwork/artr/x/profile/types"
+	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the profile store
@@ -197,6 +199,7 @@ func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, r
 	acc.SetCoins(sdk.NewCoins(sdk.NewCoin(types.MainDenom, sdk.NewInt(0))))
 	k.AccountKeeper.SetAccount(ctx, acc)
 	k.ReferralsKeeper.AppendChild(ctx, refAddr, addr)
+	k.ReferralsKeeper.ScheduleCompression(ctx, addr, ctx.BlockHeight()+referral.CompressionPeriod)
 	profile.CardNumber = k.CardNumberByAccountNumber(ctx, acc.GetAccountNumber())
 	k.SetProfile(ctx, addr, profile)
 }

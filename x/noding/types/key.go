@@ -8,9 +8,9 @@ const (
 	StoreKey   = ModuleName
 	IdxSoreKey = StoreKey + "-index"
 
-    // RouterKey to be used for routing msgs
-    RouterKey = ModuleName
+	// RouterKey to be used for routing msgs
+	RouterKey = ModuleName
 
-    // QuerierRoute to be used for querierer msgs
+	// QuerierRoute to be used for querierer msgs
 	QuerierRoute = ModuleName
 )

@@ -25,12 +25,22 @@ func DefaultGenesisState() GenesisState {
 
 // ValidateGenesis validates the earning genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if err := data.Params.Validate(); err != nil { return err }
-	if err := data.State.Validate(); err != nil { return err }
+	if err := data.Params.Validate(); err != nil {
+		return err
+	}
+	if err := data.State.Validate(); err != nil {
+		return err
+	}
 	for i, earner := range data.Earners {
-		if earner.Account.Empty() { return fmt.Errorf("account is empty (#%d", i) }
-		if earner.Vpn < 0 { return fmt.Errorf("vpn points must be non-negative") }
-		if earner.Storage < 0 { return fmt.Errorf("storage points must be non-negative") }
+		if earner.Account.Empty() {
+			return fmt.Errorf("account is empty (#%d", i)
+		}
+		if earner.Vpn < 0 {
+			return fmt.Errorf("vpn points must be non-negative")
+		}
+		if earner.Storage < 0 {
+			return fmt.Errorf("storage points must be non-negative")
+		}
 	}
 	return nil
 }

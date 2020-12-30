@@ -29,8 +29,9 @@ const (
 	StatusUpdatedCallback = keeper.StatusUpdatedCallback
 	StakeChangedCallback  = keeper.StakeChangedCallback
 
-	StatusDowngradeHookName = keeper.StatusDowngradeHookName
-	CompressionHookName     = keeper.CompressionHookName
+	StatusDowngradeHookName   = keeper.StatusDowngradeHookName
+	CompressionHookName       = keeper.CompressionHookName
+	TransitionTimeoutHookName = keeper.TransitionTimeoutHookName
 )
 
 var (
@@ -43,7 +44,7 @@ var (
 	ValidateGenesis     = types.ValidateGenesis
 
 	// variable aliases
-	ModuleCdc     = types.ModuleCdc
+	ModuleCdc = types.ModuleCdc
 )
 
 type (

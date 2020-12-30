@@ -25,16 +25,16 @@ func TestEarningGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         earning.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       earning.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetEarningKeeper()
+	s.k = s.app.GetEarningKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -53,7 +53,9 @@ func (s Suite) TestUnlocked() {
 		earning.NewEarner(user1, 10, 0),
 		earning.NewEarner(user2, 0, 15),
 		earning.NewEarner(user3, 20, 30),
-	}); err != nil { panic(err) }
+	}); err != nil {
+		panic(err)
+	}
 	s.checkExportImport()
 }
 
@@ -61,19 +63,25 @@ func (s Suite) TestLocked() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	user2 := app.DefaultGenesisUsers["user2"]
 	user3 := app.DefaultGenesisUsers["user3"]
-	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5 * util.GBSize); err != nil { panic(err) }
+	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5*util.GBSize); err != nil {
+		panic(err)
+	}
 	if err := s.k.ListEarners(s.ctx, []earning.Earner{
 		earning.NewEarner(user1, 10, 0),
 		earning.NewEarner(user2, 0, 15),
 		earning.NewEarner(user3, 20, 30),
-	}); err != nil { panic(err) }
+	}); err != nil {
+		panic(err)
+	}
 	if err := s.k.Run(
 		s.ctx,
 		util.NewFraction(7, 30),
 		2,
 		earning.NewPoints(30, 45),
 		10,
-	); err != nil { panic(err) }
+	); err != nil {
+		panic(err)
+	}
 	s.checkExportImport()
 }
 
@@ -81,19 +89,25 @@ func (s Suite) TestSecondPage() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	user2 := app.DefaultGenesisUsers["user2"]
 	user3 := app.DefaultGenesisUsers["user3"]
-	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5 * util.GBSize); err != nil { panic(err) }
+	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5*util.GBSize); err != nil {
+		panic(err)
+	}
 	if err := s.k.ListEarners(s.ctx, []earning.Earner{
 		earning.NewEarner(user1, 10, 0),
 		earning.NewEarner(user2, 0, 15),
 		earning.NewEarner(user3, 20, 30),
-	}); err != nil { panic(err) }
+	}); err != nil {
+		panic(err)
+	}
 	if err := s.k.Run(
 		s.ctx,
 		util.NewFraction(7, 30),
 		2,
 		earning.NewPoints(30, 45),
 		2,
-	); err != nil { panic(err) }
+	); err != nil {
+		panic(err)
+	}
 
 	s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(2)

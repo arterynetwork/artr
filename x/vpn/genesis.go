@@ -9,6 +9,7 @@ import (
 // InitGenesis initialize default parameters
 // and the keeper's address to pubkey map
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
 	for _, vpnStatus := range data.VpnStatus {
 		k.SetInfo(ctx, vpnStatus.Address, vpnStatus.VpnInfo)

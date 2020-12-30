@@ -34,7 +34,9 @@ func DefaultGenesisState() GenesisState {
 
 // ValidateGenesis validates the subscription genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if err := data.Params.Validate(); err != nil { return err }
+	if err := data.Params.Validate(); err != nil {
+		return err
+	}
 	for _, record := range data.Activity {
 		if record.Address.Empty() {
 			return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "invalid account address")

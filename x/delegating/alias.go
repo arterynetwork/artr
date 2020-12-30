@@ -26,7 +26,7 @@ var (
 	NewPercentage       = types.NewPercentage
 
 	// variable aliases
-	ModuleCdc     = types.ModuleCdc
+	ModuleCdc = types.ModuleCdc
 )
 
 type (

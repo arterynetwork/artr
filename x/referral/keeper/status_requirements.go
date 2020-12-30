@@ -6,39 +6,39 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-var statusRequirements = map[types.Status]func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-	types.Lucky: func (_ types.R, _ *bunchUpdater) (types.StatusCheckResult, error) {
+var statusRequirements = map[types.Status]func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error){
+	types.Lucky: func(_ types.R, _ *bunchUpdater) (types.StatusCheckResult, error) {
 		return types.NewStatusCheckResult(), nil
 	},
-	types.Leader: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	types.Leader: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsXByX(value, bu, 2, 2)
 	},
-	types.Master: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	types.Master: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsXByX(value, bu, 3, 3)
 	},
-	types.Champion: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Champion: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.Master.LinesOpened(), 0, 15)
 	},
-	types.Businessman: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Businessman: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.Champion.LinesOpened(), 150_000_000000, 60)
 	},
-	types.Professional: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Professional: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.Businessman.LinesOpened(), 300_000_000000, 200)
 	},
-	types.TopLeader: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.TopLeader: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.Professional.LinesOpened(), 1_000_000_000000, 500)
 	},
-	types.Hero: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.Hero: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.TopLeader.LinesOpened(), 2_000_000_000000, 1_000)
 	},
-	types.AbsoluteChampion: func (value types.R, bu *bunchUpdater) (types.StatusCheckResult, error)  {
+	types.AbsoluteChampion: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsCore(value, bu, types.Hero.LinesOpened(), 5_000_000_000000, 2_000)
 	},
 }
 
 func statusRequirementsXByX(value types.R, bu *bunchUpdater, count int, size int) (types.StatusCheckResult, error) {
 	var (
-		result = types.NewStatusCheckResult()
+		result    = types.NewStatusCheckResult()
 		criterion string
 	)
 
@@ -73,7 +73,7 @@ func statusRequirementsXByX(value types.R, bu *bunchUpdater, count int, size int
 
 func statusRequirementsCore(value types.R, bu *bunchUpdater, linesOpen int, coins int64, leg int) (types.StatusCheckResult, error) {
 	var (
-		result = types.NewStatusCheckResult()
+		result    = types.NewStatusCheckResult()
 		criterion string
 	)
 

@@ -24,17 +24,17 @@ func TestNodingHandler(t *testing.T) {
 type HandlerSuite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         noding.Keeper
-	handler   sdk.Handler
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       noding.Keeper
+	handler sdk.Handler
 }
 
 func (s *HandlerSuite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx     = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k       = s.app.GetNodingKeeper()
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetNodingKeeper()
 	s.handler = noding.NewHandler(s.k)
 }
 
@@ -44,15 +44,17 @@ func (s *HandlerSuite) TearDownTest() {
 
 func (s *HandlerSuite) TestUnjail() {
 	user2 := app.DefaultGenesisUsers["user2"]
-	msg   := types.NewMsgUnjail(user2)
+	msg := types.NewMsgUnjail(user2)
 
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil {
+		panic(err)
+	}
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: false}}
 

@@ -57,15 +57,21 @@ func GetCmdListEarners(cdc *codec.Codec) *cobra.Command {
 			earners := make([]types.Earner, 0, len(args)/3)
 			for i := 0; i < len(args)/3; i++ {
 				var (
-					address sdk.AccAddress
+					address      sdk.AccAddress
 					vpn, storage int64
-					err error
+					err          error
 				)
-				if address, err = sdk.AccAddressFromBech32(args[3*i]); err != nil { return err }
-				if vpn, err     = strconv.ParseInt(args[3*i+1], 0, 64); err != nil { return err }
-				if storage, err = strconv.ParseInt(args[3*i+2], 0, 64); err != nil { return err }
+				if address, err = sdk.AccAddressFromBech32(args[3*i]); err != nil {
+					return err
+				}
+				if vpn, err = strconv.ParseInt(args[3*i+1], 0, 64); err != nil {
+					return err
+				}
+				if storage, err = strconv.ParseInt(args[3*i+2], 0, 64); err != nil {
+					return err
+				}
 				earners = append(earners, types.Earner{
-					Points:  types.Points{
+					Points: types.Points{
 						Vpn:     vpn,
 						Storage: storage,
 					},
@@ -74,7 +80,9 @@ func GetCmdListEarners(cdc *codec.Codec) *cobra.Command {
 			}
 
 			msg := types.NewMsgListEarners(cliCtx.GetFromAddress(), earners)
-			if err := msg.ValidateBasic(); err != nil { return err }
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
@@ -83,9 +91,9 @@ func GetCmdListEarners(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdRun(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "run [fund_part] [accounts_per_block] [total_vpn_points] [total_storage_points] [height]",
+		Use:   "run <fund_part> <accounts_per_block> <total_vpn_points> <total_storage_points> <height>",
 		Short: "Lock earner list and schedule distribution for a specified block height",
-		Args: cobra.ExactArgs(5),
+		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			inBuf := bufio.NewReader(cmd.InOrStdin())
@@ -99,14 +107,28 @@ func GetCmdRun(cdc *codec.Codec) *cobra.Command {
 				height       int64
 				err          error
 			)
-			if fundPart, err = util.ParseFraction(args[0]); err != nil { return err }
-			if x, err := strconv.ParseInt(args[1], 0, 16); err != nil { return err } else { perBlock = uint16(x) }
-			if totalVpn, err = strconv.ParseInt(args[2], 0, 64); err != nil { return err }
-			if totalStorage, err = strconv.ParseInt(args[3], 0, 64); err != nil { return err }
-			if height, err = strconv.ParseInt(args[4], 0, 64); err != nil { return err }
+			if fundPart, err = util.ParseFraction(args[0]); err != nil {
+				return err
+			}
+			if x, err := strconv.ParseInt(args[1], 0, 16); err != nil {
+				return err
+			} else {
+				perBlock = uint16(x)
+			}
+			if totalVpn, err = strconv.ParseInt(args[2], 0, 64); err != nil {
+				return err
+			}
+			if totalStorage, err = strconv.ParseInt(args[3], 0, 64); err != nil {
+				return err
+			}
+			if height, err = strconv.ParseInt(args[4], 0, 64); err != nil {
+				return err
+			}
 
 			msg := types.NewMsgRun(cliCtx.GetFromAddress(), fundPart, perBlock, totalVpn, totalStorage, height)
-			if err := msg.ValidateBasic(); err != nil { return err }
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},
@@ -115,16 +137,18 @@ func GetCmdRun(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdReset(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "reset",
+		Use:   "reset",
 		Short: "Reset all data, unlock earner list",
-		Args: cobra.NoArgs,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 
 			msg := types.NewMsgReset(cliCtx.GetFromAddress())
-			if err := msg.ValidateBasic(); err != nil { return err }
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},

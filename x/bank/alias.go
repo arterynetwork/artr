@@ -9,6 +9,7 @@ import (
 
 const (
 	QueryBalance       = keeper.QueryBalance
+	QueryParams        = keeper.QueryParams
 	ModuleName         = types.ModuleName
 	QuerierRoute       = types.QuerierRoute
 	RouterKey          = types.RouterKey

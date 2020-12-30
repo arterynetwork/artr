@@ -111,7 +111,9 @@ func (k Keeper) PayForSubscription(ctx sdk.Context, addr sdk.AccAddress, storage
 
 	// Total price without fee - we calc MLM reward based on this price
 	txFee, err := util.PayTxFee(ctx, k.supplyKeeper, k.Logger(ctx), addr, amount)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	amount = amount.Sub(txFee)
 
 	totalFee, err := k.payUpFees(ctx, addr, amount, types.EventTypeFee)
@@ -205,7 +207,9 @@ func (k Keeper) payForService(ctx sdk.Context, addr sdk.AccAddress, amount int64
 		int64(course) / util.GBSize)
 
 	txFee, err := util.PayTxFee(ctx, k.supplyKeeper, k.Logger(ctx), addr, amountPrice)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	amountPriceWithFee := amountPrice.Sub(txFee)
 
 	//totalFee, err := k.payUpFees(ctx, addr, amountPriceWithFee, types.EventTypeFee)
@@ -341,8 +345,23 @@ func (k Keeper) resetLimits(ctx sdk.Context, addr sdk.AccAddress) {
 }
 
 func (k Keeper) autoPay(ctx sdk.Context, addr sdk.AccAddress) error {
-	current := k.storageKeeper.GetCurrent(ctx, addr)
-	return k.PayForSubscription(ctx, addr, current)
+	var price, gbPrice, course, storageGb uint32
+	k.paramspace.Get(ctx, types.KeySubscriptionPrice, &price)
+	k.paramspace.Get(ctx, types.KeyStorageGbPrice, &gbPrice)
+	k.paramspace.Get(ctx, types.KeyTokenCourse, &course)
+	k.paramspace.Get(ctx, types.KeyBaseStorageGb, &storageGb)
+
+	limit := k.storageKeeper.GetLimit(ctx, addr)
+	extraSpace := limit - int64(storageGb)*util.GBSize
+	total := int64(price) * int64(course)
+	if extraSpace > 0 {
+		total += extraSpace * int64(gbPrice) * int64(course) / util.GBSize
+	}
+	if !k.bankKeeper.HasCoins(ctx, addr, util.Uartrs(total)) {
+		return sdkerrors.Wrap(sdkerrors.ErrInsufficientFunds, fmt.Sprintf("not enough coins to auto-pay (%d uARTR required)", total))
+	}
+
+	return k.PayForSubscription(ctx, addr, limit)
 }
 
 func (k Keeper) deactivateAccount(ctx sdk.Context, addr sdk.AccAddress, info types.ActivityInfo) {

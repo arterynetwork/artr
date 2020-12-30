@@ -59,4 +59,4 @@ type signersKeeper interface {
 	RemoveSigner(ctx sdk.Context, address sdk.AccAddress)
 }
 type EarningKeeper signersKeeper
-type VpnKeeper     signersKeeper
+type VpnKeeper signersKeeper

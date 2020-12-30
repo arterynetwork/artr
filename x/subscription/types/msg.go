@@ -149,6 +149,8 @@ func (msg MsgSetTokenRate) ValidateBasic() error {
 	if msg.Sender.Empty() {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "missing subscriber address")
 	}
-	if msg.Value <= 0 { return fmt.Errorf("token exchange rate must be positive") }
+	if msg.Value <= 0 {
+		return fmt.Errorf("token exchange rate must be positive")
+	}
 	return nil
 }

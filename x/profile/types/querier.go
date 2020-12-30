@@ -11,6 +11,7 @@ const (
 	QueryAccountAddressByNickname   = "query_account_address_by_nickname"
 	QueryAccountAddressByCardNumber = "query_account_address_by_card_number"
 	QueryCreators                   = "query_creators"
+	QueryParams                     = "params"
 )
 
 type QueryResProfile struct {

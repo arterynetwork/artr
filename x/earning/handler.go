@@ -12,7 +12,9 @@ import (
 func NewHandler(k Keeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
-		if err := verifySignature(ctx, k, msg); err != nil { return nil, err }
+		if err := verifySignature(ctx, k, msg); err != nil {
+			return nil, err
+		}
 		switch msg := msg.(type) {
 		case types.MsgListEarners:
 			return handleMsgListEarners(ctx, k, msg)
@@ -21,7 +23,7 @@ func NewHandler(k Keeper) sdk.Handler {
 		case types.MsgReset:
 			return handleMsgReset(ctx, k, msg)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName,  msg)
+			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
 		}
 	}
@@ -29,11 +31,15 @@ func NewHandler(k Keeper) sdk.Handler {
 
 func verifySignature(ctx sdk.Context, k Keeper, msg sdk.Msg) error {
 	ecMsg, ok := msg.(types.MsgEarningCommandI)
-	if !ok { panic(fmt.Sprintf("msg supposed to have Sender")) }
+	if !ok {
+		panic(fmt.Sprintf("msg supposed to have Sender"))
+	}
 	sender := ecMsg.GetSender()
 
 	for _, signer := range k.GetParams(ctx).Signers {
-		if signer.Equals(sender) { return nil }
+		if signer.Equals(sender) {
+			return nil
+		}
 	}
 	return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "sender %s is illegal for earner txs", sender.String())
 }
@@ -58,7 +64,9 @@ func handleMsgRun(ctx sdk.Context, k Keeper, msg types.MsgRun) (*sdk.Result, err
 		},
 		msg.Height,
 	)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

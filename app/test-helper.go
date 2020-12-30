@@ -45,28 +45,28 @@ func init() {
 	initDefaultGenesisUsers()
 }
 
-const verbose      = false
+const verbose = false
 const printGenesis = false
 
-func (app ArteryApp) GetKeys() map[string]*sdk.KVStoreKey { return app.keys }
+func (app ArteryApp) GetKeys() map[string]*sdk.KVStoreKey                 { return app.keys }
 func (app ArteryApp) GetTransientKeys() map[string]*sdk.TransientStoreKey { return app.tKeys }
-func (app ArteryApp) GetSubspaces() map[string]params.Subspace { return app.subspaces }
+func (app ArteryApp) GetSubspaces() map[string]params.Subspace            { return app.subspaces }
 
-func (app ArteryApp) GetAccountKeeper() auth.AccountKeeper { return app.accountKeeper }
-func (app ArteryApp) GetBankKeeper() bank.Keeper { return app.bankKeeper }
-func (app ArteryApp) GetSupplyKeeper() supply.Keeper { return app.supplyKeeper }
-func (app ArteryApp) GetParamsKeeper() params.Keeper { return app.paramsKeeper }
-func (app ArteryApp) GetUpgradeKeeper() upgrade.Keeper { return app.upgradeKeeper }
-func (app ArteryApp) GetReferralKeeper() referral.Keeper { return app.referralKeeper }
-func (app ArteryApp) GetProfileKeeper() profile.Keeper { return app.profileKeeper }
-func (app ArteryApp) GetScheduleKeeper() schedule.Keeper { return app.scheduleKeeper }
-func (app ArteryApp) GetDelegatingKeeper() delegating.Keeper { return app.delegatingKeeper }
-func (app ArteryApp) GetVpnKeeper() vpn.Keeper { return app.vpnKeeper }
-func (app ArteryApp) GetStorageKeeper() storage.Keeper { return app.storageKeeper }
+func (app ArteryApp) GetAccountKeeper() auth.AccountKeeper       { return app.accountKeeper }
+func (app ArteryApp) GetBankKeeper() bank.Keeper                 { return app.bankKeeper }
+func (app ArteryApp) GetSupplyKeeper() supply.Keeper             { return app.supplyKeeper }
+func (app ArteryApp) GetParamsKeeper() params.Keeper             { return app.paramsKeeper }
+func (app ArteryApp) GetUpgradeKeeper() upgrade.Keeper           { return app.upgradeKeeper }
+func (app ArteryApp) GetReferralKeeper() referral.Keeper         { return app.referralKeeper }
+func (app ArteryApp) GetProfileKeeper() profile.Keeper           { return app.profileKeeper }
+func (app ArteryApp) GetScheduleKeeper() schedule.Keeper         { return app.scheduleKeeper }
+func (app ArteryApp) GetDelegatingKeeper() delegating.Keeper     { return app.delegatingKeeper }
+func (app ArteryApp) GetVpnKeeper() vpn.Keeper                   { return app.vpnKeeper }
+func (app ArteryApp) GetStorageKeeper() storage.Keeper           { return app.storageKeeper }
 func (app ArteryApp) GetSubscriptionKeeper() subscription.Keeper { return app.subscriptionKeeper }
-func (app ArteryApp) GetVotingKeeper() voting.Keeper { return app.votingKeeper }
-func (app ArteryApp) GetNodingKeeper() noding.Keeper { return app.nodingKeeper }
-func (app ArteryApp) GetEarningKeeper() earning.Keeper { return app.earningKeeper }
+func (app ArteryApp) GetVotingKeeper() voting.Keeper             { return app.votingKeeper }
+func (app ArteryApp) GetNodingKeeper() noding.Keeper             { return app.nodingKeeper }
+func (app ArteryApp) GetEarningKeeper() earning.Keeper           { return app.earningKeeper }
 
 func NewAppFromGenesis(genesis []byte) (app *ArteryApp, cleanup func()) {
 	var logger log.Logger
@@ -75,8 +75,8 @@ func NewAppFromGenesis(genesis []byte) (app *ArteryApp, cleanup func()) {
 	} else {
 		logger = log.NewNopLogger()
 	}
-	dir, _  := ioutil.TempDir("", "goleveldb-app-sim")
-	db, _   := sdk.NewLevelDB("Simulation", dir)
+	dir, _ := ioutil.TempDir("", "goleveldb-app-sim")
+	db, _ := sdk.NewLevelDB("Simulation", dir)
 
 	cleanup = func() {
 		_ = db.Close()
@@ -105,8 +105,8 @@ func NewAppFromGenesis(genesis []byte) (app *ArteryApp, cleanup func()) {
 
 func NewTestConsPubAddress() (crypto.PrivKey, crypto.PubKey, sdk.ConsAddress) {
 	privKey := ed25519.GenPrivKey()
-	pubKey  := privKey.PubKey()
-	addr    := pubKey.Address()
+	pubKey := privKey.PubKey()
+	addr := pubKey.Address()
 
 	return privKey, pubKey, sdk.ConsAddress(addr.Bytes())
 }
@@ -150,8 +150,8 @@ func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDeco
 	} else {
 		logger = log.NewNopLogger()
 	}
-	dir, _  := ioutil.TempDir("", "goleveldb-app-sim-2")
-	db, _   := sdk.NewLevelDB("Simulation-2", dir)
+	dir, _ := ioutil.TempDir("", "goleveldb-app-sim-2")
+	db, _ := sdk.NewLevelDB("Simulation-2", dir)
 
 	defer func() {
 		_ = db.Close()
@@ -182,7 +182,7 @@ func fauxMerkleModeOpt(bapp *baseapp.BaseApp) {
 	bapp.SetFauxMerkleMode()
 }
 
-func decodeKVPairs(kvz []kv.Pair, keyDecoder func([]byte)(string, error), valDecoder func([]byte)(string, error)) []string {
+func decodeKVPairs(kvz []kv.Pair, keyDecoder func([]byte) (string, error), valDecoder func([]byte) (string, error)) []string {
 	result := make([]string, len(kvz))
 	for i, kv := range kvz {
 		var keyStr, valStr string
@@ -219,10 +219,16 @@ func diffKVStores(a, b sdk.KVStore, ignore [][]byte) (kvAs, kvBs []kv.Pair) {
 			}
 			return false
 		}
-		for iterA.Valid() && shouldIgnore(iterA.Key()) { iterA.Next() }
-		for iterB.Valid() && shouldIgnore(iterB.Key()) { iterB.Next() }
+		for iterA.Valid() && shouldIgnore(iterA.Key()) {
+			iterA.Next()
+		}
+		for iterB.Valid() && shouldIgnore(iterB.Key()) {
+			iterB.Next()
+		}
 
-		if !iterA.Valid() && !iterB.Valid() { break }
+		if !iterA.Valid() && !iterB.Valid() {
+			break
+		}
 
 		var kvA, kvB kv.Pair
 		if !iterA.Valid() {

@@ -25,16 +25,16 @@ func TestSubscriptionGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         subscription.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       subscription.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetSubscriptionKeeper()
+	s.k = s.app.GetSubscriptionKeeper()
 }
 
 func (s *Suite) TearDownTest() {

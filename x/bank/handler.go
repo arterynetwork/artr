@@ -56,7 +56,9 @@ func handleMsgSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper, msg 
 
 	amount := msg.Amount.AmountOf(util.ConfigMainDenom)
 	_, err := util.PayTxFee(ctx, sk, logger(ctx), msg.FromAddress, amount)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	err = k.SendCoins(ctx, msg.FromAddress, msg.ToAddress, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, amount)))
 	if err != nil {
 		return nil, err
@@ -86,7 +88,9 @@ func handleMsgMultiSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper,
 			}
 		}
 		_, err := util.PayTxFee(ctx, sk, logger(ctx), in.Address, in.Coins.AmountOf(util.ConfigMainDenom))
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, out := range msg.Outputs {

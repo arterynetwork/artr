@@ -6,7 +6,8 @@ import (
 
 // RegisterCodec registers concrete types on codec
 func RegisterCodec(cdc *codec.Codec) {
-	// pass (there aren't any messages)
+	cdc.RegisterConcrete(MsgRequestTransition{}, "referral/RequestTransition", nil)
+	cdc.RegisterConcrete(MsgResolveTransition{}, "referral/ResolveTransition", nil)
 }
 
 // ModuleCdc defines the module codec

@@ -25,10 +25,10 @@ type Keeper struct {
 
 // NewKeeper creates a earning keeper
 func NewKeeper(
-	cdc            *codec.Codec,
-	key            sdk.StoreKey,
-	paramspace     types.ParamSubspace,
-	supplyKeeper   types.SupplyKeeper,
+	cdc *codec.Codec,
+	key sdk.StoreKey,
+	paramspace types.ParamSubspace,
+	supplyKeeper types.SupplyKeeper,
 	scheduleKeeper types.ScheduleKeeper,
 ) Keeper {
 	keeper := Keeper{
@@ -47,7 +47,9 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 }
 
 func (k Keeper) ListEarners(ctx sdk.Context, items []types.Earner) error {
-	if k.GetState(ctx).Locked { return types.ErrLocked }
+	if k.GetState(ctx).Locked {
+		return types.ErrLocked
+	}
 	for _, earner := range items {
 		if k.has(ctx, earner.Account) {
 			k.Logger(ctx).Error("account listed twice", "accAddress", earner.Account.String())
@@ -59,19 +61,29 @@ func (k Keeper) ListEarners(ctx sdk.Context, items []types.Earner) error {
 }
 
 func (k Keeper) Run(ctx sdk.Context, fundPart util.Fraction, perBlock uint16, total types.Points, height int64) error {
-	if ctx.BlockHeight() >= height { return types.ErrTooLate }
+	if ctx.BlockHeight() >= height {
+		return types.ErrTooLate
+	}
 
 	//TODO: Get VPN/Storage account states for a specific moment of the time
 	vpnFund := fundPart.MulInt64(k.supplyKeeper.GetModuleAccount(ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()).Int64()
 	storageFund := fundPart.MulInt64(k.supplyKeeper.GetModuleAccount(ctx, storage.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()).Int64()
-	if vpnFund == 0 && storageFund == 0 { return types.ErrNoMoney }
-	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, vpn.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnFund)))); err != nil { return err }
-	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, storage.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(storageFund)))); err != nil { return err }
-	residualQuotient := util.NewFraction(k.supplyKeeper.GetModuleAccount(ctx, types.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(), vpnFund + storageFund).Reduce()
+	if vpnFund == 0 && storageFund == 0 {
+		return types.ErrNoMoney
+	}
+	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, vpn.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnFund)))); err != nil {
+		return err
+	}
+	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, storage.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(storageFund)))); err != nil {
+		return err
+	}
+	residualQuotient := util.NewFraction(k.supplyKeeper.GetModuleAccount(ctx, types.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(), vpnFund+storageFund).Reduce()
 	vpnPointCost := util.NewFraction(vpnFund, total.Vpn).Mul(residualQuotient)
 	storagePointCost := util.NewFraction(storageFund, total.Storage).Mul(residualQuotient)
 	k.SetState(ctx, types.NewStateLocked(vpnPointCost, storagePointCost, perBlock))
-	if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(height), types.StartHookName, &noPayload); err != nil { return err }
+	if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(height), types.StartHookName, &noPayload); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -148,7 +160,9 @@ func (k Keeper) clear(ctx sdk.Context) {
 
 func (k Keeper) proceed(ctx sdk.Context) error {
 	p := k.GetState(ctx)
-	if !p.Locked { return types.ErrNotLocked }
+	if !p.Locked {
+		return types.ErrNotLocked
+	}
 	page := make([]types.Earner, 0, p.ItemsPerBlock)
 	store := ctx.KVStore(k.storeKey)
 	it := store.Iterator(nil, nil)
@@ -170,7 +184,7 @@ func (k Keeper) proceed(ctx sdk.Context) error {
 	for _, item := range page {
 		vpnAmt := p.VpnPointCost.MulInt64(item.Vpn).Int64()
 		storageAmt := p.StoragePointCost.MulInt64(item.Storage).Int64()
-		if err := k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, item.Account, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnAmt + storageAmt)))); err != nil {
+		if err := k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, item.Account, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnAmt+storageAmt)))); err != nil {
 			return err
 		}
 		ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeEarn,
@@ -185,7 +199,9 @@ func (k Keeper) proceed(ctx sdk.Context) error {
 		ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeFinish))
 		k.SetState(ctx, types.NewStateUnlocked())
 	} else {
-		if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(ctx.BlockHeight()+1), types.ContinueHookName, &noPayload); err != nil { return err }
+		if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(ctx.BlockHeight()+1), types.ContinueHookName, &noPayload); err != nil {
+			return err
+		}
 	}
 	return nil
 }

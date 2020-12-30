@@ -9,6 +9,7 @@ import (
 const (
 	QueryActivityInfo = "info"
 	QueryPrices       = "prices"
+	QueryParams       = "params"
 )
 
 type QueryActivityParams struct {

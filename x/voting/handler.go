@@ -62,6 +62,10 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 		if len(gov) == 1 {
 			return nil, types.ErrProposalGovernorLast
 		}
+	case types.ProposalTypeTransitionCost:
+		if _, ok := msg.Params.(types.PriceProposalParams); !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		}
 	}
 
 	proposal := types.Proposal{

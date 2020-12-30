@@ -58,13 +58,13 @@ func NewMsgReset(sender sdk.AccAddress) MsgReset {
 }
 
 const ListEarnersConst = "list-earners"
-const RunConst         = "run"
-const ResetConst       = "reset"
+const RunConst = "run"
+const ResetConst = "reset"
 
 // nolint
-func (msg MsgListEarners) GetSender() sdk.AccAddress { return msg.Sender }
-func (msg MsgListEarners) Route() string { return RouterKey }
-func (msg MsgListEarners) Type() string  { return ListEarnersConst }
+func (msg MsgListEarners) GetSender() sdk.AccAddress    { return msg.Sender }
+func (msg MsgListEarners) Route() string                { return RouterKey }
+func (msg MsgListEarners) Type() string                 { return ListEarnersConst }
 func (msg MsgListEarners) GetSigners() []sdk.AccAddress { return []sdk.AccAddress{msg.Sender} }
 
 // GetSignBytes gets the bytes for the message signer to sign on
@@ -75,9 +75,11 @@ func (msg MsgListEarners) GetSignBytes() []byte {
 
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgListEarners) ValidateBasic() error {
-	if msg.Sender.Empty() { return fmt.Errorf("missing sender") }
+	if msg.Sender.Empty() {
+		return fmt.Errorf("missing sender")
+	}
 	if len(msg.Earners) == 0 {
-		return fmt.Errorf( "missing earners list")
+		return fmt.Errorf("missing earners list")
 	}
 	for i, earner := range msg.Earners {
 		if earner.Account.Empty() {
@@ -94,9 +96,9 @@ func (msg MsgListEarners) ValidateBasic() error {
 }
 
 // nolint
-func (msg MsgRun) GetSender() sdk.AccAddress { return msg.Sender }
-func (msg MsgRun) Route() string { return RouterKey }
-func (msg MsgRun) Type() string  { return RunConst }
+func (msg MsgRun) GetSender() sdk.AccAddress    { return msg.Sender }
+func (msg MsgRun) Route() string                { return RouterKey }
+func (msg MsgRun) Type() string                 { return RunConst }
 func (msg MsgRun) GetSigners() []sdk.AccAddress { return []sdk.AccAddress{msg.Sender} }
 
 // GetSignBytes gets the bytes for the message signer to sign on
@@ -107,7 +109,9 @@ func (msg MsgRun) GetSignBytes() []byte {
 
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgRun) ValidateBasic() error {
-	if msg.Sender.Empty() { return fmt.Errorf("missing sender") }
+	if msg.Sender.Empty() {
+		return fmt.Errorf("missing sender")
+	}
 	if !msg.FundPart.IsPositive() {
 		return fmt.Errorf("fund part must be positive")
 	}
@@ -127,9 +131,9 @@ func (msg MsgRun) ValidateBasic() error {
 }
 
 // nolint
-func (msg MsgReset) GetSender() sdk.AccAddress { return msg.Sender }
-func (msg MsgReset) Route() string { return RouterKey }
-func (msg MsgReset) Type() string  { return ResetConst }
+func (msg MsgReset) GetSender() sdk.AccAddress    { return msg.Sender }
+func (msg MsgReset) Route() string                { return RouterKey }
+func (msg MsgReset) Type() string                 { return ResetConst }
 func (msg MsgReset) GetSigners() []sdk.AccAddress { return []sdk.AccAddress{msg.Sender} }
 
 // GetSignBytes gets the bytes for the message signer to sign on
@@ -140,6 +144,8 @@ func (msg MsgReset) GetSignBytes() []byte {
 
 // ValidateBasic validity check for the AnteHandler
 func (msg MsgReset) ValidateBasic() error {
-	if msg.Sender.Empty() { return fmt.Errorf("missing sender") }
+	if msg.Sender.Empty() {
+		return fmt.Errorf("missing sender")
+	}
 	return nil
 }

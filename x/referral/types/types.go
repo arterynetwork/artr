@@ -25,25 +25,39 @@ const (
 
 func (s Status) LinesOpened() int {
 	switch s {
-	case Lucky:    return 2
-	case Leader:   return 4
-	case Master:   return 6
-	default:       return 10
+	case Lucky:
+		return 2
+	case Leader:
+		return 4
+	case Master:
+		return 6
+	default:
+		return 10
 	}
 }
 
 func (s Status) String() string {
 	switch s {
-	case Lucky:            return "1 (Lucky)"
-	case Leader:           return "2 (Leader)"
-	case Master:           return "3 (Master)"
-	case Champion:         return "4 (Champion)"
-	case Businessman:      return "5 (Businessman)"
-	case Professional:     return "6 (Professional)"
-	case TopLeader:        return "7 (Top Leader)"
-	case Hero:             return "8 (Hero)"
-	case AbsoluteChampion: return "9 (Absolute Champion)"
-	default:               return fmt.Sprintf("%d (???)", int(s))
+	case Lucky:
+		return "1 (Lucky)"
+	case Leader:
+		return "2 (Leader)"
+	case Master:
+		return "3 (Master)"
+	case Champion:
+		return "4 (Champion)"
+	case Businessman:
+		return "5 (Businessman)"
+	case Professional:
+		return "6 (Professional)"
+	case TopLeader:
+		return "7 (Top Leader)"
+	case Hero:
+		return "8 (Hero)"
+	case AbsoluteChampion:
+		return "9 (Absolute Champion)"
+	default:
+		return fmt.Sprintf("%d (???)", int(s))
 	}
 }
 
@@ -79,6 +93,10 @@ type R struct {
 
 	// CompressionAt - block height, at that compression is scheduled. -1 for never.
 	CompressionAt int64 `json:"compression_at"`
+
+	// Transition - a new referrer, the user wishes to be moved under. It should be nil unless the user requested a
+	// transition and that transition's waiting for a current referrer's affirmation.
+	Transition sdk.AccAddress `json:"transition,omitempty"`
 }
 
 func NewR(referrer sdk.AccAddress, coins sdk.Int, delegated sdk.Int) R {

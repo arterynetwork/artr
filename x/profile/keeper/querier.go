@@ -20,6 +20,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryAccountByNickname(ctx, req, k)
 		case types.QueryAccountAddressByCardNumber:
 			return queryAccountByCardNumber(ctx, req, k)
+		case types.QueryParams:
+			return queryParams(ctx, k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown profile query endpoint")
 		}
@@ -95,4 +97,15 @@ func queryAccountByCardNumber(ctx sdk.Context, req abci.RequestQuery, k Keeper) 
 	}
 
 	return bz, nil
+}
+
+func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+	params := k.GetParams(ctx)
+
+	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return res, nil
 }

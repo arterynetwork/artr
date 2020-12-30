@@ -30,3 +30,7 @@ type BankKeeper interface {
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
 	SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
 }
+
+type SupplyKeeper interface {
+	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+}

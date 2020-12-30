@@ -42,6 +42,8 @@ const (
 	// Кто считает трафик VPN и актуализирует данные по нему
 	ProposalTypeVpnCurrentSignerAdd    = 20
 	ProposalTypeVpnCurrentSignerRemove = 21
+	// Стоимость переноса аккаунта к другому пригласившему
+	ProposalTypeTransitionCost = 22
 )
 
 // EmptyProposalParams
@@ -117,9 +119,9 @@ var _ ProposalParams = &SoftwareUpgradeProposalParams{}
 
 type SoftwareUpgradeProposalParams struct {
 	// Name - upgrade name
-	Name     string `json:"name" yaml:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Height - block height to schedule the upgrade at
-	Height   int64  `json:"height" yaml:"height"`
+	Height int64 `json:"height" yaml:"height"`
 	// Binaries - a link (with a checksum) to a JSON file containing upgrade data (binary URIs and so on)
 	// Please refer to https://github.com/regen-network/cosmosd#auto-download
 	Info string `json:"binaries" yaml:"binaries"`

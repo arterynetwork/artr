@@ -26,20 +26,20 @@ func TestNodingKeeper(t *testing.T) { suite.Run(t, new(Suite)) }
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
+	app     *app.ArteryApp
+	cleanup func()
 
-	cdc       *codec.Codec
-	ctx       sdk.Context
-	k         noding.Keeper
+	cdc *codec.Codec
+	ctx sdk.Context
+	k   noding.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 
-	s.cdc       = s.app.Codec()
-	s.ctx       = s.app.NewContext(true, abci.Header{})
-	s.k         = s.app.GetNodingKeeper()
+	s.cdc = s.app.Codec()
+	s.ctx = s.app.NewContext(true, abci.Header{})
+	s.k = s.app.GetNodingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -126,7 +126,9 @@ func (s *Suite) TestProposerAward() {
 	balance0 := s.app.GetAccountKeeper().GetAccount(s.ctx, s.user(2)).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil {
+		panic(err)
+	}
 	_ = s.app.GetSupplyKeeper().SendCoinsFromAccountToModule(
 		s.ctx, s.user(1), auth.FeeCollectorName,
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(10_000000))),
@@ -135,48 +137,58 @@ func (s *Suite) TestProposerAward() {
 	s.nextBlock(pubkey, nil, nil)
 
 	balance := s.app.GetAccountKeeper().GetAccount(s.ctx, s.user(2)).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
-	s.Equal(int64(10_000000), balance - balance0)
-	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	s.Equal(int64(10_000000), balance-balance0)
+	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.Equal(int64(1), data.ProposedCount)
 	}
 }
 
 func (s *Suite) TestByzantine() {
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil {
+		panic(err)
+	}
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: true}}
 
 	// First infraction
 	s.nextBlock(pubkey, votes, []abci.Evidence{{
-		Type:                 "bad_things",
-		Validator:            validator,
-		Height:               s.ctx.BlockHeight(),
-		TotalVotingPower:     20,
+		Type:             "bad_things",
+		Validator:        validator,
+		Height:           s.ctx.BlockHeight(),
+		TotalVotingPower: 20,
 	}})
 
 	// Just warning for the first time
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.True(isValidator)
 	}
 
 	// Second infraction
 	s.nextBlock(pubkey, votes, []abci.Evidence{{
-		Type:                 "bad_things",
-		Validator:            validator,
-		Height:               s.ctx.BlockHeight(),
-		TotalVotingPower:     20,
+		Type:             "bad_things",
+		Validator:        validator,
+		Height:           s.ctx.BlockHeight(),
+		TotalVotingPower: 20,
 	}})
 
 	// After that, a validator's banned for a lifetime
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.False(isValidator)
 	}
-	if isBanned, err := s.k.IsBanned(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isBanned, err := s.k.IsBanned(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.True(isBanned)
 	}
 	resp := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
@@ -184,9 +196,13 @@ func (s *Suite) TestByzantine() {
 
 	// Banned node cannot be switched on by any means
 	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey))
-	if err := s.k.AddToStaff(s.ctx, s.user(2)); err != nil { panic(err) }
+	if err := s.k.AddToStaff(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	}
 	s.Equal(noding.ErrBannedForLifetime, s.k.SwitchOn(s.ctx, s.user(2), pubkey))
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.False(isValidator)
 	}
 }
@@ -194,18 +210,22 @@ func (s *Suite) TestByzantine() {
 func (s *Suite) TestJailing() {
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
-	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, s.user(2), pubkey); err != nil {
+		panic(err)
+	}
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: false}}
 
 	// First missed block
 	s.nextBlock(proposerKey, votes, nil)
 
-	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.Equal(int64(0), data.OkBlocksInRow)
 		s.Equal(int64(1), data.MissedBlocksInRow)
 		s.Equal(int64(1), data.Strokes)
@@ -216,7 +236,9 @@ func (s *Suite) TestJailing() {
 	// Second missed block
 	s.nextBlock(proposerKey, votes, nil)
 
-	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if data, err := s.k.Get(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.Equal(int64(0), data.OkBlocksInRow)
 		s.Equal(int64(0), data.MissedBlocksInRow) // zeroed because of jail
 		s.Equal(int64(2), data.Strokes)
@@ -224,21 +246,27 @@ func (s *Suite) TestJailing() {
 		s.Equal(int64(122), data.UnjailAt)
 		s.Equal(int64(1), data.JailCount)
 	}
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.False(isValidator)
 	}
 	resp, _ := s.nextBlock(proposerKey, votes, nil)
 	s.Equal([]abci.ValidatorUpdate{{PubKey: tmtypes.TM2PB.PubKey(pubkey), Power: 0}}, resp.ValidatorUpdates)
 
 	s.Equal(noding.ErrJailPeriodNotOver, s.k.Unjail(s.ctx, s.user(2)))
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.False(isValidator)
 	}
 
 	// One hour later
 	s.ctx = s.ctx.WithBlockHeight(122)
 	s.NoError(s.k.Unjail(s.ctx, s.user(2)))
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.True(isValidator)
 	}
 	resp, _ = s.nextBlock(proposerKey, nil, nil)
@@ -249,17 +277,21 @@ func (s *Suite) TestJailedValidatorPowerUpdate() {
 	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
 	_, pubkey, _ := app.NewTestConsPubAddress()
 	user2 := s.user(2)
-	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil {
+		panic(err)
+	}
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: false}}
 
 	s.nextBlock(proposerKey, votes, nil)
 	s.nextBlock(proposerKey, votes, nil)
-	if isValidator, err := s.k.IsValidator(s.ctx, user2); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, user2); err != nil {
+		panic(err)
+	} else {
 		s.False(isValidator)
 	}
 	resp, _ := s.nextBlock(proposerKey, nil, nil)
@@ -269,12 +301,18 @@ func (s *Suite) TestJailedValidatorPowerUpdate() {
 		s.app.GetBankKeeper().GetCoins(s.ctx, user2).Add(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(117_700_000000)),
 		),
-	); err != nil { panic(err) }
-	if err := s.app.GetDelegatingKeeper().Delegate(s.ctx, user2, sdk.NewInt(117_700_000000)); err != nil { panic(err) }
+	); err != nil {
+		panic(err)
+	}
+	if err := s.app.GetDelegatingKeeper().Delegate(s.ctx, user2, sdk.NewInt(117_700_000000)); err != nil {
+		panic(err)
+	}
 
 	s.ctx = s.ctx.WithBlockHeight(122)
 	s.NoError(s.k.Unjail(s.ctx, s.user(2)))
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil { panic(err) } else {
+	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
+		panic(err)
+	} else {
 		s.True(isValidator)
 	}
 	resp, _ = s.nextBlock(proposerKey, nil, nil)
@@ -291,8 +329,8 @@ func (s *Suite) TestSwitchOnAfterSwitchOffWhileJailed() {
 	s.NoError(s.k.SwitchOn(s.ctx, user2, pubkey))
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: false}}
 
@@ -352,15 +390,15 @@ func (s Suite) TestDoubleSwitchOnWithJail() {
 }
 
 func (s Suite) TestNodeNodeLeap() {
-	proposerKey  := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
-	user         := s.user(2)
+	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
+	user := s.user(2)
 	_, pubkey, _ := app.NewTestConsPubAddress()
 
 	s.NoError(s.k.SwitchOn(s.ctx, user, pubkey))
 
 	validator := abci.Validator{
-		Address:              pubkey.Address().Bytes(),
-		Power:                10,
+		Address: pubkey.Address().Bytes(),
+		Power:   10,
 	}
 	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: true}}
 

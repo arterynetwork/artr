@@ -41,7 +41,7 @@ type MsgSetCurrent struct {
 }
 
 func NewMsgSetCurrent(sender, addr sdk.AccAddress, current int64) MsgSetCurrent {
-	return MsgSetCurrent{ Sender: sender, Address: addr, Current: current }
+	return MsgSetCurrent{Sender: sender, Address: addr, Current: current}
 }
 
 const SetCurrentConst = "set_current"

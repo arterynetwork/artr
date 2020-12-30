@@ -113,7 +113,7 @@ func GetSetProfileCmd(cdc *codec.Codec) *cobra.Command {
 // GetSetProfileCmd will create a send tx and sign it with the given key.
 func GetCreateAccountCmd(cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create_account [from_key_or_address] [new_account_address] [referral_account_address]",
+		Use:   "create_account <from_key_or_address> <new_account_address> <referral_account_address>",
 		Short: "Create and sign a create account tx",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -151,7 +151,7 @@ func GetCreateAccountCmd(cdc *codec.Codec) *cobra.Command {
 
 func GetCreateAccountWithProfileCmd(cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create_account_with_profile [from_key_or_address] [new_account_address] [referral_account_address] [params]",
+		Use:   "create_account_with_profile <from_key_or_address> <new_account_address> <referral_account_address> [params]",
 		Short: "Create and sign a create account with profile tx",
 		Args:  cobra.MinimumNArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {

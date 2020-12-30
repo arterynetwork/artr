@@ -13,6 +13,10 @@ const (
 	QueryCoinsInNetwork     = "coins"
 	QueryDelegatedInNetwork = "delegated"
 	QueryCheckStatus        = "check-status"
+	QueryWhenCompression    = "when-compression"
+	QueryPendingTransition  = "pending-transition"
+	QueryValidateTransition = "validate-transition"
+	QueryParams             = "params"
 )
 
 type QueryResChildren []sdk.AccAddress
@@ -23,4 +27,9 @@ func (qr QueryResChildren) String() string {
 		strs[i] = adr.String()
 	}
 	return strings.Join(strs[:], ", ")
+}
+
+type QueryResValidateTransition struct {
+	Ok  bool   `json:"ok" yaml:"ok"`
+	Err string `json:"err,omitempty" yaml:"err,omitempty"`
 }

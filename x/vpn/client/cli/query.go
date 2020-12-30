@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -10,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/vpn/types"
 )
 
@@ -29,6 +32,8 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetVPNStatusCmd(queryRoute, cdc),
 			GetVPNLimitCmd(queryRoute, cdc),
 			GetVPNCurrentCmd(queryRoute, cdc),
+			util.LineBreak(),
+			getCmdParams(queryRoute, cdc),
 		)...,
 	)
 
@@ -39,7 +44,7 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 // profile at a given address.
 func GetVPNStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status [address]",
+		Use:   "status <address>",
 		Short: "Query vpn status for address",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -70,7 +75,7 @@ func GetVPNStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetVPNLimitCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "limit [address]",
+		Use:   "limit <address>",
 		Short: "Query vpn limit for address",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,7 +106,7 @@ func GetVPNLimitCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetVPNCurrentCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "current [address]",
+		Use:   "current <address>",
 		Short: "Query vpn current traffic for address",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -128,4 +133,32 @@ func GetVPNCurrentCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "params",
+		Aliases: []string{"p"},
+		Short:   "Get the module params",
+		Args:    cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryParams,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Println("could not get module params")
+				return err
+			}
+
+			var out types.Params
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
+		},
+	}
 }

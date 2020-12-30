@@ -10,14 +10,14 @@ var _ sdk.Msg = &MsgDelegate{}
 
 // MsgDelegate - struct for delegating coins
 type MsgDelegate struct {
-	Acc sdk.AccAddress `json:"address" yaml:"address"`
-	MicroCoins sdk.Int `json:"micro_coins" yaml:"micro_coins"`
+	Acc        sdk.AccAddress `json:"address" yaml:"address"`
+	MicroCoins sdk.Int        `json:"micro_coins" yaml:"micro_coins"`
 }
 
 // NewMsgDelegate creates a new MsgDelegate instance
 func NewMsgDelegate(acc sdk.AccAddress, ucoins sdk.Int) MsgDelegate {
 	return MsgDelegate{
-		Acc: acc,
+		Acc:        acc,
 		MicroCoins: ucoins,
 	}
 }
@@ -53,14 +53,14 @@ var _ sdk.Msg = &MsgRevoke{}
 
 // MsgRevoke - struct for revoking coins from delegating
 type MsgRevoke struct {
-	Acc sdk.AccAddress `json:"address" yaml:"address"`
-	MicroCoins sdk.Int `json:"micro_coins"`
+	Acc        sdk.AccAddress `json:"address" yaml:"address"`
+	MicroCoins sdk.Int        `json:"micro_coins"`
 }
 
 // NewMsgDelegate creates a new MsgDelegate instance
 func NewMsgRevoke(acc sdk.AccAddress, ucoins sdk.Int) MsgRevoke {
 	return MsgRevoke{
-		Acc: acc,
+		Acc:        acc,
 		MicroCoins: ucoins,
 	}
 }

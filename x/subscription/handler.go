@@ -65,7 +65,9 @@ func handleMsgPayStorage(ctx sdk.Context, k Keeper, msg types.MsgPayStorage) (*s
 
 func handleMsgSetTokenCourse(ctx sdk.Context, k Keeper, msg types.MsgSetTokenRate) (*sdk.Result, error) {
 	for _, signer := range k.GetParams(ctx).CourseChangeSigners {
-		if !bytes.Equal(signer, msg.Sender) { continue }
+		if !bytes.Equal(signer, msg.Sender) {
+			continue
+		}
 
 		k.SetTokenCourse(ctx, msg.Value)
 		return &sdk.Result{Events: ctx.EventManager().Events()}, nil

@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"math/big"
 	"regexp"
 	"strings"
@@ -15,6 +16,13 @@ type Fraction struct {
 	denom *big.Int
 }
 
+var (
+	_ json.Marshaler   = new(Fraction)
+	_ yaml.Marshaler   = new(Fraction)
+	_ json.Unmarshaler = new(Fraction)
+	_ yaml.Unmarshaler = new(Fraction)
+)
+
 func (x Fraction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x.String())
 }
@@ -22,27 +30,40 @@ func (x Fraction) MarshalJSON() ([]byte, error) {
 func (x *Fraction) UnmarshalJSON(bz []byte) error {
 	var s string
 	err := json.Unmarshal(bz, &s)
-	if err != nil { return err }
-	y, err := ParseFraction(s)
-	if err != nil { return err }
-
-	x.num = y.num
-	x.denom = y.denom
-	return nil
+	if err != nil {
+		return err
+	}
+	return x.unmarshalText(s)
 }
 
 func (x Fraction) MarshalAmino() (string, error) { return x.String(), nil }
 
 func (x *Fraction) UnmarshalAmino(s string) error {
+	return x.unmarshalText(s)
+}
+
+func (x Fraction) MarshalYAML() (interface{}, error) {
+	return x.String(), nil
+}
+
+func (x *Fraction) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	if err := unmarshal(&s); err != nil {
+		return err
+	}
+	return x.unmarshalText(s)
+}
+
+func (x *Fraction) unmarshalText(s string) error {
 	y, err := ParseFraction(s)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	x.num = y.num
 	x.denom = y.denom
 	return nil
 }
-
-func (x Fraction) MarshalYAML() (string, error) { return x.String(), nil }
 
 func NewFraction(num int64, denom int64) Fraction {
 	return Fraction{
@@ -67,10 +88,12 @@ func ParseFraction(s string) (Fraction, error) {
 	var (
 		num   = &big.Int{}
 		denom = &big.Int{}
-		err error
+		err   error
 	)
 
-	if s == "nil" { return Fraction{}, nil }
+	if s == "nil" {
+		return Fraction{}, nil
+	}
 
 	// Try percent notation first
 	pattern := regexp.MustCompile(`^(-?\d+)%$`)
@@ -84,25 +107,33 @@ func ParseFraction(s string) (Fraction, error) {
 			return Fraction{}, fmt.Errorf("invalid fraction format, 'x%' or 'x/y' expected: " + s)
 		}
 		if len(match) > 2 {
-			err =  denom.UnmarshalText([]byte(match[2]))
-			if err != nil { return Fraction{}, err }
+			err = denom.UnmarshalText([]byte(match[2]))
+			if err != nil {
+				return Fraction{}, err
+			}
 		} else {
 			denom = big.NewInt(1)
 		}
 	}
 
 	err = num.UnmarshalText([]byte(match[1]))
-	if err != nil { return Fraction{}, err }
+	if err != nil {
+		return Fraction{}, err
+	}
 
 	return Fraction{num, denom}, nil
 }
 
 func (x Fraction) String() string {
-	if x.IsNullValue(){ return "nil" }
+	if x.IsNullValue() {
+		return "nil"
+	}
 	sb := strings.Builder{}
 
 	bytes, err := x.num.MarshalText()
-	if err != nil { panic(errors.Wrap(err, "couldn't marshal numerator")) }
+	if err != nil {
+		panic(errors.Wrap(err, "couldn't marshal numerator"))
+	}
 	sb.Write(bytes)
 
 	if x.denom != nil && x.denom.IsInt64() && x.denom.Int64() == 100 {
@@ -110,7 +141,9 @@ func (x Fraction) String() string {
 	} else {
 		sb.WriteRune('/')
 		bytes, err = x.denom.MarshalText()
-		if err != nil { panic(errors.Wrap(err, "couldn't marshal denominator")) }
+		if err != nil {
+			panic(errors.Wrap(err, "couldn't marshal denominator"))
+		}
 		sb.Write(bytes)
 	}
 	return sb.String()
@@ -169,7 +202,7 @@ func (x Fraction) Add(y Fraction) Fraction {
 	b := &big.Int{}
 	b.Mul(y.num, comDenom)
 	b.Quo(b, y.denom)
-	return Fraction{a.Add(a, b),comDenom}
+	return Fraction{a.Add(a, b), comDenom}
 }
 
 func (x Fraction) Sub(y Fraction) Fraction {
@@ -185,15 +218,15 @@ func (x Fraction) IsZero() bool {
 }
 
 func (x Fraction) IsNegative() bool {
-	return x.num.Sign() * x.denom.Sign() < 0
+	return x.num.Sign()*x.denom.Sign() < 0
 }
 
 func (x Fraction) IsPositive() bool {
-	return x.num.Sign() * x.denom.Sign() > 0
+	return x.num.Sign()*x.denom.Sign() > 0
 }
 
-func (x Fraction) GT(y Fraction) bool { return x.Sub(y).IsPositive() }
-func (x Fraction) LT(y Fraction) bool { return y.GT(x) }
+func (x Fraction) GT(y Fraction) bool  { return x.Sub(y).IsPositive() }
+func (x Fraction) LT(y Fraction) bool  { return y.GT(x) }
 func (x Fraction) GTE(y Fraction) bool { return !x.LT(y) }
 func (x Fraction) LTE(y Fraction) bool { return !x.GT(y) }
 

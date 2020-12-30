@@ -40,7 +40,7 @@ func (k Keeper) RemoveSigner(ctx sdk.Context, address sdk.AccAddress) {
 	p := k.GetParams(ctx)
 	for i, signer := range p.Signers {
 		if bytes.Equal(signer, address) {
-			last := len(p.Signers) -1
+			last := len(p.Signers) - 1
 			if i != last {
 				p.Signers[i] = p.Signers[last]
 			}

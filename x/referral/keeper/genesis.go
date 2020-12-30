@@ -15,6 +15,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		other        []types.Refs
 		compressions []types.GenesisCompression
 		downgrades   []types.GenesisStatusDowngrade
+		transitions  []types.Transition
 
 		children  []sdk.AccAddress
 		thisLevel []types.Refs
@@ -22,20 +23,31 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 	)
 	params = k.GetParams(ctx)
 	topLevel, err = k.GetTopLevelAccounts(ctx)
-	if err != nil { return types.GenesisState{}, err }
+	if err != nil {
+		return types.GenesisState{}, err
+	}
 
 	for _, addr := range topLevel {
 		data, err = k.get(ctx, addr)
-		if err != nil { return types.GenesisState{}, err }
+		if err != nil {
+			return types.GenesisState{}, err
+		}
 		if data.CompressionAt != -1 {
 			compressions = append(compressions, types.NewGenesisCompression(addr, data.CompressionAt))
 		}
 		if data.StatusDowngradeAt != -1 {
 			downgrades = append(downgrades, types.NewGenesisStatusDowngrade(addr, data.Status, data.StatusDowngradeAt))
 		}
+		if !data.Transition.Empty() {
+			transitions = append(transitions, types.NewTransition(addr, data.Transition))
+		}
 		children, err = k.GetChildren(ctx, addr)
-		if err != nil { return types.GenesisState{}, err }
-		if len(children) == 0 { continue }
+		if err != nil {
+			return types.GenesisState{}, err
+		}
+		if len(children) == 0 {
+			continue
+		}
 		nextLevel = append(nextLevel, types.Refs{addr, children})
 	}
 	for len(nextLevel) != 0 {
@@ -43,42 +55,66 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		thisLevel = nextLevel
 		nextLevel = nil
 		for _, r := range thisLevel {
-			for _, addr := range r.Referrals {data, err = k.get(ctx, addr)
-				if err != nil { return types.GenesisState{}, err }
+			for _, addr := range r.Referrals {
+				data, err = k.get(ctx, addr)
+				if err != nil {
+					return types.GenesisState{}, err
+				}
 				if data.CompressionAt != -1 {
 					compressions = append(compressions, types.NewGenesisCompression(addr, data.CompressionAt))
 				}
 				if data.StatusDowngradeAt != -1 {
 					downgrades = append(downgrades, types.NewGenesisStatusDowngrade(addr, data.Status, data.StatusDowngradeAt))
 				}
+				if !data.Transition.Empty() {
+					transitions = append(transitions, types.NewTransition(addr, data.Transition))
+				}
 				children, err = k.GetChildren(ctx, addr)
-				if err != nil { return types.GenesisState{}, err }
-				if len(children) == 0 { continue }
+				if err != nil {
+					return types.GenesisState{}, err
+				}
+				if len(children) == 0 {
+					continue
+				}
 				nextLevel = append(nextLevel, types.Refs{addr, children})
 			}
 		}
 	}
 
-	return types.NewGenesisState(params, topLevel, other, compressions, downgrades), nil
+	return types.NewGenesisState(params, topLevel, other, compressions, downgrades, transitions), nil
 }
 
 func (k Keeper) ImportFromGenesis(
 	ctx sdk.Context,
 	compressions []types.GenesisCompression,
 	downgrades []types.GenesisStatusDowngrade,
+	transitions []types.Transition,
 ) error {
 	bu := newBunchUpdater(k, ctx)
 	for _, x := range compressions {
 		if err := bu.update(x.Account, false, func(value *types.R) {
 			value.CompressionAt = x.Height
-		}); err != nil { return err }
+		}); err != nil {
+			return err
+		}
 	}
 	for _, x := range downgrades {
 		if err := bu.update(x.Account, false, func(value *types.R) {
-			value.Status            = types.Status(x.Current)
+			value.Status = types.Status(x.Current)
 			value.StatusDowngradeAt = x.Height
-		}); err != nil { return err }
+		}); err != nil {
+			return err
+		}
 	}
-	if err := bu.commit(); err != nil { return err }
+	for _, x := range transitions {
+		if err := bu.update(x.Subject, false, func(value *types.R) {
+			value.Transition = x.Destination
+		}); err != nil {
+			return err
+		}
+	}
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }

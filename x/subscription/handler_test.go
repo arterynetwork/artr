@@ -39,11 +39,11 @@ type HandlerSuite struct {
 
 func (s *HandlerSuite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx            = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k              = s.app.GetSubscriptionKeeper()
-	s.supplyKeeper   = s.app.GetSupplyKeeper()
-	s.accKeeper      = s.app.GetAccountKeeper()
-	s.handler        = subscription.NewHandler(s.k)
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetSubscriptionKeeper()
+	s.supplyKeeper = s.app.GetSupplyKeeper()
+	s.accKeeper = s.app.GetAccountKeeper()
+	s.handler = subscription.NewHandler(s.k)
 }
 
 func (s *HandlerSuite) TearDownTest() { s.cleanup() }
@@ -55,7 +55,7 @@ func (s *HandlerSuite) TestPayForSubscription_TxFee_NoExtraSpace() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
-	msg := types.NewMsgPaySubscription(user, 5 * util.GBSize)
+	msg := types.NewMsgPaySubscription(user, 5*util.GBSize)
 	_, err := s.handler(s.ctx, msg)
 	s.NoError(err)
 
@@ -84,7 +84,7 @@ func (s *HandlerSuite) TestPayForSubscription_TxFee_ExtraSpace() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
-	msg := types.NewMsgPaySubscription(user, 15 * util.GBSize)
+	msg := types.NewMsgPaySubscription(user, 15*util.GBSize)
 	_, err := s.handler(s.ctx, msg)
 	s.NoError(err)
 
@@ -113,7 +113,7 @@ func (s *HandlerSuite) TestPayForVPN_TxFee() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
-	msg := types.NewMsgPayVPN(user, 10 * util.GBSize)
+	msg := types.NewMsgPayVPN(user, 10*util.GBSize)
 	_, err := s.handler(s.ctx, msg)
 	s.NoError(err)
 
@@ -133,13 +133,13 @@ func (s *HandlerSuite) TestPayForVPN_TxFee() {
 
 func (s *HandlerSuite) TestPayForStorage_TxFee() {
 	user := app.DefaultGenesisUsers["root"]
-	s.k.SetActivityInfo(s.ctx, user, types.NewActivityInfo(true, 1 + util.BlocksOneMonth))
+	s.k.SetActivityInfo(s.ctx, user, types.NewActivityInfo(true, 1+util.BlocksOneMonth))
 	s.Equal(
 		int64(1_000_000_000000), // (from genesis)
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
-	msg := types.NewMsgPayStorage(user, (5 + 10) * util.GBSize)
+	msg := types.NewMsgPayStorage(user, (5+10)*util.GBSize)
 	_, err := s.handler(s.ctx, msg)
 	s.NoError(err)
 

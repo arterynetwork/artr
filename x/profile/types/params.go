@@ -16,11 +16,11 @@ const (
 
 // Parameter store keys
 var (
-	DefaultCreators  []sdk.AccAddress = nil
+	DefaultCreators []sdk.AccAddress = nil
 
-	KeyCreators     = []byte("Creators")
-	KeyFee          = []byte("Fee")
-	KeyCardMagic    = []byte("CardMagic")
+	KeyCreators  = []byte("Creators")
+	KeyFee       = []byte("Fee")
+	KeyCardMagic = []byte("CardMagic")
 )
 
 // ParamKeyTable for profile module
@@ -72,9 +72,15 @@ func DefaultParams() Params {
 }
 
 func (p Params) Validate() error {
-	if err := validateCreators(p.Creators); err != nil { return err }
-	if err := validateFee(p.Fee); err != nil { return err }
-	if err := validateCardMagic(p.CardMagic); err != nil { return err }
+	if err := validateCreators(p.Creators); err != nil {
+		return err
+	}
+	if err := validateFee(p.Fee); err != nil {
+		return err
+	}
+	if err := validateCardMagic(p.CardMagic); err != nil {
+		return err
+	}
 
 	return nil
 }

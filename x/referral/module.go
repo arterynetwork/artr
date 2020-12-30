@@ -1,19 +1,20 @@
 package referral
 
 import (
-	"github.com/arterynetwork/artr/x/referral/types"
 	"encoding/json"
+
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/arterynetwork/artr/x/referral/client/cli"
-	"github.com/arterynetwork/artr/x/referral/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+
+	"github.com/arterynetwork/artr/x/referral/client/cli"
+	"github.com/arterynetwork/artr/x/referral/client/rest"
+	"github.com/arterynetwork/artr/x/referral/types"
 )
 
 // TypeCode check to ensure the interface is properly implemented
@@ -58,7 +59,7 @@ func (AppModuleBasic) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Router
 
 // GetTxCmd returns the root tx command for the referral module.
 func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return nil
+	return cli.GetTxCmd(cdc)
 }
 
 // GetQueryCmd returns no root query command for the referral module.
@@ -76,6 +77,7 @@ type AppModule struct {
 	accKeeper      types.AccountKeeper
 	scheduleKeeper types.ScheduleKeeper
 	bankKeeper     types.BankKeeper
+	supplyKeeper   types.SupplyKeeper
 }
 
 // NewAppModule creates a new AppModule object
@@ -83,6 +85,7 @@ func NewAppModule(k Keeper,
 	accKeeper types.AccountKeeper,
 	scheduleKeeper types.ScheduleKeeper,
 	bankKeeper types.BankKeeper,
+	supplyKeeper types.SupplyKeeper,
 ) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
@@ -90,6 +93,7 @@ func NewAppModule(k Keeper,
 		accKeeper:      accKeeper,
 		scheduleKeeper: scheduleKeeper,
 		bankKeeper:     bankKeeper,
+		supplyKeeper:   supplyKeeper,
 	}
 }
 
@@ -108,7 +112,7 @@ func (AppModule) Route() string {
 
 // NewHandler returns an sdk.Handler for the referral module.
 func (am AppModule) NewHandler() sdk.Handler {
-	return nil
+	return NewHandler(am.keeper)
 }
 
 // QuerierRoute returns the referral module's querier route name.

@@ -19,8 +19,8 @@ var _ exported.GenesisAccount = (*ArtrAccount)(nil)
 // implements Account.
 type ArtrAccount struct {
 	auth.BaseAccount
-	ActiveUntil    uint64 `json:"active_until" yaml:"active_until"`
-	Noding         bool   `json:"noding" yaml:"noding"`
+	ActiveUntil uint64 `json:"active_until" yaml:"active_until"`
+	Noding      bool   `json:"noding" yaml:"noding"`
 }
 
 // NewArtrAccount creates a new ArtrAccount object
@@ -35,8 +35,8 @@ func NewArtrAccount(address sdk.AccAddress, coins sdk.Coins,
 			AccountNumber: accountNumber,
 			Sequence:      sequence,
 		},
-		ActiveUntil:    0,
-		Noding:         false,
+		ActiveUntil: 0,
+		Noding:      false,
 	}
 }
 

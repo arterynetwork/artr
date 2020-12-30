@@ -5,14 +5,15 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/arterynetwork/artr/x/schedule/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+
+	"github.com/arterynetwork/artr/x/schedule/client/cli"
+	"github.com/arterynetwork/artr/x/schedule/client/rest"
 )
 
 // TypeCode check to ensure the interface is properly implemented
@@ -62,7 +63,7 @@ func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 // GetQueryCmd returns no root query command for the schedule module.
 func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
-	return nil
+	return cli.GetQueryCmd(QuerierRoute, cdc)
 }
 
 //____________________________________________________________________________

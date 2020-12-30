@@ -54,7 +54,7 @@ func (k Keeper) ExportData(ctx sdk.Context) []types.Data {
 		acc := sdk.AccAddress(it.Key()[offset:])
 		result = append(result, types.Data{
 			Account: acc,
-			Base64: base64.StdEncoding.EncodeToString(it.Value()),
+			Base64:  base64.StdEncoding.EncodeToString(it.Value()),
 		})
 	}
 	return result

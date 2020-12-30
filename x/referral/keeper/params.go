@@ -16,4 +16,3 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 	k.Logger(ctx).Debug("SetParams", "params", params)
 	k.paramspace.SetParamSet(ctx, &params)
 }
-

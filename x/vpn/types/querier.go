@@ -10,6 +10,7 @@ const (
 	QueryVpnState   = "query_state"
 	QueryVpnLimit   = "query_limit"
 	QueryVpnCurrent = "query_current"
+	QueryParams     = "params"
 )
 
 type QueryResState struct {

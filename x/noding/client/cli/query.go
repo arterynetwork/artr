@@ -2,18 +2,17 @@ package cli
 
 import (
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	//"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
-	//sdk "github.com/cosmos/cosmos-sdk/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
@@ -35,6 +34,8 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetCmdProposer(queryRoute, cdc),
 			GetCmdIsAllowed(queryRoute, cdc),
 			GetCmdOperator(queryRoute, cdc),
+			util.LineBreak(),
+			getCmdParams(queryRoute, cdc),
 		)...,
 	)
 
@@ -43,10 +44,10 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdStatus(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "status [address]",
+		Use:   "status <address>",
 		Short: "query if noding's on",
 		Args:  cobra.ExactArgs(1),
-		RunE:  func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
 
@@ -72,9 +73,9 @@ func GetCmdStatus(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdInfo(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "info [address]",
+		Use:   "info <address>",
 		Short: "query validator info",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -109,16 +110,20 @@ func GetCmdProposer(queryRoute string, cdc *codec.Codec) *cobra.Command {
 		Aliases: []string{"p"},
 		Short:   "Get a block proposer account address. Height is optional, default is the last block.",
 		Args:    cobra.MaximumNArgs(1),
-		RunE:    func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			path := []string{
 				"custom",
 				queryRoute,
 				types.QueryProposer,
 			}
-			if len(args) > 0 { path = append(path, args[0]) }
+			if len(args) > 0 {
+				path = append(path, args[0])
+			}
 			res, _, err := cliCtx.Query(strings.Join(path, "/"))
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			var out sdk.AccAddress = res
 			return cliCtx.PrintOutput(out)
@@ -128,9 +133,9 @@ func GetCmdProposer(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdIsAllowed(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "is-allowed [address]",
+		Use:   "is-allowed <address>",
 		Short: "check is noding is allowed for an account",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -159,9 +164,9 @@ func GetCmdOperator(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	var hex bool
 
 	result := &cobra.Command{
-		Use: "whois [consensus address]",
+		Use:   "whois <consensus address>",
 		Short: "find account address by attached node consensus address",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -198,4 +203,31 @@ func GetCmdOperator(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	result.Flags().BoolVarP(&hex, "hex", "x", false, "consensus address in hex format instead of bech32")
 
 	return result
+}
+
+func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use: "params",
+		Short: "Get the module params",
+		Args: cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryParams,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Println("could not get module params")
+				return err
+			}
+
+			var out types.Params
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
+		},
+	}
 }

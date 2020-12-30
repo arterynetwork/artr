@@ -33,7 +33,9 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 func (k Keeper) AddFreeCreator(ctx sdk.Context, creator sdk.AccAddress) {
 	params := k.GetParams(ctx)
 	for _, c := range params.Creators {
-		if c.Equals(creator) { return }
+		if c.Equals(creator) {
+			return
+		}
 	}
 	params.Creators = append(params.Creators, creator)
 	k.SetParams(ctx, params)
@@ -48,10 +50,12 @@ func (k Keeper) RemoveFreeCreator(ctx sdk.Context, creator sdk.AccAddress) {
 			break
 		}
 	}
-	if idx < 0 { return }
-	if idx != len(params.Creators) - 1 {
-		params.Creators[idx] = params.Creators[len(params.Creators) - 1]
+	if idx < 0 {
+		return
 	}
-	params.Creators = params.Creators[:len(params.Creators) - 1]
+	if idx != len(params.Creators)-1 {
+		params.Creators[idx] = params.Creators[len(params.Creators)-1]
+	}
+	params.Creators = params.Creators[:len(params.Creators)-1]
 	k.SetParams(ctx, params)
 }

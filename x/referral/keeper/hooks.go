@@ -9,8 +9,9 @@ const (
 	StatusUpdatedCallback = "status-updated"
 	StakeChangedCallback  = "stake-changed"
 
-    StatusDowngradeHookName = "referral/downgrade"
-    CompressionHookName     = "referral/compression"
+	StatusDowngradeHookName   = "referral/downgrade"
+	CompressionHookName       = "referral/compression"
+	TransitionTimeoutHookName = "referral/transition-timeout"
 )
 
 func (k *Keeper) AddHook(eventName string, callback func(ctx sdk.Context, acc sdk.AccAddress) error) {
@@ -23,11 +24,21 @@ func (k *Keeper) AddHook(eventName string, callback func(ctx sdk.Context, acc sd
 }
 
 func (k Keeper) PerformDowngrade(ctx sdk.Context, data []byte) {
-	if err := k.performDowngrade(ctx, sdk.AccAddress(data)); err != nil { panic(err) }
+	if err := k.performDowngrade(ctx, sdk.AccAddress(data)); err != nil {
+		panic(err)
+	}
 }
 
 func (k Keeper) PerformCompression(ctx sdk.Context, data []byte) {
-	if err := k.performCompression(ctx, sdk.AccAddress(data)); err != nil { panic(err) }
+	if err := k.performCompression(ctx, sdk.AccAddress(data)); err != nil {
+		panic(err)
+	}
+}
+
+func (k Keeper) PerformTransitionTimeout(ctx sdk.Context, data []byte) {
+	if err := k.CancelTransition(ctx, data, true); err != nil {
+		panic(err)
+	}
 }
 
 func (k Keeper) callback(eventName string, ctx sdk.Context, acc sdk.AccAddress) error {
@@ -36,7 +47,9 @@ func (k Keeper) callback(eventName string, ctx sdk.Context, acc sdk.AccAddress) 
 		return nil
 	}
 	for _, hook := range lst {
-		if err := hook(ctx, acc); err != nil { return err }
+		if err := hook(ctx, acc); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -61,14 +74,20 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc sdk.AccAddress) error {
 	if err != nil {
 		return err
 	}
-	if err := bu.commit(); err != nil { return err }
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (k Keeper) performCompression(ctx sdk.Context, acc sdk.AccAddress) error {
 	record, err := k.get(ctx, acc)
-	if err != nil { return err }
-	if record.CompressionAt != ctx.BlockHeight() { return nil }
+	if err != nil {
+		return err
+	}
+	if record.CompressionAt != ctx.BlockHeight() {
+		return nil
+	}
 
 	return k.Compress(ctx, acc)
 }

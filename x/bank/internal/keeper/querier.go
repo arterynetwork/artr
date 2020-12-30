@@ -12,6 +12,7 @@ import (
 const (
 	// query balance path
 	QueryBalance = "balances"
+	QueryParams  = "params"
 )
 
 // NewQuerier returns a new sdk.Keeper instance.
@@ -20,6 +21,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 		switch path[0] {
 		case QueryBalance:
 			return queryBalance(ctx, req, k)
+		case QueryParams:
+			return queryParams(ctx, k)
 
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unknown query path: %s", path[0])
@@ -42,6 +45,17 @@ func queryBalance(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, err
 	}
 
 	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, coins)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return bz, nil
+}
+
+func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+	params := types.NewQueryResParams(k.GetSendEnabled(ctx), k.GetMinSend(ctx))
+
+	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}

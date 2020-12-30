@@ -31,6 +31,8 @@ func DefaultGenesisState() GenesisState {
 
 // ValidateGenesis validates the vpn genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if err := data.Params.Validate(); err != nil { return err }
+	if err := data.Params.Validate(); err != nil {
+		return err
+	}
 	return nil
 }

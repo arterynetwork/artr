@@ -37,11 +37,11 @@ type HandlerSuite struct {
 
 func (s *HandlerSuite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx            = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k              = s.app.GetDelegatingKeeper()
-	s.supplyKeeper   = s.app.GetSupplyKeeper()
-	s.accKeeper      = s.app.GetAccountKeeper()
-	s.handler        = delegating.NewHandler(s.k, s.supplyKeeper)
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetDelegatingKeeper()
+	s.supplyKeeper = s.app.GetSupplyKeeper()
+	s.accKeeper = s.app.GetAccountKeeper()
+	s.handler = delegating.NewHandler(s.k, s.supplyKeeper)
 }
 
 func (s *HandlerSuite) TearDownTest() { s.cleanup() }

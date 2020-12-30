@@ -23,8 +23,8 @@ func TestDelegatingKeeper(t *testing.T) { suite.Run(t, new(Suite)) }
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
+	app     *app.ArteryApp
+	cleanup func()
 
 	cdc       *codec.Codec
 	ctx       sdk.Context
@@ -35,9 +35,9 @@ type Suite struct {
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 
-	s.cdc       = s.app.Codec()
-	s.ctx       = s.app.NewContext(true, abci.Header{})
-	s.k         = s.app.GetDelegatingKeeper()
+	s.cdc = s.app.Codec()
+	s.ctx = s.app.NewContext(true, abci.Header{})
+	s.k = s.app.GetDelegatingKeeper()
 	s.accKeeper = s.app.GetAccountKeeper()
 }
 
@@ -73,7 +73,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		revoking,
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(14 * 2880 - 1)
+	s.ctx = s.ctx.WithBlockHeight(14*2880 - 1)
 	s.nextBlock()
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(850000000))),
@@ -120,7 +120,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
 	)
 
-	for ; t < 14 * util.BlocksOneDay; t++ {
+	for ; t < 14*util.BlocksOneDay; t++ {
 		s.nextBlock()
 	}
 
@@ -132,7 +132,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
 	)
 
-	for ; t < 15 * util.BlocksOneDay; t++ {
+	for ; t < 15*util.BlocksOneDay; t++ {
 		s.nextBlock()
 	}
 
@@ -160,7 +160,9 @@ func (s *Suite) TestAccrueOnRevoke() {
 
 	t := 0
 
-	for ; t < util.BlocksOneDay / 2; t++ { s.nextBlock() }
+	for ; t < util.BlocksOneDay/2; t++ {
+		s.nextBlock()
+	}
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(850_000000))),
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
@@ -180,7 +182,9 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 
 	// 2 weeks later
-	for ; t < util.BlocksOneDay * 29 / 2; t++ { s.nextBlock() }
+	for ; t < util.BlocksOneDay*29/2; t++ {
+		s.nextBlock()
+	}
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_975000)), // 2.975 + 14 * 3.5 + 350
@@ -190,11 +194,13 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 	acc, err = s.k.GetAccumulation(s.ctx, user)
 	s.NoError(err)
-	s.Equal(int64(util.BlocksOneDay * 29 / 2), acc.StartHeight)
+	s.Equal(int64(util.BlocksOneDay*29/2), acc.StartHeight)
 	s.Equal(int64(0), acc.CurrentUartrs)
 
 	// Half a day later
-	for ; t < util.BlocksOneDay * 15; t++ { s.nextBlock() }
+	for ; t < util.BlocksOneDay*15; t++ {
+		s.nextBlock()
+	}
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_975000)), // The same because accrue time has changed
@@ -209,6 +215,7 @@ var bbHeader = abci.RequestBeginBlock{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 	},
 }
+
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)

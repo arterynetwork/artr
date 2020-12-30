@@ -6,6 +6,7 @@ import (
 
 // InitGenesis initialize default parameters
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
 	for _, record := range data.ProfileRecords {
 		acc := k.AccountKeeper.GetAccount(ctx, record.Address)

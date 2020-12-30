@@ -14,8 +14,8 @@ var (
 )
 
 type MsgSwitchOn struct {
-	AccAddress sdk.AccAddress	`json:"acc_address"`
-	PubKey     crypto.PubKey	`json:"pub_key"`
+	AccAddress sdk.AccAddress `json:"acc_address"`
+	PubKey     crypto.PubKey  `json:"pub_key"`
 }
 
 type MsgSwitchOff struct {
@@ -50,6 +50,7 @@ const (
 	SwitchOffConst = "SwitchOff"
 	UnjailConst    = "Unjail"
 )
+
 // --- MsgSwitchOn implementation ---
 // nolint
 func (msg MsgSwitchOn) Route() string { return RouterKey }

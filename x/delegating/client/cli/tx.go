@@ -36,11 +36,11 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdDelegate(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delegate [microARTRs]",
+		Use:     "delegate <microARTRs>",
 		Aliases: []string{"d"},
-		Short: "delegate funds",
-		Args:  cobra.ExactArgs(1),
-		RunE:  func(cmd *cobra.Command, args []string) error {
+		Short:   "delegate funds",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				inBuf  = bufio.NewReader(cmd.InOrStdin())
 				cliCtx = context.NewCLIContext().WithCodec(cdc)
@@ -68,11 +68,11 @@ func GetCmdDelegate(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdRevoke(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "revoke [microARTRs]",
+		Use:     "revoke <microARTRs>",
 		Aliases: []string{"r", "u"},
-		Short: "revoke funds from delegating",
-		Args:  cobra.ExactArgs(1),
-		RunE:  func(cmd *cobra.Command, args []string) error {
+		Short:   "revoke funds from delegating",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				inBuf  = bufio.NewReader(cmd.InOrStdin())
 				cliCtx = context.NewCLIContext().WithCodec(cdc)

@@ -25,16 +25,16 @@ func TestProfileGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         profile.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       profile.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetProfileKeeper()
+	s.k = s.app.GetProfileKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -48,20 +48,20 @@ func (s Suite) TestCleanGenesis() {
 func (s Suite) TestFullData() {
 	_, _, newAcc := authtypes.KeyTestPubAddr()
 	s.k.CreateAccountWithProfile(s.ctx, newAcc, app.DefaultGenesisUsers["user13"], types.Profile{
-		AutoPay:        true,
-		ActiveUntil:    42,
-		Noding:         true,
-		Storage:        true,
-		Validator:      true,
-		VPN:            true,
-		Nickname:       "FooBar",
-		CardNumber:     12345,
+		AutoPay:     true,
+		ActiveUntil: 42,
+		Noding:      true,
+		Storage:     true,
+		Validator:   true,
+		VPN:         true,
+		Nickname:    "FooBar",
+		CardNumber:  12345,
 	})
 	s.checkExportImport()
 }
 
 func (s *Suite) TestParams() {
-	s.Panics(func(){
+	s.Panics(func() {
 		s.k.SetParams(s.ctx, profile.Params{
 			Creators:  []sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
 			Fee:       1234,
@@ -69,8 +69,8 @@ func (s *Suite) TestParams() {
 		})
 	})
 	s.k.SetParams(s.ctx, profile.Params{
-		Creators:  []sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
-		Fee:       1234,
+		Creators: []sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
+		Fee:      1234,
 	})
 	s.checkExportImport()
 }

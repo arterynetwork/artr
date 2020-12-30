@@ -6,9 +6,9 @@ const (
 	EventTypeFinish = "finish-paying-earnings"
 	EventTypeEarn   = "earn"
 
-	AttributeKeyAddress  	= "address"
-	AttributeKeyVpn         = "vpn"
-	AttributeKeyStorage     = "storage"
+	AttributeKeyAddress = "address"
+	AttributeKeyVpn     = "vpn"
+	AttributeKeyStorage = "storage"
 
 	AttributeValueCategory = ModuleName
 )

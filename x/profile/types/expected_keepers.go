@@ -28,6 +28,7 @@ type BankKeeper interface {
 
 type ReferralsKeeper interface {
 	AppendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc sdk.AccAddress) error
+	ScheduleCompression(ctx sdk.Context, acc sdk.AccAddress, compressionAt int64) error
 }
 
 type SupplyKeeper interface {

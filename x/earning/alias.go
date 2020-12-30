@@ -18,6 +18,7 @@ const (
 var (
 	// functions aliases
 	NewKeeper           = keeper.NewKeeper
+	NewQuerier          = keeper.NewQuerier
 	RegisterCodec       = types.RegisterCodec
 	NewGenesisState     = types.NewGenesisState
 	DefaultGenesisState = types.DefaultGenesisState
@@ -26,7 +27,7 @@ var (
 	NewPoints           = types.NewPoints
 
 	// variable aliases
-	ModuleCdc     = types.ModuleCdc
+	ModuleCdc = types.ModuleCdc
 
 	ErrAlreadyListed = types.ErrAlreadyListed
 	ErrTooLate       = types.ErrTooLate

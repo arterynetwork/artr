@@ -13,3 +13,15 @@ type QueryBalanceParams struct {
 func NewQueryBalanceParams(addr sdk.AccAddress) QueryBalanceParams {
 	return QueryBalanceParams{Address: addr}
 }
+
+type QueryResParams struct {
+	SendEnabled bool  `json:"send_enabled" yaml:"send_enabled"`
+	MinSend     int64 `json:"min_send" yaml:"min_send"`
+}
+
+func NewQueryResParams(sendEnabled bool, minSend int64) QueryResParams {
+	return QueryResParams{
+		SendEnabled: sendEnabled,
+		MinSend:     minSend,
+	}
+}

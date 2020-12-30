@@ -52,7 +52,11 @@ func DefaultParams() Params {
 
 func validateInitialHeight(i interface{}) error {
 	val, ok := i.(int64)
-	if !ok { return fmt.Errorf("unexpected InitialHeight type: %T", i) }
-	if val < 0 { return fmt.Errorf("initial height must be non-negative") }
+	if !ok {
+		return fmt.Errorf("unexpected InitialHeight type: %T", i)
+	}
+	if val < 0 {
+		return fmt.Errorf("initial height must be non-negative")
+	}
 	return nil
 }

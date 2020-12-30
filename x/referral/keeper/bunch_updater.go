@@ -19,6 +19,7 @@ type callback struct {
 	event string
 	acc   sdk.AccAddress
 }
+
 func (x callback) Eq(y callback) bool {
 	return x.event == y.event && x.acc.Equals(y.acc)
 }
@@ -41,7 +42,7 @@ func (cbz *callbacks) Less(i, j int) bool {
 		return x.event < y.event
 	}
 }
-func (cbz *callbacks) Swap (i, j int) {
+func (cbz *callbacks) Swap(i, j int) {
 	tmp := (*cbz)[i]
 	(*cbz)[i] = (*cbz)[j]
 	(*cbz)[j] = tmp
@@ -98,6 +99,7 @@ func (bu *bunchUpdater) get(acc sdk.AccAddress) (types.R, error) {
 }
 
 const StatusDowngradeAfter = util.BlocksOneMonth
+
 func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, callback func(value *types.R)) error {
 	value, err := bu.get(acc)
 	if err != nil {
@@ -107,7 +109,9 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 	callback(&value)
 	if checkForStatusUpdate {
 		checkResult, err := statusRequirements[value.Status](value, bu)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		if !checkResult.Overall {
 			if value.StatusDowngradeAt == -1 {
 				downgradeAt := bu.ctx.BlockHeight() + StatusDowngradeAfter
@@ -187,9 +191,11 @@ func (bu *bunchUpdater) commit() error {
 	}
 	sort.Sort(&bu.callbacks)
 	for i, cb := range bu.callbacks {
-		if i > 0 && bu.callbacks[i-1].Eq(cb) { continue }
+		if i > 0 && bu.callbacks[i-1].Eq(cb) {
+			continue
+		}
 		if err := bu.k.callback(cb.event, bu.ctx, cb.acc); err != nil {
-			return sdkerrors.Wrap(err, cb.event +" callback failed for "+cb.acc.String())
+			return sdkerrors.Wrap(err, cb.event+" callback failed for "+cb.acc.String())
 		}
 	}
 	return nil

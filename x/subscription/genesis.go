@@ -7,11 +7,14 @@ import (
 // InitGenesis initialize default parameters
 // and the keeper's address to pubkey map
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
 	for _, record := range data.Activity {
 		k.SetActivityInfo(ctx, record.Address, record.ActivityInfo)
 		if record.ActivityInfo.Active {
-			if err := k.ReferralKeeper.SetActive(ctx, record.Address, true); err != nil { panic(err) }
+			if err := k.ReferralKeeper.SetActive(ctx, record.Address, true); err != nil {
+				panic(err)
+			}
 		}
 	}
 }

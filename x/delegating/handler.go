@@ -20,7 +20,7 @@ func NewHandler(k Keeper, supplyKeeper types.SupplyKeeper) sdk.Handler {
 		case MsgRevoke:
 			return handleMsgRevoke(ctx, k, msg)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName,  msg)
+			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
 		}
 	}
@@ -29,7 +29,9 @@ func NewHandler(k Keeper, supplyKeeper types.SupplyKeeper) sdk.Handler {
 func handleMsgDelegate(ctx sdk.Context, k Keeper, supplyKeeper types.SupplyKeeper, msg MsgDelegate) (*sdk.Result, error) {
 	amount := msg.MicroCoins
 	fee, err := util.PayTxFee(ctx, supplyKeeper, k.Logger(ctx), msg.Acc, msg.MicroCoins)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	amount = amount.Sub(fee)
 
 	err = k.Delegate(ctx, msg.Acc, amount)

@@ -1,20 +1,20 @@
 package cli
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/spf13/cobra"
 
+	"github.com/arterynetwork/artr/x/noding/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-	"github.com/arterynetwork/artr/x/noding/types"
 )
 
 // GetTxCmd returns the transaction commands for this module
@@ -38,12 +38,12 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdOn(cdc *codec.Codec) *cobra.Command {
 	result := cobra.Command{
-		Use: "on [public key]",
+		Use:   "on <public key>",
 		Short: "Switch noding on",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf  := bufio.NewReader(cmd.InOrStdin())
+			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 
 			accAddr := cliCtx.GetFromAddress()
@@ -65,12 +65,12 @@ func GetCmdOn(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdOff(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "off [public key]",
+		Use:   "off",
 		Short: "Switch noding off",
-		Args: cobra.NoArgs,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf  := bufio.NewReader(cmd.InOrStdin())
+			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 
 			accAddr := cliCtx.GetFromAddress()
@@ -87,18 +87,20 @@ func GetCmdOff(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdUnjail(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "unjail",
+		Use:   "unjail",
 		Short: "Unjail (won't work if jail period isn't over)",
-		Args: cobra.NoArgs,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf  := bufio.NewReader(cmd.InOrStdin())
+			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 
 			accAddr := cliCtx.GetFromAddress()
 
 			msg := types.NewMsgUnjail(accAddr)
-			if err:= msg.ValidateBasic(); err != nil { return err }
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
 		},

@@ -26,9 +26,9 @@ func TestBankHandler(t *testing.T) {
 	suite.Run(t, new(HandlerSuite))
 }
 
-type OriginalBankSuite struct { suite.Suite }
+type OriginalBankSuite struct{ suite.Suite }
 
-func (s *OriginalBankSuite)TestInvalidMsg() {
+func (s *OriginalBankSuite) TestInvalidMsg() {
 	h := bank.NewHandler(nil, nil)
 
 	res, err := h(sdk.NewContext(nil, abci.Header{}, false, nil), sdk.NewTestMsg())
@@ -53,11 +53,11 @@ type HandlerSuite struct {
 
 func (s *HandlerSuite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx            = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k              = s.app.GetBankKeeper()
-	s.supplyKeeper   = s.app.GetSupplyKeeper()
-	s.accKeeper      = s.app.GetAccountKeeper()
-	s.handler        = bank.NewHandler(s.k, s.supplyKeeper)
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetBankKeeper()
+	s.supplyKeeper = s.app.GetSupplyKeeper()
+	s.accKeeper = s.app.GetAccountKeeper()
+	s.handler = bank.NewHandler(s.k, s.supplyKeeper)
 }
 
 func (s *HandlerSuite) TearDownTest() { s.cleanup() }

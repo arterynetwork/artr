@@ -4,6 +4,7 @@ package keeper_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -31,8 +32,8 @@ func TestReferralKeeper(t *testing.T) {
 type BaseSuite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
+	app     *app.ArteryApp
+	cleanup func()
 
 	cdc       *codec.Codec
 	ctx       sdk.Context
@@ -44,10 +45,10 @@ type BaseSuite struct {
 func (s *BaseSuite) setupTest(genesis json.RawMessage) {
 	s.app, s.cleanup = app.NewAppFromGenesis(genesis)
 
-	s.cdc       = s.app.Codec()
-	s.ctx       = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k         = s.app.GetReferralKeeper()
-	s.storeKey  = s.app.GetKeys()[referral.ModuleName]
+	s.cdc = s.app.Codec()
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetReferralKeeper()
+	s.storeKey = s.app.GetKeys()[referral.ModuleName]
 	s.accKeeper = s.app.GetAccountKeeper()
 }
 
@@ -55,7 +56,7 @@ func (s *BaseSuite) TearDownTest() {
 	s.cleanup()
 }
 
-type Suite struct { BaseSuite }
+type Suite struct{ BaseSuite }
 
 func (s *Suite) SetupTest() { s.setupTest(nil) }
 
@@ -81,18 +82,18 @@ func (s *Suite) TestAppendChild() {
 	}
 
 	for i, expected := range [12][11]int64{
-		{ 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400 },
-		{ 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0080, 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0100, 0x0200, 0x0400, 0x0800 },
-		{ 0x0200, 0x0400, 0x0800 },
-		{ 0x0400, 0x0800 },
-		{ 0x0800 },
+		{0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400},
+		{0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0008, 0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0010, 0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0020, 0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0040, 0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0080, 0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0100, 0x0200, 0x0400, 0x0800},
+		{0x0200, 0x0400, 0x0800},
+		{0x0400, 0x0800},
+		{0x0800},
 	} {
 		value, err := s.get(accounts[i])
 		s.Nilf(err, "Get account #%d", i)
@@ -116,14 +117,14 @@ func (s *Suite) TestAppendChild() {
 			s.Empty(value.Referrals, "GetChildren #11")
 		} else {
 			s.Equalf(
-				[]sdk.AccAddress{ accounts[i+1] },
+				[]sdk.AccAddress{accounts[i+1]},
 				value.Referrals,
 				"GetChildren #%d", i,
 			)
 		}
 
 		expectedRefCount := [11]int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-		for j := 10; j > 11 - i; j-- {
+		for j := 10; j > 11-i; j-- {
 			expectedRefCount[j] = 0
 		}
 		s.Equalf(
@@ -141,8 +142,8 @@ func (s *Suite) TestGetters() {
 	_, _, child2 := authtypes.KeyTestPubAddr()
 	s.Nil(
 		s.set(acc, types.R{
-			Status:   types.Hero,
-			Referrer: parent,
+			Status:    types.Hero,
+			Referrer:  parent,
 			Referrals: []sdk.AccAddress{child1, child2},
 			//			Coins:                [11]sdk.Int{},
 			//			Delegated:            [11]sdk.Int{},
@@ -173,11 +174,11 @@ func (s *Suite) TestGetCoinsInNetwork() {
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
 					Denom:  util.ConfigMainDenom,
-					Amount: sdk.NewInt(1 << (2*i)),
+					Amount: sdk.NewInt(1 << (2 * i)),
 				},
 				sdk.Coin{
 					Denom:  util.ConfigDelegatedDenom,
-					Amount: sdk.NewInt(1 << (2*i+1)),
+					Amount: sdk.NewInt(1 << (2*i + 1)),
 				},
 			}),
 		)
@@ -260,19 +261,19 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(4, len(res), "GetReferralFeesForDelegating all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFesForDelegating all newbies: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[9],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all newbies: lvl 2")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
-		Ratio: util.Permille(5),
+		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating all newbies: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Permille(85),
+		Ratio:       util.Permille(85),
 	}, "GetReferralFesForDelegating all newbies: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
@@ -280,31 +281,31 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(7, len(res), "GetReferralFeesForSubscription all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(15),
+		Ratio:       util.Percent(15),
 	}, "GetReferralFeesForSubscription all newbies: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[9],
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription all newbies: lvl 2")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription all newbies: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Percent(44),
+		Ratio:       util.Percent(44),
 	}, "GetReferralFeesForSubscription all newbies: \"top referrer\"")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.PromoBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all newbies: promo bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all newbies: leader bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.StatusBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all newbies: status bonus")
 
 	for i := 0; i < 12; i++ {
@@ -318,47 +319,47 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(11, len(res), "GetReferralFeesForDelegating all pros: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFesForDelegating all pros: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[9],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 2")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[8],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 3")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[7],
-		Ratio: util.Percent(2),
+		Ratio:       util.Percent(2),
 	}, "GetReferralFesForDelegating all pros: lvl 4")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[6],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 5")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[5],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 6")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[4],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 7")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[3],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 8")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[2],
-		Ratio: util.Percent(1),
+		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all pros: lvl 9")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[1],
-		Ratio: util.Permille(5),
+		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating all pros: lvl 10")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
-		Ratio: util.Permille(5),
+		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating all pros: company")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
@@ -366,59 +367,59 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(14, len(res), "GetReferralFeesForSubscription all pros: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(15),
+		Ratio:       util.Percent(15),
 	}, "GetReferralFeesForSubscription all pros: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[9],
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription all pros: lvl 2")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[8],
-		Ratio: util.Percent(7),
+		Ratio:       util.Percent(7),
 	}, "GetReferralFeesForSubscription all pros: lvl 3")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[7],
-		Ratio: util.Percent(7),
+		Ratio:       util.Percent(7),
 	}, "GetReferralFeesForSubscription all pros: lvl 4")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[6],
-		Ratio: util.Percent(7),
+		Ratio:       util.Percent(7),
 	}, "GetReferralFeesForSubscription all pros: lvl 5")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[5],
-		Ratio: util.Percent(7),
+		Ratio:       util.Percent(7),
 	}, "GetReferralFeesForSubscription all pros: lvl 6")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[4],
-		Ratio: util.Percent(7),
+		Ratio:       util.Percent(7),
 	}, "GetReferralFeesForSubscription all pros: lvl 7")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[3],
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all pros: lvl 8")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[2],
-		Ratio: util.Percent(2),
+		Ratio:       util.Percent(2),
 	}, "GetReferralFeesForSubscription all pros: lvl 9")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[1],
-		Ratio: util.Percent(2),
+		Ratio:       util.Percent(2),
 	}, "GetReferralFeesForSubscription all pros: lvl 10")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription all pros: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.PromoBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all pros: promo bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all pros: leader bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.StatusBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all pros: status bonus")
 
 	s.Nil(s.update(accounts[10], func(value *types.R) {
@@ -430,15 +431,15 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(3, len(res), "GetReferralFeesForDelegating short chain: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFesForDelegating short chain: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
-		Ratio: util.Permille(5),
+		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating short chain: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Permille(95),
+		Ratio:       util.Permille(95),
 	}, "GetReferralFesForDelegating short chain: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
@@ -446,27 +447,27 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(6, len(res), "GetReferralFeesForSubscription short chain: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
-		Ratio: util.Percent(15),
+		Ratio:       util.Percent(15),
 	}, "GetReferralFeesForSubscription short chain: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription short chain: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Percent(54),
+		Ratio:       util.Percent(54),
 	}, "GetReferralFeesForSubscription short chain: \"top referrer\"")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.PromoBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription short chain: promo bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription short chain: leader bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.StatusBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription short chain: status bonus")
 
 	s.Nil(s.update(accounts[11], func(value *types.R) {
@@ -478,11 +479,11 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(2, len(res), "GetReferralFeesForDelegating top account: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
-		Ratio: util.Permille(5),
+		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating top account: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Permille(145),
+		Ratio:       util.Permille(145),
 	}, "GetReferralFesForDelegating top account: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
@@ -490,23 +491,23 @@ func (s *Suite) TestReferralFees() {
 	s.Equal(5, len(res), "GetReferralFeesForSubscription top account: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio: util.Percent(10),
+		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription top account: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio: util.Percent(69),
+		Ratio:       util.Percent(69),
 	}, "GetReferralFeesForSubscription top account: \"top referrer\"")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.PromoBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription top account: promo bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription top account: leader bonus")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.StatusBonuses,
-		Ratio: util.Percent(5),
+		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription top account: status bonus")
 }
 
@@ -519,11 +520,11 @@ func (s *Suite) TestCompression() {
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
 					Denom:  util.ConfigMainDenom,
-					Amount: sdk.NewInt(1 << (2*i)),
+					Amount: sdk.NewInt(1 << (2 * i)),
 				},
 				sdk.Coin{
 					Denom:  util.ConfigDelegatedDenom,
-					Amount: sdk.NewInt(1 << (2*i+1)),
+					Amount: sdk.NewInt(1 << (2*i + 1)),
 				},
 			}),
 		)
@@ -566,77 +567,77 @@ func (s *Suite) TestCompression() {
 	zero := sdk.ZeroInt()
 	for i, expected := range [10]types.R{
 		{ // item #0
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             nil,
-			Referrals:            []sdk.AccAddress{
+			Status:            types.Lucky,
+			StatusDowngradeAt: -1,
+			Active:            true,
+			Referrer:          nil,
+			Referrals: []sdk.AccAddress{
 				accounts[1],
 				accounts[9],
 			},
 			ActiveReferralsCount: [11]int{1, 2, 3, 3},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x000003),
 				sdk.NewInt(0x0C000C),
 				sdk.NewInt(0x030F30),
 				sdk.NewInt(0x00F0C0),
 				zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000002),
 				sdk.NewInt(0x080008),
 				sdk.NewInt(0x020A20),
 				sdk.NewInt(0x00A080),
 				zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #1
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[0],
-			Referrals:            []sdk.AccAddress{
+			Status:            types.Lucky,
+			StatusDowngradeAt: -1,
+			Active:            true,
+			Referrer:          accounts[0],
+			Referrals: []sdk.AccAddress{
 				accounts[2],
 				accounts[4],
 				accounts[5],
 				accounts[8],
 			},
 			ActiveReferralsCount: [11]int{1, 3, 3},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x00000C),
 				sdk.NewInt(0x030F30),
 				sdk.NewInt(0x00F0C0),
 				zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000008),
 				sdk.NewInt(0x020A20),
 				sdk.NewInt(0x00A080),
 				zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #2
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[1],
-			Referrals:            []sdk.AccAddress{
+			Status:            types.Lucky,
+			StatusDowngradeAt: -1,
+			Active:            true,
+			Referrer:          accounts[1],
+			Referrals: []sdk.AccAddress{
 				accounts[3],
 			},
 			ActiveReferralsCount: [11]int{1, 1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x000030),
 				sdk.NewInt(0x0000C0),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000020),
 				sdk.NewInt(0x000080),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #3
 			Status:               types.Lucky,
@@ -644,15 +645,15 @@ func (s *Suite) TestCompression() {
 			Active:               true,
 			Referrer:             accounts[2],
 			ActiveReferralsCount: [11]int{1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x0000C0),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000080),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #4
 			Status:               types.Lucky,
@@ -660,37 +661,37 @@ func (s *Suite) TestCompression() {
 			Active:               false,
 			Referrer:             accounts[1],
 			ActiveReferralsCount: [11]int{},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x000300),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000200),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        1 + referral.CompressionPeriod,
+			CompressionAt: 1 + referral.CompressionPeriod,
 		},
 		{ // item #5
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[1],
-			Referrals:            []sdk.AccAddress{
+			Status:            types.Lucky,
+			StatusDowngradeAt: -1,
+			Active:            true,
+			Referrer:          accounts[1],
+			Referrals: []sdk.AccAddress{
 				accounts[6],
 				accounts[7],
 			},
 			ActiveReferralsCount: [11]int{1, 2},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x000C00),
 				sdk.NewInt(0x00F000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x000800),
 				sdk.NewInt(0x00A000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #6
 			Status:               types.Lucky,
@@ -698,15 +699,15 @@ func (s *Suite) TestCompression() {
 			Active:               true,
 			Referrer:             accounts[5],
 			ActiveReferralsCount: [11]int{1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x003000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x002000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #7
 			Status:               types.Lucky,
@@ -714,15 +715,15 @@ func (s *Suite) TestCompression() {
 			Active:               true,
 			Referrer:             accounts[5],
 			ActiveReferralsCount: [11]int{1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x00C000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x008000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #8
 			Status:               types.Lucky,
@@ -730,15 +731,15 @@ func (s *Suite) TestCompression() {
 			Active:               true,
 			Referrer:             accounts[1],
 			ActiveReferralsCount: [11]int{1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x030000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x020000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 		{ // item #9
 			Status:               types.Lucky,
@@ -746,15 +747,15 @@ func (s *Suite) TestCompression() {
 			Active:               true,
 			Referrer:             accounts[0],
 			ActiveReferralsCount: [11]int{1},
-			Coins:                [11]sdk.Int{
+			Coins: [11]sdk.Int{
 				sdk.NewInt(0x0C0000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated:            [11]sdk.Int{
+			Delegated: [11]sdk.Int{
 				sdk.NewInt(0x080000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt:        -1,
+			CompressionAt: -1,
 		},
 	} {
 		value, err := s.get(accounts[i])
@@ -764,48 +765,268 @@ func (s *Suite) TestCompression() {
 }
 
 func (s *Suite) TestStatusDowngrade() {
-	if err := s.k.Compress(s.ctx, app.DefaultGenesisUsers["user4"]); err != nil { panic(err) }
+	if err := s.k.Compress(s.ctx, app.DefaultGenesisUsers["user4"]); err != nil {
+		panic(err)
+	}
 	// After that, user2 does not fulfill level2 requirements anymore
 
 	addr := app.DefaultGenesisUsers["user2"]
-	if r, err := s.get(addr); err != nil { panic(err) } else {
+	if r, err := s.get(addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLeader, r.Status)
 		s.Equal(int64(86401), r.StatusDowngradeAt)
 	}
-	if status, err := s.k.GetStatus(s.ctx, addr); err != nil { panic(err) } else {
+	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLeader, status)
 	}
 
 	// Next block (nothing should happen) ...
 	s.nextBlock()
-	if r, err := s.get(addr); err != nil { panic(err) } else {
+	if r, err := s.get(addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLeader, r.Status)
 		s.Equal(int64(86401), r.StatusDowngradeAt)
 	}
-	if status, err := s.k.GetStatus(s.ctx, addr); err != nil { panic(err) } else {
+	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLeader, status)
 	}
 
 	// One month later
 	s.ctx = s.ctx.WithBlockHeight(86400)
 	s.nextBlock()
-	if r, err := s.get(addr); err != nil { panic(err) } else {
+	if r, err := s.get(addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLucky, r.Status)
 		s.Equal(int64(-1), r.StatusDowngradeAt)
 	}
-	if status, err := s.k.GetStatus(s.ctx, addr); err != nil { panic(err) } else {
+	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
+		panic(err)
+	} else {
 		s.Equal(referral.StatusLucky, status)
 	}
 }
 
+func (s Suite) TestTransition() {
+	subj := app.DefaultGenesisUsers["user4"]
+	dest := app.DefaultGenesisUsers["user3"]
+	oldParent := app.DefaultGenesisUsers["user2"]
+
+	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.NoError(s.k.AffirmTransition(s.ctx, subj), "affirm transition")
+
+	acc, err := s.k.GetParent(s.ctx, subj)
+	s.NoError(err, "get parent")
+	s.Equal(dest, acc, "new parent")
+
+	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	s.NoError(err, "get old parent's children")
+	s.Equal(
+		[]sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
+		accz, "old parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, dest)
+	s.NoError(err, "get new parent's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user6"],
+			app.DefaultGenesisUsers["user7"],
+			subj,
+		},
+		accz, "new parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, subj)
+	s.NoError(err, "get subject's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user8"],
+			app.DefaultGenesisUsers["user9"],
+		},
+		accz, "subject's children",
+	)
+
+	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	s.NoError(err, "get pending transition")
+	s.Nil(acc, "pending transition")
+
+	for i, n := range []int64 {
+		35_000_000000,
+		14_000_000000, 20_000_000000,
+		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
+	} {
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		s.NoError(err, "get coins of user%d", i+1)
+		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
+	}
+}
+
+func (s Suite) TestTransition_Decline() {
+	subj := app.DefaultGenesisUsers["user4"]
+	dest := app.DefaultGenesisUsers["user3"]
+	oldParent := app.DefaultGenesisUsers["user2"]
+
+	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.NoError(s.k.CancelTransition(s.ctx, subj, false), "decline transition")
+
+	acc, err := s.k.GetParent(s.ctx, subj)
+	s.NoError(err, "get parent")
+	s.Equal(oldParent, acc, "new parent")
+
+	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	s.NoError(err, "get old parent's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			subj,
+			app.DefaultGenesisUsers["user5"],
+		},
+		accz, "old parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, dest)
+	s.NoError(err, "get new parent's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user6"],
+			app.DefaultGenesisUsers["user7"],
+		},
+		accz, "new parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, subj)
+	s.NoError(err, "get subject's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user8"],
+			app.DefaultGenesisUsers["user9"],
+		},
+		accz, "subject's children",
+	)
+
+	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	s.NoError(err, "get pending transition")
+	s.Nil(acc, "pending transition")
+
+	for i, n := range []int64 {
+		35_000_000000,
+		17_000_000000, 17_000_000000,
+		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
+	} {
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		s.NoError(err, "get coins of user%d", i+1)
+		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
+	}
+}
+
+func (s Suite) TestTransition_Timeout() {
+	subj := app.DefaultGenesisUsers["user4"]
+	dest := app.DefaultGenesisUsers["user3"]
+	oldParent := app.DefaultGenesisUsers["user2"]
+
+	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneDay)
+	s.nextBlock()
+
+	acc, err := s.k.GetParent(s.ctx, subj)
+	s.NoError(err, "get parent")
+	s.Equal(oldParent, acc, "new parent")
+
+	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	s.NoError(err, "get old parent's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			subj,
+			app.DefaultGenesisUsers["user5"],
+		},
+		accz, "old parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, dest)
+	s.NoError(err, "get new parent's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user6"],
+			app.DefaultGenesisUsers["user7"],
+		},
+		accz, "new parent's children",
+	)
+
+	accz, err = s.k.GetChildren(s.ctx, subj)
+	s.NoError(err, "get subject's children")
+	s.Equal(
+		[]sdk.AccAddress{
+			app.DefaultGenesisUsers["user8"],
+			app.DefaultGenesisUsers["user9"],
+		},
+		accz, "subject's children",
+	)
+
+	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	s.NoError(err, "get pending transition")
+	s.Nil(acc, "pending transition")
+
+	for i, n := range []int64 {
+		35_000_000000,
+		17_000_000000, 17_000_000000,
+		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
+	} {
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		s.NoError(err, "get coins of user%d", i+1)
+		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
+	}
+}
+
+func (s Suite) TestTransition_Validate_Circle() {
+	subj := app.DefaultGenesisUsers["user2"]
+	dest := app.DefaultGenesisUsers["user5"]
+
+	s.EqualError(
+		s.k.RequestTransition(s.ctx, subj, dest),
+		"transition is invalid: cycles are not allowed",
+	)
+}
+
+func (s Suite) TestTransition_Validate_Self() {
+	subj := app.DefaultGenesisUsers["user2"]
+
+	s.EqualError(
+		s.k.RequestTransition(s.ctx, subj, subj),
+		"transition is invalid: subject cannot be their own referral",
+	)
+}
+
+func (s Suite) TestTransition_Validate_OldParent() {
+	subj := app.DefaultGenesisUsers["user4"]
+	oldParent := app.DefaultGenesisUsers["user2"]
+
+	s.EqualError(
+		s.k.RequestTransition(s.ctx, subj, oldParent),
+		"transition is invalid: destination address is already subject's referrer",
+	)
+}
+
+
 type StatusUpgradeSuite struct {
 	BaseSuite
-	heads	[3]sdk.AccAddress
+	heads [3]sdk.AccAddress
 }
 
 func (s *StatusUpgradeSuite) SetupTest() {
 	data, err := ioutil.ReadFile("test-genesis-status-upgrade.json")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	s.setupTest(json.RawMessage(data))
 
 	s.heads[0] = accAddr("artr1847dh25pq47cysckpa05lh7yt7ckuqs8r6gsgu")
@@ -878,14 +1099,16 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	data, err = s.get(root)
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
-	s.Equal(int64(1+ 2* referral.StatusDowngradeAfter), data.StatusDowngradeAt)
+	s.Equal(int64(1+2*referral.StatusDowngradeAfter), data.StatusDowngradeAt)
 }
 
-type StatusBonusSuite struct { BaseSuite }
+type StatusBonusSuite struct{ BaseSuite }
 
 func (s *StatusBonusSuite) SetupTest() {
 	data, err := ioutil.ReadFile("test-genesis-status-bonus.json")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	s.setupTest(json.RawMessage(data))
 }
 
@@ -907,7 +1130,7 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	s.NoError(err)
 	s.Equal(referral.StatusBusinessman, status)
 
-	err = s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5 * util.GBSize)
+	err = s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5*util.GBSize)
 	s.NoError(err)
 	course, price, _, _, _, _ := s.app.GetSubscriptionKeeper().GetPrices(s.ctx)
 	payment := int64(course * price)
@@ -919,7 +1142,7 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	)
 
 	toLevel5 := total / 10
-	toLevel7 := total / 5 * 2 + total / 10
+	toLevel7 := total/5*2 + total/10
 	toTopRef := total / 5 * 2
 
 	b0level5 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
@@ -934,9 +1157,9 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	b1level7 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
 	b1topRef := s.app.GetBankKeeper().GetCoins(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
 
-	s.Equal(b0level5 + toLevel5, b1level5, "Level 5: %d + %d", b0level5, toLevel5)
-	s.Equal(b0level7 + toLevel7, b1level7, "Level 7: %d + %d", b0level7, toLevel7)
-	s.Equal(b0topRef + toTopRef, b1topRef, "Top referrer: %d + %d", b0topRef, toTopRef)
+	s.Equal(b0level5+toLevel5, b1level5, "Level 5: %d + %d", b0level5, toLevel5)
+	s.Equal(b0level7+toLevel7, b1level7, "Level 7: %d + %d", b0level7, toLevel7)
+	s.Equal(b0topRef+toTopRef, b1topRef, "Top referrer: %d + %d", b0topRef, toTopRef)
 }
 
 // ----- private functions ------------
@@ -997,6 +1220,7 @@ var bbHeader = abci.RequestBeginBlock{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 	},
 }
+
 func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
@@ -1011,4 +1235,3 @@ func accAddr(s string) sdk.AccAddress {
 	}
 	return addr
 }
-

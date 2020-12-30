@@ -24,16 +24,16 @@ func TestVpnGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         vpn.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       vpn.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetVpnKeeper()
+	s.k = s.app.GetVpnKeeper()
 }
 
 func (s *Suite) TearDownTest() {

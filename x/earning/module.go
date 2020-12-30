@@ -9,18 +9,18 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
+	"github.com/arterynetwork/artr/x/earning/client/cli"
+	"github.com/arterynetwork/artr/x/earning/client/rest"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/arterynetwork/artr/x/earning/client/cli"
-	"github.com/arterynetwork/artr/x/earning/client/rest"
 )
 
 // Type check to ensure the interface is properly implemented
 var (
-	_ module.AppModule           = AppModule{}
-	_ module.AppModuleBasic      = AppModuleBasic{}
+	_ module.AppModule      = AppModule{}
+	_ module.AppModuleBasic = AppModuleBasic{}
 )
 
 // AppModuleBasic defines the basic application module used by the earning module.
@@ -64,7 +64,7 @@ func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 // GetQueryCmd returns no root query command for the earning module.
 func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
-	return nil
+	return cli.GetQueryCmd(QuerierRoute, cdc)
 }
 
 //____________________________________________________________________________
@@ -81,10 +81,10 @@ type AppModule struct {
 // NewAppModule creates a new AppModule object
 func NewAppModule(k Keeper, supplyKeeper types.SupplyKeeper, scheduleKeeper types.ScheduleKeeper) AppModule {
 	return AppModule{
-		AppModuleBasic:      AppModuleBasic{},
-		keeper:              k,
-		supplyKeeper:        supplyKeeper,
-		scheduleKeeper:      scheduleKeeper,
+		AppModuleBasic: AppModuleBasic{},
+		keeper:         k,
+		supplyKeeper:   supplyKeeper,
+		scheduleKeeper: scheduleKeeper,
 	}
 }
 
@@ -113,7 +113,7 @@ func (AppModule) QuerierRoute() string {
 
 // NewQuerierHandler returns the earning module sdk.Querier.
 func (am AppModule) NewQuerierHandler() sdk.Querier {
-	return nil
+	return NewQuerier(am.keeper)
 }
 
 // InitGenesis performs genesis initialization for the earning module. It returns
@@ -133,7 +133,7 @@ func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
 }
 
 // BeginBlock returns the begin blocker for the earning module.
-func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) { }
+func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {}
 
 // EndBlock returns the end blocker for the earning module. It returns no validator
 // updates.

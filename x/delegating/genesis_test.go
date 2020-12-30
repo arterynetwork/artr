@@ -25,16 +25,16 @@ func TestDelegatingGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         delegating.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       delegating.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetDelegatingKeeper()
+	s.k = s.app.GetDelegatingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -47,8 +47,12 @@ func (s Suite) TestCleanGenesis() {
 
 func (s Suite) TestDelegateAndRevoke() {
 	user1 := app.DefaultGenesisUsers["user1"]
-	if err := s.k.Delegate(s.ctx, user1, sdk.NewInt(10_000000)); err != nil { panic(err) }
-	if err := s.k.Revoke(s.ctx, user1, sdk.NewInt(5_000000)); err != nil { panic(err) }
+	if err := s.k.Delegate(s.ctx, user1, sdk.NewInt(10_000000)); err != nil {
+		panic(err)
+	}
+	if err := s.k.Revoke(s.ctx, user1, sdk.NewInt(5_000000)); err != nil {
+		panic(err)
+	}
 	s.checkExportImport()
 }
 

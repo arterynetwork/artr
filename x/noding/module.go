@@ -18,8 +18,8 @@ import (
 
 // Type check to ensure the interface is properly implemented
 var (
-	_ module.AppModule           = AppModule{}
-	_ module.AppModuleBasic      = AppModuleBasic{}
+	_ module.AppModule      = AppModule{}
+	_ module.AppModuleBasic = AppModuleBasic{}
 )
 
 // AppModuleBasic defines the basic application module used by the noding module.
@@ -82,7 +82,7 @@ type AppModule struct {
 func NewAppModule(k Keeper,
 	referralKeeper types.ReferralKeeper,
 	scheduleKeeper types.ScheduleKeeper,
-	supplyKeeper   types.SupplyKeeper,
+	supplyKeeper types.SupplyKeeper,
 ) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},

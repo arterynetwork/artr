@@ -18,13 +18,13 @@ type GenesisState struct {
 
 // NewGenesisState creates a new GenesisState object
 func NewGenesisState(
-	params          Params,
-	gov             Government,
+	params Params,
+	gov Government,
 	currentProposal Proposal,
-	startBlock      int64,
-	agreed          Government,
-	disagreed       Government,
-	history         []ProposalHistoryRecord,
+	startBlock int64,
+	agreed Government,
+	disagreed Government,
+	history []ProposalHistoryRecord,
 ) GenesisState {
 	return GenesisState{
 		Params:          params,

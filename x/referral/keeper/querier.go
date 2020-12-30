@@ -1,18 +1,15 @@
 package keeper
 
 import (
-	//"fmt"
-
-	"github.com/arterynetwork/artr/x/referral/types"
-	"github.com/cosmos/cosmos-sdk/codec"
-	abci "github.com/tendermint/tendermint/abci/types"
 	"strconv"
 
-	//"github.com/cosmos/cosmos-sdk/client"
-	//"github.com/cosmos/cosmos-sdk/codec"
+	abci "github.com/tendermint/tendermint/abci/types"
+
+	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	//"github.com/arterynetwork/artr/x/referral/types"
+
+	"github.com/arterynetwork/artr/x/referral/types"
 )
 
 // NewQuerier creates a new querier for referral clients.
@@ -31,6 +28,14 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryDelegated(ctx, path[1:], k)
 		case types.QueryCheckStatus:
 			return queryCheckStatus(ctx, path[1:], k)
+		case types.QueryWhenCompression:
+			return queryCompressionTime(ctx, path[1:], k)
+		case types.QueryPendingTransition:
+			return queryPendingTransition(ctx, path[1:], k)
+		case types.QueryValidateTransition:
+			return queryValidateTransition(ctx, path[1:], k)
+		case types.QueryParams:
+			return queryParams(ctx, k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown referral query endpoint")
 		}
@@ -126,12 +131,78 @@ func queryCheckStatus(ctx sdk.Context, path []string, k Keeper) ([]byte, error) 
 		err      error
 	)
 	addr, err = sdk.AccAddressFromBech32(path[0])
-	if err != nil { return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error()) }
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+	}
 	status, err = strconv.Atoi(path[1])
-	if err != nil {	return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error()) }
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
+	}
 	result, err = k.AreStatusRequirementsFulfilled(ctx, addr, types.Status(status))
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	resBytes, err = codec.MarshalJSONIndent(k.cdc, result)
-	if err != nil { return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error()) }
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
 	return resBytes, nil
+}
+
+func queryCompressionTime(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
+	addr, err := sdk.AccAddressFromBech32(path[0])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+	}
+	h, err := k.GetCompressionBlockHeight(ctx, addr)
+	if err != nil {
+		return nil, err
+	}
+	res, err := codec.MarshalJSONIndent(k.cdc, h)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+	return res, nil
+}
+
+func queryPendingTransition(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
+	addr, err := sdk.AccAddressFromBech32(path[0])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+	}
+	dest, err := k.GetPendingTransition(ctx, addr)
+	return dest, err
+}
+
+func queryValidateTransition(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
+	subj, err := sdk.AccAddressFromBech32(path[0])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse subject address: "+err.Error())
+	}
+	dest, err := sdk.AccAddressFromBech32(path[1])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse destination address: "+err.Error())
+	}
+	var res types.QueryResValidateTransition
+	if err := k.ValidateTransition(ctx, subj, dest); err != nil {
+		res = types.QueryResValidateTransition{Ok: false, Err: err.Error()}
+	} else {
+		res = types.QueryResValidateTransition{Ok: true}
+	}
+	json, err := codec.MarshalJSONIndent(k.cdc, res)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+	return json, nil
+}
+
+func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+	params := k.GetParams(ctx)
+
+	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return res, nil
 }

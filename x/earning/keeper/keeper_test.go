@@ -28,8 +28,8 @@ func TestEarningKeeper(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
+	app     *app.ArteryApp
+	cleanup func()
 
 	cdc       *codec.Codec
 	ctx       sdk.Context
@@ -42,10 +42,10 @@ type Suite struct {
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 
-	s.cdc       = s.app.Codec()
-	s.ctx       = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k         = s.app.GetEarningKeeper()
-	s.storeKey  = s.app.GetKeys()[earning.ModuleName]
+	s.cdc = s.app.Codec()
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetEarningKeeper()
+	s.storeKey = s.app.GetKeys()[earning.ModuleName]
 	s.accKeeper = s.app.GetAccountKeeper()
 	s.refKeeper = s.app.GetReferralKeeper()
 }
@@ -60,8 +60,8 @@ func (s *Suite) TestFlow() {
 	user4 := app.DefaultGenesisUsers["user4"]
 	user5 := app.DefaultGenesisUsers["user5"]
 
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 100 * util.GBSize))
-	vpnFund     := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 100*util.GBSize))
+	vpnFund := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 	storageFund := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, storage.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 
 	user2amt := s.accKeeper.GetAccount(s.ctx, user2).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
@@ -114,7 +114,7 @@ func (s *Suite) TestFlow() {
 
 	s.nextBlock()
 	s.Equal(
-		user2amt + util.NewFraction(1, 16).MulInt64(vpnFund).Int64(),
+		user2amt+util.NewFraction(1, 16).MulInt64(vpnFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user2).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 		"user2 at block height 5",
 	)
@@ -124,7 +124,7 @@ func (s *Suite) TestFlow() {
 		"user3 at block height 5",
 	)
 	s.Equal(
-		user4amt + util.NewFraction(3, 16).MulInt64(vpnFund).Int64() + util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
+		user4amt+util.NewFraction(3, 16).MulInt64(vpnFund).Int64()+util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user4).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 		"user4 at block height 5",
 	)
@@ -135,17 +135,17 @@ func (s *Suite) TestFlow() {
 
 	s.nextBlock()
 	s.Equal(
-		user2amt + util.NewFraction(1, 16).MulInt64(vpnFund).Int64(),
+		user2amt+util.NewFraction(1, 16).MulInt64(vpnFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user2).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 		"user2 at block height 6",
 	)
 	s.Equal(
-		user3amt + util.NewFraction(1, 12).MulInt64(storageFund).Int64(),
+		user3amt+util.NewFraction(1, 12).MulInt64(storageFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user3).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 		"user3 at block height 6",
 	)
 	s.Equal(
-		user4amt + util.NewFraction(3, 16).MulInt64(vpnFund).Int64() + util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
+		user4amt+util.NewFraction(3, 16).MulInt64(vpnFund).Int64()+util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user4).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 		"user4 at block height 6",
 	)
@@ -156,7 +156,7 @@ func (s *Suite) TestFlow() {
 
 func (s *Suite) TestReset() {
 	user2 := app.DefaultGenesisUsers["user2"]
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 100 * util.GBSize))
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 100*util.GBSize))
 
 	// Unlocked
 	s.NoError(s.k.ListEarners(s.ctx, []earning.Earner{earning.NewEarner(user2, 10, 0)}))
@@ -165,7 +165,7 @@ func (s *Suite) TestReset() {
 
 	// Locked
 	s.NoError(s.k.ListEarners(s.ctx, []earning.Earner{earning.NewEarner(user2, 10, 0)}))
-	s.NoError(s.k.Run(s.ctx, util.NewFraction(7,30), 100, earning.NewPoints(10, 0), 100))
+	s.NoError(s.k.Run(s.ctx, util.NewFraction(7, 30), 100, earning.NewPoints(10, 0), 100))
 	s.k.Reset(s.ctx)
 	s.Empty(s.k.GetEarners(s.ctx))
 	s.NoError(s.k.ListEarners(s.ctx, []earning.Earner{earning.NewEarner(user2, 10, 0)}))
@@ -175,12 +175,12 @@ func (s *Suite) TestNoMoney() {
 	s.NoError(s.k.ListEarners(s.ctx, []earning.Earner{earning.NewEarner(app.DefaultGenesisUsers["user2"], 10, 0)}))
 	s.Equal(
 		earning.ErrNoMoney,
-		s.k.Run(s.ctx, util.NewFraction(7,30), 100, earning.NewPoints(10, 0), 100),
+		s.k.Run(s.ctx, util.NewFraction(7, 30), 100, earning.NewPoints(10, 0), 100),
 	)
 
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 10 * util.GBSize))
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], 10*util.GBSize))
 	s.NoError(
-		s.k.Run(s.ctx, util.NewFraction(7,30), 100, earning.NewPoints(10, 0), 100),
+		s.k.Run(s.ctx, util.NewFraction(7, 30), 100, earning.NewPoints(10, 0), 100),
 	)
 }
 
@@ -239,14 +239,14 @@ func (s *Suite) TestEmptyList() {
 	user3 := app.DefaultGenesisUsers["user3"]
 
 	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user13"], util.GBSize))
-	vpnFund     := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
+	vpnFund := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 	storageFund := s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, storage.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()
 	quarter := util.NewFraction(1, 4)
 	s.NoError(s.k.Run(s.ctx, quarter, 100, earning.NewPoints(0, 0), 2))
 	s.nextBlock()
 
 	s.Equal(
-		quarter.MulInt64(vpnFund).Int64() + quarter.MulInt64(storageFund).Int64(),
+		quarter.MulInt64(vpnFund).Int64()+quarter.MulInt64(storageFund).Int64(),
 		s.app.GetSupplyKeeper().GetModuleAccount(s.ctx, earning.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
@@ -259,13 +259,13 @@ func (s *Suite) TestEmptyList() {
 	s.NoError(s.k.Run(s.ctx, quarter, 100, earning.NewPoints(2, 2), 3))
 	s.nextBlock()
 
-	frac := util.NewFraction(7, 32)  // (1/4 + 1/4 * (1 - 1/4)) / 2
+	frac := util.NewFraction(7, 32) // (1/4 + 1/4 * (1 - 1/4)) / 2
 	s.Equal(
-		user2amt + frac.MulInt64(vpnFund).Int64() + frac.MulInt64(storageFund).Int64(),
+		user2amt+frac.MulInt64(vpnFund).Int64()+frac.MulInt64(storageFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user2).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 	s.Equal(
-		user3amt + frac.MulInt64(vpnFund).Int64() + frac.MulInt64(storageFund).Int64(),
+		user3amt+frac.MulInt64(vpnFund).Int64()+frac.MulInt64(storageFund).Int64(),
 		s.accKeeper.GetAccount(s.ctx, user3).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 }
@@ -275,6 +275,7 @@ var bbHeader = abci.RequestBeginBlock{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 	},
 }
+
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)

@@ -27,16 +27,16 @@ func TestVotingGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         voting.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       voting.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetVotingKeeper()
+	s.k = s.app.GetVotingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -51,7 +51,7 @@ func (s Suite) TestCurrentProposal() {
 	s.k.SetCurrentProposal(s.ctx, types.Proposal{
 		Name:     "halving",
 		TypeCode: types.ProposalTypeDelegationAward,
-		Params:   types.DelegationAwardProposalParams{
+		Params: types.DelegationAwardProposalParams{
 			Minimal:      11,
 			ThousandPlus: 12,
 			TenKPlus:     14,
@@ -72,7 +72,7 @@ func (s Suite) TestHistory() {
 	proposal := types.Proposal{
 		Name:     "halving",
 		TypeCode: types.ProposalTypeDelegationAward,
-		Params:   types.DelegationAwardProposalParams{
+		Params: types.DelegationAwardProposalParams{
 			Minimal:      11,
 			ThousandPlus: 12,
 			TenKPlus:     14,
@@ -83,7 +83,7 @@ func (s Suite) TestHistory() {
 	}
 	s.k.SetCurrentProposal(s.ctx, proposal)
 	s.k.SetStartBlock(s.ctx)
-	s.k.EndProposal(s.ctx, proposal,true)
+	s.k.EndProposal(s.ctx, proposal, true)
 	s.Equal(1, len(s.k.GetHistory(s.ctx, 100, 1)))
 	s.checkExportImport()
 }
@@ -101,7 +101,7 @@ func (s Suite) checkExportImport() {
 		},
 		map[string]app.Decoder{
 			voting.StoreKey: func(bz []byte) (string, error) {
-				if (len(bz) == len(types.KeyHistoryPrefix) + 8) && bytes.Equal(types.KeyHistoryPrefix, bz[:len(types.KeyHistoryPrefix)]) {
+				if (len(bz) == len(types.KeyHistoryPrefix)+8) && bytes.Equal(types.KeyHistoryPrefix, bz[:len(types.KeyHistoryPrefix)]) {
 					return fmt.Sprintf("%s %d", string(types.KeyHistoryPrefix), binary.BigEndian.Uint64(bz[len(types.KeyHistoryPrefix):])), nil
 				}
 				if utf8.Valid(bz) {

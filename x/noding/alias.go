@@ -19,15 +19,15 @@ const (
 
 var (
 	// functions aliases
-	NewKeeper            = keeper.NewKeeper
-	NewQuerier           = keeper.NewQuerier
-	NewMsgSwitchOn       = types.NewMsgSwitchOn
-	NewMsgSwitchOff      = types.NewMsgSwitchOff
-	NewMsgUnjail         = types.NewMsgUnjail
-	RegisterCodec        = types.RegisterCodec
-	NewGenesisState      = types.NewGenesisState
-	DefaultGenesisState  = types.DefaultGenesisState
-	ValidateGenesis      = types.ValidateGenesis
+	NewKeeper           = keeper.NewKeeper
+	NewQuerier          = keeper.NewQuerier
+	NewMsgSwitchOn      = types.NewMsgSwitchOn
+	NewMsgSwitchOff     = types.NewMsgSwitchOff
+	NewMsgUnjail        = types.NewMsgUnjail
+	RegisterCodec       = types.RegisterCodec
+	NewGenesisState     = types.NewGenesisState
+	DefaultGenesisState = types.DefaultGenesisState
+	ValidateGenesis     = types.ValidateGenesis
 
 	// variable aliases
 	ModuleCdc            = types.ModuleCdc

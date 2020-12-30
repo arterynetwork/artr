@@ -268,6 +268,10 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			k.vpnKeeper.AddSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
 		case types.ProposalTypeVpnCurrentSignerRemove:
 			k.vpnKeeper.RemoveSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
+		case types.ProposalTypeTransitionCost:
+			p := k.referralKeeper.GetParams(ctx)
+			p.TransitionCost = uint64(proposal.Params.(types.PriceProposalParams).Price)
+			k.referralKeeper.SetParams(ctx, p)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

@@ -10,6 +10,7 @@ import (
 // InitGenesis initialize default parameters
 // and the keeper's address to pubkey map
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	for _, limit := range data.Limits {
 		k.SetLimit(ctx, limit.Account, int64(limit.Volume))
 	}
@@ -18,7 +19,9 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 	}
 	for i, d := range data.Data {
 		bz, err := base64.StdEncoding.DecodeString(d.Base64)
-		if err != nil { panic(sdkerrors.Wrapf(err, "malformed base64 (data.#%d)", i))}
+		if err != nil {
+			panic(sdkerrors.Wrapf(err, "malformed base64 (data.#%d)", i))
+		}
 		k.SetData(ctx, d.Account, bz)
 	}
 }

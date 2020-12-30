@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
 
@@ -35,6 +36,11 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetCoinsCmd(queryRoute, cdc),
 			GetDelegatedCoinsCmd(queryRoute, cdc),
 			GetCheckStatusCmd(queryRoute, cdc),
+			GetWhenCompressionCmd(queryRoute, cdc),
+			getPendingTransitionCmd(queryRoute, cdc),
+			getValidateTransitionCmd(queryRoute, cdc),
+			util.LineBreak(),
+			getCmdParams(queryRoute, cdc),
 		)...,
 	)
 
@@ -45,9 +51,9 @@ const customRoute = "custom"
 
 func GetStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "status [address]",
+		Use:   "status <address>",
 		Short: "Query for account status",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -73,9 +79,9 @@ func GetStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetReferrerCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "referrer [address]",
+		Use:   "referrer <address>",
 		Short: "Get referrer's account address",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -101,9 +107,9 @@ func GetReferrerCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetReferralsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "referrals [address]",
+		Use:   "referrals [address]",
 		Short: "Get list of referrals' account addresses",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -129,9 +135,9 @@ func GetReferralsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "coins [address]",
+		Use:   "coins <address>",
 		Short: "Get coins in one's network total",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -157,9 +163,9 @@ func GetCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetDelegatedCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "delegated [address]",
+		Use:   "delegated <address>",
 		Short: "Get delegated coins in one's network total",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -185,13 +191,13 @@ func GetDelegatedCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCheckStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "check-status [address] [n]",
+		Use:   "check-status <address> <n>",
 		Short: "Check if status #n requirements are fulfilled",
-		Args: cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx  := context.NewCLIContext().WithCodec(cdc)
+			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
-			status     := args[1]
+			status := args[1]
 
 			data, _, err := clientCtx.Query(
 				strings.Join([]string{
@@ -209,6 +215,123 @@ func GetCheckStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			var res types.StatusCheckResult
 			cdc.MustUnmarshalJSON(data, &res)
 			return clientCtx.PrintOutput(res)
+		},
+	}
+}
+
+func GetWhenCompressionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "when-compression <address>",
+		Args:    cobra.ExactArgs(1),
+		Aliases: []string{"wc", "compression"},
+		Short:   "Get a height of a block which account compression is scheduled to (and -1 if it's not).",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx := context.NewCLIContext().WithCodec(cdc)
+			accAddress := args[0]
+
+			data, _, err := clientCtx.Query(
+				strings.Join([]string{
+					customRoute,
+					queryRoute,
+					types.QueryWhenCompression,
+					accAddress,
+				}, "/"),
+			)
+
+			if err != nil {
+				fmt.Printf("could not get compression time of %s\n", accAddress)
+				return err
+			}
+			var res int64
+			cdc.MustUnmarshalJSON(data, &res)
+			return clientCtx.PrintOutput(res)
+		},
+	}
+}
+
+func getPendingTransitionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "transition <address>",
+		Args:  cobra.ExactArgs(1),
+		Short: "Get a new referrer, under that the account is requested to be moved",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx := context.NewCLIContext().WithCodec(cdc)
+			accAddress := args[0]
+
+			data, _, err := clientCtx.Query(
+				strings.Join([]string{
+					customRoute,
+					queryRoute,
+					types.QueryPendingTransition,
+					accAddress,
+				}, "/"),
+			)
+
+			if err != nil {
+				fmt.Printf("could not get pending tansition for %s\n", accAddress)
+				return err
+			}
+			res := sdk.AccAddress(data)
+			return clientCtx.PrintOutput(res)
+		},
+	}
+}
+
+func getValidateTransitionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "validate-transition <subject address> <destination address>",
+		Args:  cobra.ExactArgs(2),
+		Short: "Check if the subject can be transferred under the new referrer",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx := context.NewCLIContext().WithCodec(cdc)
+			subjAddress := args[0]
+			destAddress := args[1]
+
+			data, _, err := clientCtx.Query(
+				strings.Join([]string{
+					customRoute,
+					queryRoute,
+					types.QueryValidateTransition,
+					subjAddress,
+					destAddress,
+				}, "/"),
+			)
+
+			if err != nil {
+				fmt.Printf("internal error during transition validation")
+				return err
+			}
+			var res types.QueryResValidateTransition
+			cdc.MustUnmarshalJSON(data, &res)
+			return clientCtx.PrintOutput(res)
+		},
+	}
+}
+
+func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "params",
+		Aliases: []string{"p"},
+		Short:   "Get the module params",
+		Args:    cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryParams,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Println("could not get module params")
+				return err
+			}
+
+			var out types.Params
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
 		},
 	}
 }

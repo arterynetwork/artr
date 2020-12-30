@@ -15,7 +15,7 @@ type GenesisState struct {
 
 type Volume struct {
 	Account sdk.AccAddress `json:"account"`
-	Volume  uint64          `json:"volume"`
+	Volume  uint64         `json:"volume"`
 }
 
 type Data struct {

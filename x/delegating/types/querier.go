@@ -7,6 +7,7 @@ import (
 
 // Query endpoints supported by the delegating querier
 const (
+	QueryParams       = "params"
 	QueryRevoking     = "revoking"
 	QueryAccumulation = "accum"
 )

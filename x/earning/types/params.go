@@ -35,18 +35,17 @@ func ParamKeyTable() params.KeyTable {
 		RegisterParamSet(&StateParams{})
 }
 
-
 // Params - used for initializing default parameter for earning at genesis
 type Params struct {
-	Signers []sdk.AccAddress `json:"signers"`
+	Signers []sdk.AccAddress `json:"signers" yaml:"signers"`
 }
 
 // StateParams - used for storing keeper inner state and exporting it to genesis if needed
 type StateParams struct {
-	Locked           bool           `json:"locked,omitempty"`
-	VpnPointCost     util.Fraction  `json:"vpn_point_cost,omitempty"`
-	StoragePointCost util.Fraction  `json:"storage_point_cost,omitempty"`
-	ItemsPerBlock    uint16         `json:"items_per_block,omitempty"`
+	Locked           bool          `json:"locked,omitempty"`
+	VpnPointCost     util.Fraction `json:"vpn_point_cost,omitempty"`
+	StoragePointCost util.Fraction `json:"storage_point_cost,omitempty"`
+	ItemsPerBlock    uint16        `json:"items_per_block,omitempty"`
 }
 
 // NewParams creates a new Params object
@@ -90,6 +89,7 @@ func (p *StateParams) ParamSetPairs() params.ParamSetPairs {
 		params.NewParamSetPair(KeyItemsPerBlock, &p.ItemsPerBlock, validateItemsPerBlock),
 	}
 }
+
 //
 //// DefaultParams defines the parameters for this module
 //func DefaultParams() Params {
@@ -97,7 +97,9 @@ func (p *StateParams) ParamSetPairs() params.ParamSetPairs {
 //}
 
 func (p Params) Validate() error {
-	if err := validateSigners(p.Signers); err != nil { return err }
+	if err := validateSigners(p.Signers); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -118,16 +120,24 @@ func validateSigners(value interface{}) error {
 }
 
 func (p StateParams) Validate() error {
-	if err := validateLocked(p.Locked); err != nil { return err }
-	if err := validatePointCost(p.VpnPointCost); err != nil { return err }
+	if err := validateLocked(p.Locked); err != nil {
+		return err
+	}
+	if err := validatePointCost(p.VpnPointCost); err != nil {
+		return err
+	}
 	if p.Locked && p.VpnPointCost.IsNullValue() {
 		return errors.New("missing VpnPointCost")
 	}
-	if err := validatePointCost(p.StoragePointCost); err != nil { return err }
+	if err := validatePointCost(p.StoragePointCost); err != nil {
+		return err
+	}
 	if p.Locked && p.StoragePointCost.IsNullValue() {
 		return errors.New("missing StoragePointCost")
 	}
-	if err := validateItemsPerBlock(p.ItemsPerBlock); err != nil { return err }
+	if err := validateItemsPerBlock(p.ItemsPerBlock); err != nil {
+		return err
+	}
 	if p.Locked && p.ItemsPerBlock < 1 {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("items per block number must be positive: %d", p.ItemsPerBlock))
 	}
@@ -143,14 +153,20 @@ func validateLocked(value interface{}) error {
 
 func validatePointCost(value interface{}) error {
 	q, ok := value.(util.Fraction)
-	if !ok { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected point cost type: %T", value)) }
-	if !q.IsNullValue() && q.IsNegative() { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("point cost must be non-negative: %v", q)) }
+	if !ok {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected point cost type: %T", value))
+	}
+	if !q.IsNullValue() && q.IsNegative() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("point cost must be non-negative: %v", q))
+	}
 	return nil
 }
 
 func validateItemsPerBlock(value interface{}) error {
 	_, ok := value.(uint16)
-	if !ok { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected item count type: %T", value)) }
+	if !ok {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected item count type: %T", value))
+	}
 	// Value can be empty if Locked is false
 	//if n < 1 { return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("items per block number must be positive: %d", n)) }
 	return nil

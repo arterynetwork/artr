@@ -10,6 +10,7 @@ import (
 // InitGenesis initialize default parameters
 // and the keeper's address to pubkey map
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
 	k.SetGovernment(ctx, data.Government)
 	if data.CurrentProposal.TypeCode != types.ProposalTypeNone {

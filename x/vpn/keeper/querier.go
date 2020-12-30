@@ -19,6 +19,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryVpnLimit(ctx, req, k)
 		case types.QueryVpnCurrent:
 			return queryVpnCurrent(ctx, req, k)
+		case types.QueryParams:
+			return queryParams(ctx, k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown vpn query endpoint")
 		}
@@ -83,4 +85,15 @@ func queryVpnCurrent(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, 
 	}
 
 	return bz, nil
+}
+
+func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+	params := k.GetParams(ctx)
+
+	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return res, nil
 }

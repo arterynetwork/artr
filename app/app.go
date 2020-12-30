@@ -68,11 +68,11 @@ var (
 
 	// module account permissions
 	maccPerms = map[string][]string{
-		auth.FeeCollectorName:     nil,
-		vpn.ModuleName:            nil,
-		storage.ModuleName:        nil,
-		noding.ModuleName:         nil,
-		earning.ModuleName:        nil,
+		auth.FeeCollectorName: nil,
+		vpn.ModuleName:        nil,
+		storage.ModuleName:    nil,
+		noding.ModuleName:     nil,
+		earning.ModuleName:    nil,
 	}
 )
 
@@ -228,6 +228,7 @@ func NewArteryApp(
 		app.accountKeeper,
 		app.scheduleKeeper,
 		app.bankKeeper,
+		app.supplyKeeper,
 	)
 
 	app.profileKeeper = profile.NewKeeper(
@@ -333,6 +334,7 @@ func NewArteryApp(
 
 	app.scheduleKeeper.AddHook(referral.StatusDowngradeHookName, app.referralKeeper.PerformDowngrade)
 	app.scheduleKeeper.AddHook(referral.CompressionHookName, app.referralKeeper.PerformCompression)
+	app.scheduleKeeper.AddHook(referral.TransitionTimeoutHookName, app.referralKeeper.PerformTransitionTimeout)
 	app.scheduleKeeper.AddHook(subscription.HookName, app.subscriptionKeeper.ProcessSchedule)
 	app.scheduleKeeper.AddHook(voting.HookName, app.votingKeeper.ProcessSchedule)
 	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
@@ -348,6 +350,12 @@ func NewArteryApp(
 		CliWarningUpgradeHandler,
 		RefreshStatus(app.referralKeeper, referral.StatusLeader),
 	))
+	app.upgradeKeeper.SetUpgradeHandler("1.2.0", Chain(
+		InitializeTransitionCost(app.referralKeeper, app.subspaces[referral.ModuleName]),
+		RestoreTrafficLimit(app.storageKeeper),
+		ScheduleCompression(app.referralKeeper),
+		CountRevoking(app.accountKeeper, app.referralKeeper),
+	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
@@ -358,7 +366,7 @@ func NewArteryApp(
 		upgrade.NewAppModule(app.upgradeKeeper),
 		profile.NewAppModule(app.profileKeeper, app.accountKeeper),
 		supply.NewAppModule(app.supplyKeeper, app.accountKeeper),
-		referral.NewAppModule(app.referralKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper),
+		referral.NewAppModule(app.referralKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.supplyKeeper),
 		delegating.NewAppModule(app.delegatingKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.supplyKeeper, app.profileKeeper, app.referralKeeper),
 		vpn.NewAppModule(app.vpnKeeper),
 		storage.NewAppModule(app.storageKeeper),

@@ -35,7 +35,7 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetDataCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "data [address]",
+		Use:   "data <address>",
 		Short: "Query encrypted data stored in blockchain",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -65,7 +65,7 @@ func GetDataCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetInfoCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "info [address]",
+		Use:   "info <address>",
 		Short: "Query storage info",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

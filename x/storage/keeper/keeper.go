@@ -109,3 +109,22 @@ func (k Keeper) GetData(ctx sdk.Context, addr sdk.AccAddress) []byte {
 	byteKey := append(dirPrefix, auth.AddressStoreKey(addr)...)
 	return store.Get(byteKey)
 }
+
+func (k Keeper) Iterate(ctx sdk.Context, prefix []byte, callback func(key sdk.AccAddress, value *uint64) (changed bool)) {
+	store := ctx.KVStore(k.storeKey)
+	it := sdk.KVStorePrefixIterator(store, prefix)
+	defer it.Close()
+
+	for ; it.Valid(); it.Next() {
+		key := sdk.AccAddress(it.Key()[1:])
+		var value uint64
+		value = binary.BigEndian.Uint64(it.Value())
+
+		changed := callback(key, &value)
+		if changed {
+			valBz := make([]byte, 8)
+			binary.BigEndian.PutUint64(valBz, value)
+			store.Set(it.Key(), valBz)
+		}
+	}
+}

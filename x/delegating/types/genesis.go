@@ -44,7 +44,9 @@ func DefaultGenesisState() GenesisState {
 
 // ValidateGenesis validates the delegating genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if err := data.Params.Validate(); err != nil { return err }
+	if err := data.Params.Validate(); err != nil {
+		return err
+	}
 	for i, cluster := range data.Clusters {
 		if cluster.Modulo >= util.BlocksOneDay {
 			return fmt.Errorf("modulo must be less than %d", util.BlocksOneDay)

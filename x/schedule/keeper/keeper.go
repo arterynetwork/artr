@@ -180,6 +180,6 @@ func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context
 				"error", err,
 			)
 		}
-	} (task.HandlerName)
+	}(task.HandlerName)
 	hook(ctx, task.Data)
 }

@@ -26,16 +26,16 @@ func TestNodingGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         noding.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       noding.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetNodingKeeper()
+	s.k = s.app.GetNodingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -54,8 +54,12 @@ func (s Suite) TestBlocksInRowAndJail() {
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 	_, user3key, user3ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
-	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil {
+		panic(err)
+	}
+	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil {
+		panic(err)
+	}
 
 	s.nextBlock(user1key, []abci.VoteInfo{
 		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
@@ -80,7 +84,9 @@ func (s Suite) TestJailAndSwitchOff() {
 	user1ca := sdk.ConsAddress(user1key.Address().Bytes())
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil {
+		panic(err)
+	}
 
 	s.nextBlock(user1key, []abci.VoteInfo{
 		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
@@ -106,8 +112,12 @@ func (s Suite) TestByzantine() {
 	_, user2key, user2ca := app.NewTestConsPubAddress()
 	_, user3key, user3ca := app.NewTestConsPubAddress()
 
-	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil { panic(err) }
-	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil { panic(err) }
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil {
+		panic(err)
+	}
+	if err := s.k.SwitchOn(s.ctx, user3, user3key); err != nil {
+		panic(err)
+	}
 
 	val1 := abci.Validator{Address: user1ca, Power: 10}
 	val2 := abci.Validator{Address: user2ca, Power: 10}
@@ -186,14 +196,18 @@ func (s Suite) checkExportImport() {
 		},
 		map[string]app.Decoder{
 			noding.StoreKey: app.AccAddressDecoder,
-			noding.IdxStoreKey: func(bz []byte)(string, error) {
+			noding.IdxStoreKey: func(bz []byte) (string, error) {
 				switch bz[0] {
 				case 0x01:
-					if len(bz) != 21 { return "", fmt.Errorf("wrong address length") }
+					if len(bz) != 21 {
+						return "", fmt.Errorf("wrong address length")
+					}
 					consAddr := sdk.ConsAddress(bz[1:])
 					return consAddr.String(), nil
 				case 0x02:
-					if len(bz) != 9 { return "", fmt.Errorf("wrongth height length")}
+					if len(bz) != 9 {
+						return "", fmt.Errorf("wrongth height length")
+					}
 					height := binary.BigEndian.Uint64(bz[1:])
 					return fmt.Sprintf("H %d", height), nil
 				default:
@@ -202,10 +216,12 @@ func (s Suite) checkExportImport() {
 			},
 		},
 		map[string]app.Decoder{
-			noding.StoreKey: func(bz []byte)(string, error){
+			noding.StoreKey: func(bz []byte) (string, error) {
 				var value types.D
 				err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &value)
-				if err != nil { return "", err }
+				if err != nil {
+					return "", err
+				}
 				return fmt.Sprintf("%+v", value), nil
 			},
 			noding.IdxStoreKey: app.AccAddressDecoder,

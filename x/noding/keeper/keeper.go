@@ -33,13 +33,13 @@ type Keeper struct {
 
 // NewKeeper creates a noding keeper
 func NewKeeper(
-	cdc              *codec.Codec,
-	dataKey          sdk.StoreKey,
-	indexKey         sdk.StoreKey,
-	referralKeeper   types.ReferralKeeper,
-	scheduleKeeper   types.ScheduleKeeper,
-	supplyKeeper     types.SupplyKeeper,
-	paramspace       types.ParamSubspace,
+	cdc *codec.Codec,
+	dataKey sdk.StoreKey,
+	indexKey sdk.StoreKey,
+	referralKeeper types.ReferralKeeper,
+	scheduleKeeper types.ScheduleKeeper,
+	supplyKeeper types.SupplyKeeper,
+	paramspace types.ParamSubspace,
 	feeCollectorName string,
 ) Keeper {
 	keeper := Keeper{
@@ -55,7 +55,7 @@ func NewKeeper(
 	return keeper
 }
 
-var IdxPrefixNodeOperator  = []byte{0x01}
+var IdxPrefixNodeOperator = []byte{0x01}
 var IdxPrefixBlockProposer = []byte{0x02}
 
 // Logger returns a module-specific logger.
@@ -68,13 +68,19 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 	if k.has(ctx, accAddr) {
 		var d types.D
 		d, err = k.Get(ctx, accAddr)
-		if err != nil { return }
-		if d.Staff { result = true }
+		if err != nil {
+			return
+		}
+		if d.Staff {
+			result = true
+		}
 	}
 
 	// Check minimal status
 	status, err := k.referralKeeper.GetStatus(ctx, accAddr)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if !result && status < referral.StatusLeader {
 		reason = types.AttributeValueNotEnoughStatus
 		return
@@ -82,7 +88,9 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 
 	// 10k ARTR delegated
 	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr)
-	if err != nil { return }
+	if err != nil {
+		return
+	}
 	if !result && delegation.Int64() < 10_000_000000 {
 		reason = types.AttributeValueNotEnoughDelegation
 		return
@@ -95,16 +103,24 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 // IsValidator returns true if an account presents in the validator pool
 // (i.e. if it can be potentially chosen for block signing).
 func (k Keeper) IsValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) {
-	if !k.has(ctx, accAddr) { return false, nil }
+	if !k.has(ctx, accAddr) {
+		return false, nil
+	}
 	record, err := k.Get(ctx, accAddr)
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	return record.IsActive(), nil
 }
 
 func (k Keeper) IsBanned(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) {
-	if !k.has(ctx, accAddr) { return false, nil }
+	if !k.has(ctx, accAddr) {
+		return false, nil
+	}
 	record, err := k.Get(ctx, accAddr)
-	if err != nil { return false, err }
+	if err != nil {
+		return false, err
+	}
 	return record.BannedForLife, nil
 }
 
@@ -122,8 +138,12 @@ func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress
 
 func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.PubKey) error {
 	isBanned, err := k.IsBanned(ctx, accAddr)
-	if err != nil { return err }
-	if isBanned { return types.ErrBannedForLifetime }
+	if err != nil {
+		return err
+	}
+	if isBanned {
+		return types.ErrBannedForLifetime
+	}
 
 	if k.has(ctx, accAddr) {
 		data, err := k.Get(ctx, accAddr)
@@ -161,12 +181,14 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 		err = k.update(ctx, accAddr, func(d *types.D) {
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
-			d.Power  = power
+			d.Power = power
 		})
 	} else {
 		err = k.set(ctx, accAddr, types.NewD(power, bech32FromCryptoPubKey(key)))
 	}
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	k.addToIndex(ctx, nodeOperatorIdxKey(consAddressFromCryptoBubKey(key)), accAddr.Bytes())
 	return nil
@@ -174,27 +196,39 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 
 func (k Keeper) SwitchOff(ctx sdk.Context, accAddr sdk.AccAddress) error {
 	err := k.update(ctx, accAddr, func(d *types.D) {
-	    d.Power  = 0
+		d.Power = 0
 		d.Status = false
 	})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
 
 func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 	is, err := k.IsValidator(ctx, acc)
-	if err != nil { return err }
-	if !is { return nil }
+	if err != nil {
+		return err
+	}
+	if !is {
+		return nil
+	}
 
 	var reason string
 	is, _, reason, err = k.IsQualified(ctx, acc)
-	if err != nil { return err }
-	if is { return nil }
+	if err != nil {
+		return err
+	}
+	if is {
+		return nil
+	}
 
 	k.Logger(ctx).Info("not qualified anymore, banishing from validators", "account", acc)
 	err = k.SwitchOff(ctx, acc)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	ctx.EventManager().EmitEvent(sdk.NewEvent(
 		types.EventTypeValidatorBanished,
@@ -206,18 +240,28 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 
 func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 	is, err := k.IsValidator(ctx, acc)
-	if err != nil { return err }
-	if !is { return nil }
+	if err != nil {
+		return err
+	}
+	if !is {
+		return nil
+	}
 
 	record, err := k.Get(ctx, acc)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	is, delegation, reason, err := k.IsQualified(ctx, acc)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if !is {
 		k.Logger(ctx).Info("not qualified anymore, banishing from validators", "account", acc)
 		err = k.SwitchOff(ctx, acc)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		ctx.EventManager().EmitEvent(sdk.NewEvent(
 			types.EventTypeValidatorBanished,
@@ -229,7 +273,9 @@ func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 
 	newPower := k.power(ctx, delegation.Int64())
 	dPower := newPower - record.Power
-	if dPower == 0 { return nil }
+	if dPower == 0 {
+		return nil
+	}
 
 	record.Power = newPower
 	return k.set(ctx, acc, record)
@@ -243,7 +289,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		active []types.KeyedD
 	)
 
-	it := store.Iterator(nil, nil);
+	it := store.Iterator(nil, nil)
 	for ; it.Valid(); it.Next() {
 		var (
 			addr sdk.AccAddress
@@ -257,7 +303,9 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			k.addNodeOperatorToIndex(ctx, consAddress, addr)
 		} else {
 			if data.LastPower != 0 {
-				if len(data.LastPubKey) == 0 { panic("non-zero LastPower is impossible without LastPubKey") }
+				if len(data.LastPubKey) == 0 {
+					panic("non-zero LastPower is impossible without LastPubKey")
+				}
 
 				result = append(result, abci.ValidatorUpdate{
 					PubKey: abciPubKeyFromBech32(data.LastPubKey),
@@ -283,11 +331,19 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			xi := active[i]
 			xj := active[j]
 
-			if xi.Strokes < xj.Strokes { return true }
-			if xi.Strokes > xj.Strokes { return false }
+			if xi.Strokes < xj.Strokes {
+				return true
+			}
+			if xi.Strokes > xj.Strokes {
+				return false
+			}
 
-			if xi.Power > xj.Power { return true }
-			if xi.Power < xj.Power { return false }
+			if xi.Power > xj.Power {
+				return true
+			}
+			if xi.Power < xj.Power {
+				return false
+			}
 
 			return xi.OkBlocksInRow > xj.OkBlocksInRow
 		})
@@ -298,7 +354,9 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 
 	for i = 0; i < n; i++ {
 		d := active[i]
-		if len(d.PubKey) == 0 { panic("validator cannot be active without PubKey") }
+		if len(d.PubKey) == 0 {
+			panic("validator cannot be active without PubKey")
+		}
 		if d.PubKey != d.LastPubKey {
 			if len(d.LastPubKey) != 0 {
 				result = append(result, abci.ValidatorUpdate{
@@ -315,9 +373,11 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			Power:  d.Power,
 		})
 		if err := k.update(ctx, d.Account, func(d *types.D) {
-			d.LastPower  = d.Power
+			d.LastPower = d.Power
 			d.LastPubKey = d.PubKey
-		}); err != nil { return nil, err }
+		}); err != nil {
+			return nil, err
+		}
 	}
 	for ; i < len(active); i++ {
 		d := active[i]
@@ -327,9 +387,11 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 				Power:  0,
 			})
 			if err := k.update(ctx, d.Account, func(d *types.D) {
-				d.LastPower  = 0
+				d.LastPower = 0
 				d.LastPubKey = ""
-			}); err != nil { return nil, err }
+			}); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -357,6 +419,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) {
 	var result []types.Validator
 	store := ctx.KVStore(k.dataStoreKey)
+	proposed := k.GetBlocksProposedByAll(ctx)
 
 	it := store.Iterator(nil, nil)
 	defer it.Close()
@@ -365,9 +428,11 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) 
 		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
 			return nil, err
 		}
-		if !value.IsActive() { continue }
+		if !value.IsActive() {
+			continue
+		}
 		addr := sdk.AccAddress(it.Key())
-		result = append(result, types.GenesisValidatorFromD(addr, value, k.GetBlocksProposedBy(ctx, addr)))
+		result = append(result, types.GenesisValidatorFromD(addr, value, proposed[addr.String()]))
 	}
 
 	return result, nil
@@ -376,6 +441,7 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) 
 func (k Keeper) GetNonActiveValidators(ctx sdk.Context) ([]types.Validator, error) {
 	var result []types.Validator
 	store := ctx.KVStore(k.dataStoreKey)
+	proposed := k.GetBlocksProposedByAll(ctx)
 
 	it := store.Iterator(nil, nil)
 	defer it.Close()
@@ -384,9 +450,11 @@ func (k Keeper) GetNonActiveValidators(ctx sdk.Context) ([]types.Validator, erro
 		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
 			return nil, err
 		}
-		if value.IsActive() { continue }
+		if value.IsActive() {
+			continue
+		}
 		addr := sdk.AccAddress(it.Key())
-		result = append(result, types.GenesisValidatorFromD(addr, value, k.GetBlocksProposedBy(ctx, addr)))
+		result = append(result, types.GenesisValidatorFromD(addr, value, proposed[addr.String()]))
 	}
 
 	return result, nil
@@ -396,18 +464,24 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 	for _, v := range validators {
 		pubkey := cryptoPubKeyFromBech32(v.Pubkey)
 
-		if err := k.set(ctx, v.Account, v.ToD()); err != nil { return err }
+		if err := k.set(ctx, v.Account, v.ToD()); err != nil {
+			return err
+		}
 		for _, h := range v.ProposedBlocks {
 			k.addProposerToIndex(ctx, int64(h), v.Account)
 		}
-		if err := k.SwitchOn(ctx, v.Account, pubkey); err != nil { return err }
+		if err := k.SwitchOn(ctx, v.Account, pubkey); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Validator) error {
 	for _, v := range validators {
-		if err := k.set(ctx, v.Account, v.ToD()); err != nil { return err }
+		if err := k.set(ctx, v.Account, v.ToD()); err != nil {
+			return err
+		}
 		for _, h := range v.ProposedBlocks {
 			k.addProposerToIndex(ctx, int64(h), v.Account)
 		}
@@ -466,12 +540,20 @@ func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci
 
 func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 	data, err := k.Get(ctx, acc)
-	if err != nil { return err }
-	if !data.Jailed { return types.ErrNotJailed }
-	if ctx.BlockHeight() < data.UnjailAt { return types.ErrJailPeriodNotOver }
+	if err != nil {
+		return err
+	}
+	if !data.Jailed {
+		return types.ErrNotJailed
+	}
+	if ctx.BlockHeight() < data.UnjailAt {
+		return types.ErrJailPeriodNotOver
+	}
 	data.Jailed = false
 	q, delegation, reason, err := k.IsQualified(ctx, acc)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if q {
 		data.Power = k.power(ctx, delegation.Int64())
 	} else {
@@ -484,24 +566,34 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 		))
 	}
 	err = k.set(ctx, acc, data)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err error) {
-	k.addProposerToIndex(ctx, ctx.BlockHeight() - 1, acc)
-	if err := k.update(ctx, acc, func(d *types.D) { d.ProposedCount++ }); err != nil { return err }
+	k.addProposerToIndex(ctx, ctx.BlockHeight()-1, acc)
+	if err := k.update(ctx, acc, func(d *types.D) { d.ProposedCount++ }); err != nil {
+		return err
+	}
 
 	all := k.supplyKeeper.GetModuleAccount(ctx, k.feeCollectorName).GetCoins()
 	amount := all
-	if amount.IsZero() { return nil }
-	if err = k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil { return err }
+	if amount.IsZero() {
+		return nil
+	}
+	if err = k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (k Keeper) GetBlockProposer(ctx sdk.Context, height int64) (sdk.AccAddress, error) {
 	result, found := k.getProposerFromIndex(ctx, height)
-	if !found { return nil, types.ErrNotFound }
+	if !found {
+		return nil, types.ErrNotFound
+	}
 	return result, nil
 }
 
@@ -509,13 +601,15 @@ func (k Keeper) AddToStaff(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 	if k.has(ctx, acc) {
 		err = k.update(ctx, acc, func(d *types.D) { d.Staff = true })
 	} else {
-		err = k.set(ctx, acc, types.D{ Staff: true })
+		err = k.set(ctx, acc, types.D{Staff: true})
 	}
 	return err
 }
 
 func (k Keeper) RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) (err error) {
-	if !k.has(ctx, acc) { return nil }
+	if !k.has(ctx, acc) {
+		return nil
+	}
 
 	var isActive bool
 	err = k.update(ctx, acc, func(d *types.D) {
@@ -523,11 +617,17 @@ func (k Keeper) RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) (err error)
 
 		d.Staff = false
 	})
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if isActive {
-		if err = k.OnStatusUpdate(ctx, acc); err != nil { return err }
-		if err = k.OnStakeChanged(ctx, acc); err != nil { return err }
+		if err = k.OnStatusUpdate(ctx, acc); err != nil {
+			return err
+		}
+		if err = k.OnStakeChanged(ctx, acc); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -544,6 +644,18 @@ func (k Keeper) GetBlocksProposedBy(ctx sdk.Context, acc sdk.AccAddress) (height
 	return heights
 }
 
+func (k Keeper) GetBlocksProposedByAll(ctx sdk.Context) (heightsByAccAddress map[string][]uint64) {
+	heightsByAccAddress = make(map[string][]uint64)
+	it := sdk.KVStorePrefixIterator(ctx.KVStore(k.indexStoreKey), IdxPrefixBlockProposer)
+	defer it.Close()
+	for ; it.Valid(); it.Next() {
+		key := sdk.AccAddress(it.Value()).String()
+		height := binary.BigEndian.Uint64(it.Key()[len(IdxPrefixBlockProposer):])
+		heightsByAccAddress[key] = append(heightsByAccAddress[key], height)
+	}
+	return heightsByAccAddress
+}
+
 //----------------------------------------------------------------------------------
 
 func (k Keeper) has(ctx sdk.Context, acc sdk.AccAddress) bool {
@@ -553,7 +665,9 @@ func (k Keeper) has(ctx sdk.Context, acc sdk.AccAddress) bool {
 func (k Keeper) Get(ctx sdk.Context, acc sdk.AccAddress) (types.D, error) {
 	store := ctx.KVStore(k.dataStoreKey)
 	key := []byte(acc)
-	if !store.Has(key) { return types.D{}, types.ErrNotFound }
+	if !store.Has(key) {
+		return types.D{}, types.ErrNotFound
+	}
 	var item types.D
 	err := k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(key), &item)
 	return item, err
@@ -573,19 +687,25 @@ func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.D) error {
 
 func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.D)) error {
 	var (
-		store = ctx.KVStore(k.dataStoreKey)
-		keyBytes = []byte(acc)
-		value types.D
+		store      = ctx.KVStore(k.dataStoreKey)
+		keyBytes   = []byte(acc)
+		value      types.D
 		valueBytes []byte
-		err error
+		err        error
 	)
-	if !store.Has(keyBytes) { return types.ErrNotFound }
+	if !store.Has(keyBytes) {
+		return types.ErrNotFound
+	}
 	err = k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(keyBytes), &value)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	callback(&value)
 	valueBytes, err = k.cdc.MarshalBinaryLengthPrefixed(value)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	store.Set(keyBytes, valueBytes)
 	return nil
@@ -617,7 +737,7 @@ func consAddressFromCryptoBubKey(key crypto.PubKey) sdk.ConsAddress {
 
 func nodeOperatorIdxKey(address sdk.ConsAddress) []byte {
 	pfxLen := len(IdxPrefixNodeOperator)
-	result := make([]byte, pfxLen + len(address.Bytes()))
+	result := make([]byte, pfxLen+len(address.Bytes()))
 	copy(result[:pfxLen], IdxPrefixNodeOperator)
 	copy(result[pfxLen:], address.Bytes())
 	return result
@@ -625,7 +745,7 @@ func nodeOperatorIdxKey(address sdk.ConsAddress) []byte {
 
 func proposerIdxKey(height int64) []byte {
 	n := len(IdxPrefixBlockProposer)
-	key := make([]byte, n + 8)
+	key := make([]byte, n+8)
 	copy(key[:n], IdxPrefixBlockProposer)
 	binary.BigEndian.PutUint64(key[n:], uint64(height))
 	return key

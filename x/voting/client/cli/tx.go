@@ -53,6 +53,7 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		GetCmdCourseChangeSignerRemove(cdc),
 		GetCmdVpnCurrentSignerAdd(cdc),
 		GetCmdVpnCurrentSignerRemove(cdc),
+		getCmdAccountTransitionPrice(cdc),
 		util.LineBreak(),
 		GetCmdVote(cdc),
 	)...)
@@ -62,7 +63,7 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdEnterPrice(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-subscription-price [price] [proposal name]",
+		Use:     "set-subscription-price <price> <proposal name>",
 		Aliases: []string{"set_subscription_price", "ssp"},
 		Short:   "Propose to change the subscription price",
 		Args:    cobra.ExactArgs(2),
@@ -98,10 +99,10 @@ func GetCmdEnterPrice(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdDelegationAward(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-delegation-award [minimal] [1K+] [10K+] [100K+] [proposal name]",
+		Use:     "set-delegation-award <minimal> <1K+> <10K+> <100K+> <proposal name>",
 		Aliases: []string{"set_delegation_award", "sda"},
 		Short:   "Propose to change an award for delegating funds",
-		Example: `set-delegation-award 21 24 27 30 "return to default values"`,
+		Example: `artrcli tx voting set-delegation-award 21 24 27 30 "return to default values" --from ivan`,
 		Args:    cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -140,10 +141,10 @@ func GetCmdDelegationAward(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdDelegationNetworkAward(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-delegation-network-award [company] [lvl 1] [lvl 2] ... [lvl 10] [proposal name]",
+		Use:     "set-delegation-network-award <company> <lvl 1> <lvl 2> ... <lvl 10> <proposal name>",
 		Aliases: []string{"set_delegation_network_award", "sdna"},
 		Short:   "Propose to change the network commission for delegations",
-		Example: `set-delegation-network-award 5/1000 5% 1% 1% 2% 1% 1% 1% 1% 1% 5/1000 "return to default values"`,
+		Example: `artrcli tx voting set-delegation-network-award 5/1000 5% 1% 1% 2% 1% 1% 1% 1% 1% 5/1000 "return to default values" --from ivan`,
 		Args:    cobra.ExactArgs(12),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -171,10 +172,10 @@ func GetCmdDelegationNetworkAward(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdSubscriptionNetworkAward(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-subscription-network-award [company] [lvl 1] [lvl 2] ... [lvl 10] [proposal name]",
+		Use:     "set-subscription-network-award <company> <lvl 1> <lvl 2> ... <lvl 10> <proposal name>",
 		Aliases: []string{"set_subscription_network_award", "ssna"},
 		Short:   "Propose to change the network commission for subscription payments",
-		Example: `set-subscription-network-award 10% 15% 10% 7% 7% 7% 7% 7% 5% 2% 2% "return to default values"`,
+		Example: `artrcli tx voting set-subscription-network-award 10% 15% 10% 7% 7% 7% 7% 7% 5% 2% 2% "return to default values" --from ivan`,
 		Args:    cobra.ExactArgs(12),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -219,7 +220,7 @@ func parseNetworkAward(args []string) (types.NetworkAwardProposalParams, error) 
 // GetCmdAddGovernor is the CLI command for creating AddGovernor proposal
 func GetCmdAddGovernor(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-governor [address] [proposal name]",
+		Use:     "add-governor <address> <proposal name>",
 		Aliases: []string{"add_governor", "ag"},
 		Short:   "Propose to add an account to the government",
 		Args:    cobra.ExactArgs(2), // Does your request require arguments
@@ -250,7 +251,7 @@ func GetCmdAddGovernor(cdc *codec.Codec) *cobra.Command {
 // GetCmdRemoveGovernor is the CLI command for creating Remove proposal
 func GetCmdRemoveGovernor(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-governor [address] [proposal name]",
+		Use:     "remove-governor <address> <proposal name>",
 		Aliases: []string{"remove_governor", "rg"},
 		Short:   "Propose to remove an account from the government",
 		Args:    cobra.ExactArgs(2), // Does your request require arguments
@@ -280,7 +281,7 @@ func GetCmdRemoveGovernor(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdProductVpnBasePrice(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-vpn-gb-price [price] [proposal name]",
+		Use:     "set-vpn-gb-price <price> <proposal name>",
 		Aliases: []string{"set_vpn_gb_price", "svgp"},
 		Short:   "Propose to change the VPN base price",
 		Args:    cobra.ExactArgs(2),
@@ -316,7 +317,7 @@ func GetCmdProductVpnBasePrice(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdProductStorageBasePrice(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "set-storage-gb-price [price] [proposal name]",
+		Use:     "set-storage-gb-price <price> <proposal name>",
 		Aliases: []string{"set_storage_gb_price", "ssgp"},
 		Short:   "Propose to change the storage base price",
 		Args:    cobra.ExactArgs(2),
@@ -352,7 +353,7 @@ func GetCmdProductStorageBasePrice(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdAddFreeCreator(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-free-creator [address] [proposal name]",
+		Use:     "add-free-creator <address> <proposal name>",
 		Aliases: []string{"add_free_creator", "afc"},
 		Short:   "Propose to allow an account to create new accounts for free",
 		Args:    cobra.ExactArgs(2), // Does your request require arguments
@@ -382,7 +383,7 @@ func GetCmdAddFreeCreator(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdRemoveFreeCreator(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-free-creator [address] [proposal name]",
+		Use:     "remove-free-creator <address> <proposal name>",
 		Aliases: []string{"remove_free_creator", "rfc"},
 		Short:   "Propose to disallow an account to create new accounts for free",
 		Args:    cobra.ExactArgs(2), // Does your request require arguments
@@ -413,10 +414,10 @@ func GetCmdRemoveFreeCreator(cdc *codec.Codec) *cobra.Command {
 // GetCmdUpgradeSoftware is the CLI command for creating software upgrade proposal
 func GetCmdUpgradeSoftware(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "upgrade-software [upgrade name] [height] [JSON URI with checksum] [proposal name]",
+		Use:     "upgrade-software <upgrade name> <height> <JSON URI with checksum> <proposal name>",
 		Aliases: []string{"upgrade_software", "upgrade", "us"},
 		Short:   "Propose to upgrade the blockchain software",
-		Example: `upgrade-software v2.0 1000 https://example.com/updates/v2.0/info.json?checksum=sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "update to v2.0 on block height 1000"`,
+		Example: `artrcli tx voting upgrade-software v2.0 1000 https://example.com/updates/v2.0/info.json?checksum=sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "update to v2.0 on block height 1000" --from ivan`,
 		Args:    cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
@@ -452,7 +453,7 @@ func GetCmdUpgradeSoftware(cdc *codec.Codec) *cobra.Command {
 // GetCmdUpgradeSoftware is the CLI command for creating scheduled software upgrade cancellation proposal
 func GetCmdCancelSoftwareUpgrade(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "cancel-upgrade-software [proposal name]",
+		Use:     "cancel-upgrade-software <proposal name>",
 		Aliases: []string{"cancel-upgrade", "cancel_upgrade_software", "cus"},
 		Short:   "Propose to cancel a previously scheduled blockchain software upgrade",
 		Args:    cobra.ExactArgs(1),
@@ -478,7 +479,7 @@ func GetCmdCancelSoftwareUpgrade(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdStaffValidatorAdd(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-staff-validator [address] [proposal name]",
+		Use:     "add-staff-validator <address> <proposal name>",
 		Aliases: []string{"add_staff_validator", "asv"},
 		Short:   "Propose to allow an account to become a validator even if it doesn't fulfill requirements",
 		Args:    cobra.ExactArgs(2),
@@ -510,7 +511,7 @@ func GetCmdStaffValidatorAdd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdStaffValidatorRemove(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-staff-validator [address] [proposal name]",
+		Use:     "remove-staff-validator <address> <proposal name>",
 		Aliases: []string{"remove_staff_validator", "rsv"},
 		Short:   "Propose to disallow an account to be a validator if it doesn't fulfill requirements",
 		Args:    cobra.ExactArgs(2),
@@ -542,7 +543,7 @@ func GetCmdStaffValidatorRemove(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdEarningSignerAdd(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-earning-signer [address] [proposal name]",
+		Use:     "add-earning-signer <address> <proposal name>",
 		Aliases: []string{"add_earning_signer", "aes"},
 		Short:   "Propose to allow an account to schedule VPN & storage awards",
 		Args:    cobra.ExactArgs(2),
@@ -574,7 +575,7 @@ func GetCmdEarningSignerAdd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdEarningSignerRemove(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-earning-signer [address] [proposal name]",
+		Use:     "remove-earning-signer <address> <proposal name>",
 		Aliases: []string{"remove_earning_signer", "res"},
 		Short:   "Propose to disallow an account to schedule VPN & storage awards",
 		Args:    cobra.ExactArgs(2),
@@ -606,7 +607,7 @@ func GetCmdEarningSignerRemove(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdCourseChangeSignerAdd(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-exchange-rate-signer [address] [proposal name]",
+		Use:     "add-exchange-rate-signer <address> <proposal name>",
 		Aliases: []string{"add_exchange_rate_signer", "axrs"},
 		Short:   "Propose to allow an account to set token exchange rate",
 		Args:    cobra.ExactArgs(2),
@@ -638,7 +639,7 @@ func GetCmdCourseChangeSignerAdd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdCourseChangeSignerRemove(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-exchange-rate-signer [address] [proposal name]",
+		Use:     "remove-exchange-rate-signer <address> <proposal name>",
 		Aliases: []string{"remove_exchange_rate_signer", "rxrs"},
 		Short:   "Propose to disallow an account to set token exchange rate",
 		Args:    cobra.ExactArgs(2),
@@ -670,7 +671,7 @@ func GetCmdCourseChangeSignerRemove(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdVpnCurrentSignerAdd(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "add-vpn-current-signer [address] [proposal name]",
+		Use:     "add-vpn-current-signer <address> <proposal name>",
 		Aliases: []string{"add_vpn_current_signer", "avcs"},
 		Short:   "Propose to allow an account to update accounts' current VPN traffic value",
 		Args:    cobra.ExactArgs(2),
@@ -702,7 +703,7 @@ func GetCmdVpnCurrentSignerAdd(cdc *codec.Codec) *cobra.Command {
 
 func GetCmdVpnCurrentSignerRemove(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:     "remove-vpn-current-signer [address] [proposal name]",
+		Use:     "remove-vpn-current-signer <address> <proposal name>",
 		Aliases: []string{"remove_vpn_current_signer", "rvcs"},
 		Short:   "Propose to disallow an account to update accounts' current VPN traffic value",
 		Args:    cobra.ExactArgs(2),
@@ -724,6 +725,43 @@ func GetCmdVpnCurrentSignerRemove(cdc *codec.Codec) *cobra.Command {
 				cliCtx.GetFromAddress(),
 				proposalName,
 				types.ProposalTypeVpnCurrentSignerRemove,
+				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdAccountTransitionPrice(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-account-transition-price <price> <proposal name>",
+		Example: `artrcli tx voting set-account-transition-price 2000000 "2 ARTR for transition" --from ivan`,
+		Aliases: []string{"set_account_transition_price", "satp"},
+		Short:   "Propose to change an account transition price (in uARTR)",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var price uint32
+			{
+				n, err := strconv.ParseUint(args[0], 0, 32)
+				if err != nil {
+					return err
+				}
+				price = uint32(n)
+			}
+
+			params := types.PriceProposalParams{Price: price}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeTransitionCost,
 				params,
 			)
 

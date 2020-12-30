@@ -17,6 +17,7 @@ type ParamSubspace interface {
 }
 
 type BankKeeper interface {
+	HasCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) bool
 	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) (sdk.Coins, error)
 	SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error

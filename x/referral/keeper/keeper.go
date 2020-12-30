@@ -1,25 +1,29 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/bank"
 	"bytes"
 	"fmt"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/tendermint/tendermint/libs/log"
 	"sort"
 	"strings"
 
-	"github.com/arterynetwork/artr/x/referral/types"
+	"github.com/pkg/errors"
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
+	"github.com/arterynetwork/artr/x/referral/types"
 )
 
 const (
 	// CompressionPeriod - amount of time between switching status off and account compression
 	CompressionPeriod = 2 * util.BlocksOneMonth
 
-	minIndexedStatus  = types.Businessman
+	minIndexedStatus = types.Businessman
 )
 
 // Keeper of the referral store
@@ -31,6 +35,7 @@ type Keeper struct {
 	accKeeper      types.AccountKeeper
 	scheduleKeeper types.ScheduleKeeper
 	bankKeeper     types.BankKeeper
+	supplyKeeper   types.SupplyKeeper
 	eventHooks     map[string][]func(ctx sdk.Context, acc sdk.AccAddress) error
 }
 
@@ -38,6 +43,7 @@ type Keeper struct {
 func NewKeeper(
 	cdc *codec.Codec, key sdk.StoreKey, idxKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, bankKeeper types.BankKeeper,
+	supplyKeeper types.SupplyKeeper,
 ) Keeper {
 	keeper := Keeper{
 		storeKey:       key,
@@ -47,6 +53,7 @@ func NewKeeper(
 		accKeeper:      accKeeper,
 		scheduleKeeper: scheduleKeeper,
 		bankKeeper:     bankKeeper,
+		supplyKeeper:   supplyKeeper,
 		eventHooks:     make(map[string][]func(ctx sdk.Context, acc sdk.AccAddress) error),
 	}
 	return keeper
@@ -163,8 +170,12 @@ func (k Keeper) AddTopLevelAccount(ctx sdk.Context, acc sdk.AccAddress) error {
 		delegated = k.getDelegated(ctx, acc)
 	)
 	newItem := types.NewR(nil, coins, delegated)
-	if err := bu.set(acc, newItem); err != nil { return err }
-	if err := bu.commit(); err != nil { return err }
+	if err := bu.set(acc, newItem); err != nil {
+		return err
+	}
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -210,9 +221,10 @@ func (k Keeper) AppendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc 
 		delegated = k.getDelegated(ctx, childAcc)
 	)
 	newItem := types.NewR(parentAcc, coins, delegated)
+	newItem.CompressionAt = ctx.BlockHeight() + CompressionPeriod
 	err := bu.set(childAcc, newItem)
 	if err != nil {
-		return sdkerrors.Wrap(err, "cannot set " + childAcc.String())
+		return sdkerrors.Wrap(err, "cannot set "+childAcc.String())
 	}
 	for i := 0; i < 10; i++ {
 		if anc == nil {
@@ -228,10 +240,13 @@ func (k Keeper) AppendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc 
 			anc = value.Referrer
 		})
 		if err != nil {
-			return sdkerrors.Wrap(err, "cannot update " + anc.String())
+			return sdkerrors.Wrap(err, "cannot update "+anc.String())
 		}
 	}
-	if err := bu.commit(); err != nil { return sdkerrors.Wrap(err, "cannot commit") }
+
+	if err := bu.commit(); err != nil {
+		return sdkerrors.Wrap(err, "cannot commit")
+	}
 	return nil
 }
 
@@ -249,10 +264,13 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 	)
 	// Compressed account itself:
 	//   * no referrals
-	//   * no coins (noeither delegated nor free)
+	//   * no coins (neither delegated nor free)
 	//   * status dump
 	//   * shorten legs
 	//   * no own children
+	//   * new compression in a time
+	compressionAt := ctx.BlockHeight() + CompressionPeriod
+
 	err := bu.update(acc, false, func(value *types.R) {
 		children = value.Referrals
 		coins = value.Coins
@@ -272,10 +290,16 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 			sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
 			sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
 		}
+		value.CompressionAt = compressionAt
 		bu.addCallback(StakeChangedCallback, acc)
 		k.setStatus(ctx, value, types.Lucky, acc)
 		bu.addCallback(StatusUpdatedCallback, acc)
 	})
+	if err != nil {
+		return err
+	}
+
+	err = k.ScheduleCompression(ctx, acc, compressionAt)
 	if err != nil {
 		return err
 	}
@@ -288,7 +312,9 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 		if err != nil {
 			return err
 		}
-		if _, err = childrenSb.WriteString(acc.String() + ","); err != nil { return err }
+		if _, err = childrenSb.WriteString(acc.String() + ","); err != nil {
+			return err
+		}
 	}
 	childrenStr := childrenSb.String()
 	if len(childrenStr) > 0 {
@@ -331,7 +357,9 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 		),
 	)
 
-	if err := bu.commit(); err != nil { return err }
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -401,7 +429,9 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 		}
 	}
 
-	if err := bu.commit(); err != nil { return err }
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -452,22 +482,29 @@ func (k Keeper) SetActive(ctx sdk.Context, acc sdk.AccAddress, value bool) error
 	}
 
 	if !value && !valueIsAlreadySet {
-		data := acc.Bytes()
-		if err = k.scheduleKeeper.ScheduleTask(ctx, uint64(compressionAt), CompressionHookName, &data); err != nil { return err }
+		if err = k.ScheduleCompression(ctx, acc, ctx.BlockHeight()+CompressionPeriod); err != nil {
+			return err
+		}
 	}
 
-	if err := bu.commit(); err != nil { return err }
+	if err := bu.commit(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
-	if ctx.BlockHeight() <= k.scheduleKeeper.GetParams(ctx).InitialHeight { return nil }
+	if ctx.BlockHeight() <= k.scheduleKeeper.GetParams(ctx).InitialHeight {
+		return nil
+	}
 	var (
-		ca              = k.GetParams(ctx).CompanyAccounts
-		sender          = ca.StatusBonuses
-		amt             = k.accKeeper.GetAccount(ctx, sender).GetCoins().AmountOf(util.ConfigMainDenom).Int64() / 5
+		ca     = k.GetParams(ctx).CompanyAccounts
+		sender = ca.StatusBonuses
+		amt    = k.accKeeper.GetAccount(ctx, sender).GetCoins().AmountOf(util.ConfigMainDenom).Int64() / 5
 	)
-	if amt == 0 { return nil }
+	if amt == 0 {
+		return nil
+	}
 	var (
 		store           = ctx.KVStore(k.indexStoreKey)
 		receivers       = make([]sdk.AccAddress, 0)
@@ -487,17 +524,23 @@ func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
 		} else {
 			n := int64(len(receivers))
 			each := amt / n
-			if each == 0 { break }
+			if each == 0 {
+				break
+			}
 			total += each * n
 			for _, r := range receivers {
 				setOrUpdate(outMap, r, each)
 			}
 		}
 	}
-	if len(outMap) == 0 { return nil }
+	if len(outMap) == 0 {
+		return nil
+	}
 
 	outputs := make([]bank.Output, 0, len(outMap))
-	for _, output := range outMap { outputs = append(outputs, output) }
+	for _, output := range outMap {
+		outputs = append(outputs, output)
+	}
 	// Map iteration order is not determined :-(
 	sort.Slice(outputs, func(i, j int) bool { return bytes.Compare(outputs[i].Address, outputs[j].Address) < 0 })
 	for _, out := range outputs {
@@ -510,29 +553,238 @@ func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
 	return k.bankKeeper.InputOutputCoins(ctx, []bank.Input{bank.NewInput(sender, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(total))))}, outputs)
 }
 
-func (k Keeper) Iterate(ctx sdk.Context, callback func(r types.R)(checkForStatusUpdate bool)) {
+func (k Keeper) Iterate(ctx sdk.Context, callback func(acc sdk.AccAddress, r *types.R) (changed, checkForStatusUpdate bool)) {
 	bu := newBunchUpdater(k, ctx)
 	store := ctx.KVStore(k.storeKey)
 	it := store.Iterator(nil, nil)
 	defer func() {
-		if it != nil { it.Close() }
+		if it != nil {
+			it.Close()
+		}
 	}()
 	for ; it.Valid(); it.Next() {
 		var acc sdk.AccAddress = it.Key()
 		var item types.R
 		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &item)
-		if callback(item) {
-			err := bu.update(acc, true, func(_ *types.R) {})
-			if err != nil { panic(err) }
+		if changed, checkForStatusUpdate := callback(acc, &item); changed || checkForStatusUpdate {
+			var f func(r *types.R)
+			if changed {
+				f = func(r *types.R) { *r = item }
+			} else {
+				f = func(_ *types.R) {}
+			}
+			err := bu.update(acc, checkForStatusUpdate, f)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
-	it.Close(); it = nil
+	it.Close()
+	it = nil
 	err := bu.commit()
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 }
 
-//----------------------------------------------------------------------------------------------------------------------
-// PRIVATE FUNCTIONS
+func (k Keeper) GetCompressionBlockHeight(ctx sdk.Context, acc sdk.AccAddress) (int64, error) {
+	info, err := k.get(ctx, acc)
+	if err != nil {
+		return -1, sdkerrors.Wrap(err, "account not found")
+	}
+	return info.CompressionAt, nil
+}
+
+// RequestTransaction is supposed to be called when a user wants to be moved under another referrer. If the current
+// referrer do not approve this operation in a day, it will be cancelled.
+func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent sdk.AccAddress) error {
+	var (
+		r   types.R
+		err error
+	)
+
+	if r, err = k.get(ctx, subject); err != nil {
+		return errors.Wrap(err, "subject account data missing")
+	}
+	if err = k.validateTransition(ctx, subject, newParent, true); err != nil {
+		return errors.Wrap(err, "transition is invalid")
+	}
+
+	params := k.GetParams(ctx)
+	err = k.supplyKeeper.SendCoinsFromAccountToModule(ctx, subject, auth.FeeCollectorName, util.UartrsUint64(params.TransitionCost))
+	if err != nil {
+		return errors.Wrap(err, "cannot pay commission")
+	}
+
+	r.Transition = newParent
+	if err = k.set(ctx, subject, r); err != nil {
+		panic(errors.Wrap(err, "cannot write to KVStore"))
+	}
+
+	var data []byte = subject
+	err = k.scheduleKeeper.ScheduleTask(ctx, uint64(ctx.BlockHeight()+util.BlocksOneDay), TransitionTimeoutHookName, &data)
+	if err != nil {
+		panic(errors.Wrap(err, "cannot schedule transition timeout"))
+	}
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		types.EventTypeTransitionRequested,
+		sdk.NewAttribute(types.AttributeKeyAddress, subject.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerBefore, r.Referrer.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerAfter, newParent.String()),
+	))
+	return nil
+}
+
+// CancelTransition is supposed to be called when either a current referrer declines a referral transition or this
+// transition timeout occurs. See also RequestTransition method.
+func (k Keeper) CancelTransition(ctx sdk.Context, subject sdk.AccAddress, timeout bool) error {
+	var (
+		r   types.R
+		err error
+	)
+	if r, err = k.get(ctx, subject); err != nil {
+		return errors.Wrap(err, "subject account data missing")
+	}
+	value := r.Transition
+	r.Transition = nil
+	if err = k.set(ctx, subject, r); err != nil {
+		panic(errors.Wrap(err, "cannot write to KVStore"))
+	}
+
+	var reason string
+	if timeout {
+		reason = types.AttributeValueTimeout
+	} else {
+		reason = types.AttributeValueDeclined
+	}
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		types.EventTypeTransitionDeclined,
+		sdk.NewAttribute(types.AttributeKeyAddress, subject.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerBefore, r.Referrer.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerAfter, value.String()),
+		sdk.NewAttribute(types.AttributeKeyReason, reason),
+	))
+	return nil
+}
+
+// AffirmTransition is supposed to be called when a current referrer approves a referral transition. Actual subtree
+// relocation and all the according recalculations and updates are done here.
+func (k Keeper) AffirmTransition(ctx sdk.Context, subject sdk.AccAddress) error {
+	var (
+		r   types.R
+		err error
+	)
+
+	if r, err = k.get(ctx, subject); err != nil {
+		return errors.Wrap(err, "subject account data missing")
+	}
+
+	// we should double-check, just in case something has changed
+	if err = k.validateTransition(ctx, subject, r.Transition, false); err != nil {
+		return errors.Wrap(err, "transition is invalid")
+	}
+
+	oldParent, newParent := r.Referrer, r.Transition
+	r.Referrer, r.Transition = newParent, nil
+	if err = k.set(ctx, subject, r); err != nil {
+		panic(errors.Wrap(err, "cannot write to KVStore"))
+	}
+
+	var (
+		bu                       = newBunchUpdater(k, ctx)
+		oldAncestor, newAncestor sdk.AccAddress
+	)
+
+	if err = bu.update(oldParent, true, func(value *types.R) {
+		idx := 0
+		for ; idx < len(value.Referrals) && !value.Referrals[idx].Equals(subject); idx++ {
+		}
+		value.Referrals[idx] = value.Referrals[len(value.Referrals)-1]
+		value.Referrals = value.Referrals[:len(value.Referrals)-1]
+
+		for i := 1; i <= 10; i++ {
+			value.Coins[i] = value.Coins[i].Sub(r.Coins[i-1])
+			value.Delegated[i] = value.Delegated[i].Sub(r.Delegated[i-1])
+			value.ActiveReferralsCount[i] -= r.ActiveReferralsCount[i-1]
+		}
+
+		oldAncestor = value.Referrer
+	}); err != nil {
+		panic(errors.Wrap(err, "cannot update old referrer data"))
+	}
+
+	if err = bu.update(newParent, true, func(value *types.R) {
+		value.Referrals = append(value.Referrals, subject)
+
+		for i := 1; i <= 10; i++ {
+			value.Coins[i] = value.Coins[i].Add(r.Coins[i-1])
+			value.Delegated[i] = value.Delegated[i].Add(r.Delegated[i-1])
+			value.ActiveReferralsCount[i] += r.ActiveReferralsCount[i-1]
+		}
+
+		newAncestor = value.Referrer
+	}); err != nil {
+		panic(errors.Wrap(err, "cannot update new referrer data"))
+	}
+
+	for level := 2; level <= 10; level++ {
+		if oldAncestor.Equals(newAncestor) {
+			break
+		}
+		if !oldAncestor.Empty() {
+			if err = bu.update(oldAncestor, true, func(value *types.R) {
+				for i := level; i <= 10; i++ {
+					value.Coins[i] = value.Coins[i].Sub(r.Coins[i-level])
+					value.Delegated[i] = value.Delegated[i].Sub(r.Delegated[i-level])
+					value.ActiveReferralsCount[i] -= r.ActiveReferralsCount[i-level]
+				}
+				oldAncestor = value.Referrer
+			}); err != nil {
+				panic(errors.Wrapf(err, "cannot update old level-%d ancestor data", level))
+			}
+		}
+		if !newAncestor.Empty() {
+			if err = bu.update(newAncestor, true, func(value *types.R) {
+				for i := level; i <= 10; i++ {
+					value.Coins[i] = value.Coins[i].Add(r.Coins[i-level])
+					value.Delegated[i] = value.Delegated[i].Add(r.Delegated[i-level])
+					value.ActiveReferralsCount[i] += r.ActiveReferralsCount[i-level]
+				}
+				newAncestor = value.Referrer
+			}); err != nil {
+				panic(errors.Wrapf(err, "cannot update new level-%d ancestor data", level))
+			}
+		}
+	}
+
+	if err = bu.commit(); err != nil {
+		panic(errors.Wrap(err, "cannot commit changes"))
+	}
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		types.EventTypeTransitionPerformed,
+		sdk.NewAttribute(types.AttributeKeyAddress, subject.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerBefore, oldParent.String()),
+		sdk.NewAttribute(types.AttributeKeyReferrerAfter, newParent.String()),
+	))
+	return nil
+}
+
+// GetPendingTransition returns a new referral that the specified account is requested to be moved under. It returns
+// (nil, nil) if the account is OK, but a transition is not requested.
+func (k Keeper) GetPendingTransition(ctx sdk.Context, acc sdk.AccAddress) (sdk.AccAddress, error) {
+	if acc.Empty() {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "account address is missing")
+	}
+	r, err := k.get(ctx, acc)
+	if err != nil {
+		return nil, err
+	}
+	return r.Transition, nil
+}
+
+// -------------- PRIVATE FUNCTIONS --------------------
 
 // get returns all the data for an account (status, parent, children)
 func (k Keeper) get(ctx sdk.Context, acc sdk.AccAddress) (types.R, error) {
@@ -617,7 +869,9 @@ func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(value 
 
 func (k Keeper) getBalance(ctx sdk.Context, acc sdk.AccAddress) sdk.Int {
 	coins := k.accKeeper.GetAccount(ctx, acc).GetCoins()
-	return coins.AmountOf(util.ConfigMainDenom).Add(coins.AmountOf(util.ConfigDelegatedDenom))
+	return coins.AmountOf(util.ConfigMainDenom).
+		Add(coins.AmountOf(util.ConfigDelegatedDenom)).
+		Add(coins.AmountOf(util.ConfigRevokingDenom))
 }
 
 func (k Keeper) getDelegated(ctx sdk.Context, acc sdk.AccAddress) sdk.Int {
@@ -631,10 +885,12 @@ func (k Keeper) exists(ctx sdk.Context, acc sdk.AccAddress) bool {
 }
 
 func (k Keeper) setStatus(ctx sdk.Context, target *types.R, value types.Status, acc sdk.AccAddress) {
-	if target.Status == value { return }
+	if target.Status == value {
+		return
+	}
 
 	store := ctx.KVStore(k.indexStoreKey)
-	key := make([]byte, len([]byte(acc)) + 1)
+	key := make([]byte, len([]byte(acc))+1)
 	copy(key[1:], acc)
 
 	if target.Status >= minIndexedStatus {
@@ -655,4 +911,63 @@ func setOrUpdate(m map[string]bank.Output, key sdk.AccAddress, amt int64) {
 		amt += item.Coins.AmountOf(util.ConfigMainDenom).Int64()
 	}
 	m[keyStr] = bank.NewOutput(key, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(amt))))
+}
+
+// ScheduleCompression adds a record to scheduler, but does *NOT* affect referral's own KVStore.
+func (k Keeper) ScheduleCompression(ctx sdk.Context, acc sdk.AccAddress, compressionAt int64) error {
+	data := acc.Bytes()
+
+	return sdkerrors.Wrap(
+		k.scheduleKeeper.ScheduleTask(ctx, uint64(compressionAt), CompressionHookName, &data),
+		"cannot schedule compression",
+	)
+}
+
+// ValidateTransition checks if an account transition valid. This methods fails if subject's R.Transition is not nil.
+func (k Keeper) ValidateTransition(ctx sdk.Context, subject, newParent sdk.AccAddress) error {
+	return k.validateTransition(ctx, subject, newParent, true)
+}
+
+func (k Keeper) validateTransition(ctx sdk.Context, subject, newParent sdk.AccAddress, fresh bool) error {
+	var (
+		r, p types.R
+		err  error
+	)
+
+	if subject.Empty() {
+		return errors.New("missing subject address")
+	}
+	if newParent.Empty() {
+		return errors.New("missing destination address")
+	}
+	if subject.Equals(newParent) {
+		return errors.New("subject cannot be their own referral")
+	}
+	if r, err = k.get(ctx, subject); err != nil {
+		return errors.Wrap(err, "subject account data missing")
+	}
+	if fresh {
+		if !r.Transition.Empty() {
+			return errors.New("transition is already requested")
+		}
+	} else {
+		if !r.Transition.Equals(newParent) {
+			return errors.New("new parent address mismatch")
+		}
+	}
+	if r.Referrer.Equals(newParent) {
+		return errors.New("destination address is already subject's referrer")
+	}
+	if p, err = k.get(ctx, newParent); err != nil {
+		return errors.Wrap(err, "destination account data missing")
+	}
+	for p.Referrer != nil {
+		if p.Referrer.Equals(subject) {
+			return errors.New("cycles are not allowed")
+		}
+		if p, err = k.get(ctx, p.Referrer); err != nil {
+			panic(errors.Wrap(err, "referral structure is compromised"))
+		}
+	}
+	return nil
 }

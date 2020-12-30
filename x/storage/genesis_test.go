@@ -23,16 +23,16 @@ func TestStorageGenesis(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         storage.Keeper
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       storage.Keeper
 }
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k   = s.app.GetStorageKeeper()
+	s.k = s.app.GetStorageKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -45,9 +45,9 @@ func (s Suite) TestCleanGenesis() {
 
 func (s Suite) TestFullData() {
 	user1 := app.DefaultGenesisUsers["user1"]
-	s.k.SetLimit(s.ctx, user1, 100500 * util.GBSize)
-	s.k.SetCurrent(s.ctx, user1, 42 * util.GBSize + 12345)
-	s.k.SetData(s.ctx, user1, []byte{0, 1, 2, 3, 4, 5, 6 ,7})
+	s.k.SetLimit(s.ctx, user1, 100500*util.GBSize)
+	s.k.SetCurrent(s.ctx, user1, 42*util.GBSize+12345)
+	s.k.SetData(s.ctx, user1, []byte{0, 1, 2, 3, 4, 5, 6, 7})
 	s.checkExportImport()
 }
 

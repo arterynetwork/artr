@@ -37,9 +37,9 @@ type Suite struct {
 
 func (s *Suite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx            = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k              = s.app.GetReferralKeeper()
-	s.subKeeper      = s.app.GetSubscriptionKeeper()
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetReferralKeeper()
+	s.subKeeper = s.app.GetSubscriptionKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -60,11 +60,17 @@ func (s Suite) TestStatusDowngrade() {
 		user2 = app.DefaultGenesisUsers["user2"]
 		user8 = app.DefaultGenesisUsers["user8"]
 	)
-	if status, err = s.k.GetStatus(s.ctx, user2); err != nil { panic(err) }
+	if status, err = s.k.GetStatus(s.ctx, user2); err != nil {
+		panic(err)
+	}
 	s.subKeeper.SetActivityInfo(s.ctx, user8, subscription.NewActivityInfo(false, 0))
-	if err := s.k.SetActive(s.ctx, user8, false); err != nil { panic(err) }
+	if err := s.k.SetActive(s.ctx, user8, false); err != nil {
+		panic(err)
+	}
 	// so, user2 loses its status
-	if check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, user2, status); err != nil { panic(err) }
+	if check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, user2, status); err != nil {
+		panic(err)
+	}
 	s.False(check.Overall)
 	s.checkExportImport()
 }
@@ -72,14 +78,16 @@ func (s Suite) TestStatusDowngrade() {
 func (s Suite) TestCompression() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	s.subKeeper.SetActivityInfo(s.ctx, user1, subscription.NewActivityInfo(false, 0))
-	if err := s.k.SetActive(s.ctx, user1, false); err != nil { panic(err) }
+	if err := s.k.SetActive(s.ctx, user1, false); err != nil {
+		panic(err)
+	}
 	// so, compression is scheduled
 	s.checkExportImport()
 }
 
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
-		CompanyAccounts:   referral.CompanyAccounts{
+		CompanyAccounts: referral.CompanyAccounts{
 			TopReferrer:     user(10),
 			ForSubscription: user(11),
 			PromoBonuses:    user(12),
@@ -87,7 +95,7 @@ func (s *Suite) TestParams() {
 			LeaderBonuses:   user(14),
 			ForDelegating:   user(15),
 		},
-		DelegatingAward:   referral.NetworkAward{
+		DelegatingAward: referral.NetworkAward{
 			Network: [10]util.Fraction{
 				util.Permille(1),
 				util.Permille(3),
@@ -137,7 +145,9 @@ func (s Suite) checkExportImport() {
 			referral.StoreKey: func(bz []byte) (string, error) {
 				var result types.R
 				err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &result)
-				if err != nil { return "", err }
+				if err != nil {
+					return "", err
+				}
 				return fmt.Sprintf("%+v", result), nil
 			},
 			schedule.StoreKey: app.DummyDecoder,

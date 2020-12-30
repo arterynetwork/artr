@@ -9,9 +9,12 @@ import (
 // InitGenesis initialize default parameters
 // and the keeper's address to pubkey map
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
+	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
 	k.SetState(ctx, types.NewStateUnlocked())
-	if err := k.ListEarners(ctx, data.Earners); err != nil { panic(err) }
+	if err := k.ListEarners(ctx, data.Earners); err != nil {
+		panic(err)
+	}
 	k.SetState(ctx, data.State)
 }
 

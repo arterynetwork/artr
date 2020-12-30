@@ -17,6 +17,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryActivityInfo(ctx, k, req)
 		case types.QueryPrices:
 			return queryPrices(ctx, k, req)
+		case types.QueryParams:
+			return queryParams(ctx, k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown subscription query endpoint "+path[0])
 		}
@@ -24,15 +26,14 @@ func NewQuerier(k Keeper) sdk.Querier {
 }
 
 func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
-	//params := k.GetParams(ctx)
-	//
-	//res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
-	//if err != nil {
-	//	return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	//}
-	//
-	//return res, nil
-	return nil, nil
+	params := k.GetParams(ctx)
+
+	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return res, nil
 }
 
 // Query is account active or not

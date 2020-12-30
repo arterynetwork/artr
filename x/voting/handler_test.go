@@ -24,17 +24,17 @@ func TestVotingHandler(t *testing.T) {
 type HandlerSuite struct {
 	suite.Suite
 
-	app       *app.ArteryApp
-	cleanup   func()
-	ctx       sdk.Context
-	k         voting.Keeper
-	handler   sdk.Handler
+	app     *app.ArteryApp
+	cleanup func()
+	ctx     sdk.Context
+	k       voting.Keeper
+	handler sdk.Handler
 }
 
 func (s *HandlerSuite) SetupTest() {
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx     = s.app.NewContext(true, abci.Header{Height: 1})
-	s.k       = s.app.GetVotingKeeper()
+	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	s.k = s.app.GetVotingKeeper()
 	s.handler = voting.NewHandler(s.k)
 }
 

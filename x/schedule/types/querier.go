@@ -4,7 +4,8 @@ import "fmt"
 
 // Query endpoints supported by the schedule querier
 const (
-	QueryTasks = "tasks"
+	QueryTasks  = "tasks"
+	QueryParams = "params"
 )
 
 type QueryTasksParams struct {

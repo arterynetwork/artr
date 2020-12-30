@@ -33,9 +33,9 @@ type Params struct {
 	// MaxValidators - maximum count of validators that can be chosen for tendermint consensus
 	MaxValidators uint16 `json:"max_validators"`
 	// JailAfter - number of missed in row blocks after which a validator is jailed
-	JailAfter     uint16 `json:"jail_after"`
+	JailAfter uint16 `json:"jail_after"`
 	// UnjailAfter - number of block after which a jailed validator may unjail
-	UnjailAfter   int64  `json:"unjail_after"`
+	UnjailAfter int64 `json:"unjail_after"`
 }
 
 // NewParams creates a new Params object
@@ -70,27 +70,41 @@ func DefaultParams() Params {
 
 func validateMaxValidators(value interface{}) error {
 	x, ok := value.(uint16)
-	if !ok { return fmt.Errorf("invalid parameter type: %T", value) }
-	if x == 0 { return fmt.Errorf("max validators must be positive: %d", x) }
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", value)
+	}
+	if x == 0 {
+		return fmt.Errorf("max validators must be positive: %d", x)
+	}
 	return nil
 }
 
 func validateJailAfter(value interface{}) error {
 	x, ok := value.(uint16)
-	if !ok { return fmt.Errorf("invalid parameter type: %T", value) }
-	if x == 0 { return fmt.Errorf("jail after must be positive: %d", x) }
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", value)
+	}
+	if x == 0 {
+		return fmt.Errorf("jail after must be positive: %d", x)
+	}
 	return nil
 }
 
 func validateUnjailAfter(value interface{}) error {
 	x, ok := value.(int64)
-	if !ok { return fmt.Errorf("invalid parameter type: %T", value) }
-	if x <= 0 { return fmt.Errorf("ujail after must be positive: %d", x) }
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", value)
+	}
+	if x <= 0 {
+		return fmt.Errorf("ujail after must be positive: %d", x)
+	}
 	return nil
 }
 
 func (p *Params) Validate() error {
-	if p == nil { return fmt.Errorf("params are nil") }
+	if p == nil {
+		return fmt.Errorf("params are nil")
+	}
 	if err := validateMaxValidators(p.MaxValidators); err != nil {
 		return sdkerrors.Wrap(err, "invalid MaxValidators")
 	}

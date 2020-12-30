@@ -136,7 +136,9 @@ func GetSetTokenRateCmd(cdc *codec.Codec) *cobra.Command {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
 			rate, err := strconv.ParseUint(args[0], 0, 32)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			msg := types.NewMsgSetTokenRate(cliCtx.FromAddress, uint32(rate))
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})

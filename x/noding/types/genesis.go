@@ -87,14 +87,22 @@ func DefaultGenesisState() GenesisState {
 
 // ValidateGenesis validates the noding genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if err := data.Params.Validate(); err != nil { return err }
-	if err := validateActiveValidators(data.ActiveValidators); err != nil { return err }
-	if err := validateNonActiveValidators(data.NonActiveValidators); err != nil { return err }
+	if err := data.Params.Validate(); err != nil {
+		return err
+	}
+	if err := validateActiveValidators(data.ActiveValidators); err != nil {
+		return err
+	}
+	if err := validateNonActiveValidators(data.NonActiveValidators); err != nil {
+		return err
+	}
 	return nil
 }
 
 func validateActiveValidators(v []Validator) error {
-	if len(v) == 0 { return fmt.Errorf("empty validator set") }
+	if len(v) == 0 {
+		return fmt.Errorf("empty validator set")
+	}
 	for i, val := range v {
 		if val.Account.Empty() {
 			return fmt.Errorf("empty account address (#%d)", i)

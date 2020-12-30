@@ -9,12 +9,12 @@ import (
 )
 
 func (k Keeper) InitClusters(ctx sdk.Context, clusters []types.Cluster) {
-	mainStore    := ctx.KVStore(k.mainStoreKey)
+	mainStore := ctx.KVStore(k.mainStoreKey)
 	clusterStore := ctx.KVStore(k.clusterStoreKey)
 	for _, cluster := range clusters {
 		key := make([]byte, 2)
 		binary.BigEndian.PutUint16(key, cluster.Modulo)
-		value :=  k.cdc.MustMarshalBinaryLengthPrefixed(cluster.Accounts)
+		value := k.cdc.MustMarshalBinaryLengthPrefixed(cluster.Accounts)
 		clusterStore.Set(key, value)
 
 		value = k.cdc.MustMarshalBinaryLengthPrefixed(types.Record{Cluster: int64(cluster.Modulo)})

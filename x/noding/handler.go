@@ -19,7 +19,7 @@ func NewHandler(k Keeper) sdk.Handler {
 		case MsgUnjail:
 			return handleMsgUnjail(ctx, k, msg)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName,  msg)
+			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
 		}
 	}
@@ -45,7 +45,9 @@ func handleMsgSwitchOff(ctx sdk.Context, k Keeper, msg MsgSwitchOff) (*sdk.Resul
 
 func handleMsgUnjail(ctx sdk.Context, k Keeper, msg MsgUnjail) (*sdk.Result, error) {
 	err := k.Unjail(ctx, msg.AccAddress)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	return &sdk.Result{}, nil
 }

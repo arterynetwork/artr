@@ -30,7 +30,9 @@ func DefaultGenesisState() GenesisState {
 func ValidateGenesis(data GenesisState) error {
 	keys := make(map[uint64]bool, len(data.Tasks))
 	for _, t := range data.Tasks {
-		if keys[t.Height] { return fmt.Errorf("duplicating key: %d", t.Height)}
+		if keys[t.Height] {
+			return fmt.Errorf("duplicating key: %d", t.Height)
+		}
 		keys[t.Height] = true
 	}
 	return nil

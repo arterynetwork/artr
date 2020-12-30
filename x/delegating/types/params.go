@@ -27,10 +27,10 @@ func ParamKeyTable() params.KeyTable {
 }
 
 type Percentage struct {
-	Minimal      int `json:"minimal"`
-	ThousandPlus int `json:"thousand_plus"`
-	TenKPlus     int `json:"ten_k_plus"`
-	HundredKPlus int `json:"hundred_k_plus"`
+	Minimal      int `json:"minimal" yaml:"minimal"`
+	ThousandPlus int `json:"thousand_plus" yaml:"thousand_plus"`
+	TenKPlus     int `json:"ten_k_plus" yaml:"ten_k_plus"`
+	HundredKPlus int `json:"hundred_k_plus" yaml:"hundred_k_plus"`
 }
 
 func NewPercentage(minimal int, oneK int, tenK int, hundredK int) Percentage {
@@ -46,7 +46,7 @@ func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // Params - used for initializing default parameter for delegating at genesis
 type Params struct {
-	Percentage Percentage `json:"percentage"`
+	Percentage Percentage `json:"percentage" yaml:"percentage"`
 }
 
 // NewParams creates a new Params object
@@ -76,19 +76,37 @@ func DefaultParams() Params {
 }
 
 func (p Params) Validate() error {
-	if err := validatePercentage(p.Percentage); err != nil { return err }
+	if err := validatePercentage(p.Percentage); err != nil {
+		return err
+	}
 	return nil
 }
 
 func validatePercentage(i interface{}) error {
 	p, ok := i.(Percentage)
-	if !ok { return fmt.Errorf("invalid parameter type: %T", i)}
-	if p.Minimal <= 0 { return errors.New("minimal percent is non-positive") }
-	if p.ThousandPlus <= 0 { return errors.New("1000+ percent is non-positive") }
-	if p.TenKPlus <= 0 { return errors.New("10k+ percent is non-positive") }
-	if p.HundredKPlus <= 0 { return errors.New("100k+ percent is non-positive") }
-	if p.Minimal > p.ThousandPlus { return errors.New("minimal percent is reater than 1000+ one") }
-	if p.ThousandPlus > p.TenKPlus { return errors.New("1000+ percent is greater than 10k+ one") }
-	if p.TenKPlus > p.HundredKPlus { return errors.New("10k+ percent is greater than 100k+ one") }
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+	if p.Minimal <= 0 {
+		return errors.New("minimal percent is non-positive")
+	}
+	if p.ThousandPlus <= 0 {
+		return errors.New("1000+ percent is non-positive")
+	}
+	if p.TenKPlus <= 0 {
+		return errors.New("10k+ percent is non-positive")
+	}
+	if p.HundredKPlus <= 0 {
+		return errors.New("100k+ percent is non-positive")
+	}
+	if p.Minimal > p.ThousandPlus {
+		return errors.New("minimal percent is reater than 1000+ one")
+	}
+	if p.ThousandPlus > p.TenKPlus {
+		return errors.New("1000+ percent is greater than 10k+ one")
+	}
+	if p.TenKPlus > p.HundredKPlus {
+		return errors.New("10k+ percent is greater than 100k+ one")
+	}
 	return nil
 }
