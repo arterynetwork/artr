@@ -3,8 +3,8 @@
 You can learn about the project at [https://artery.network/](https://artery.network/).
 
 ## Full Node Quick Start
-First of all, you can download the Artery Node application for Windows and macOS from 
-[our site](https://artery.network/node). It is probably what you want. If you are using another OS or just interested 
+First of all, you can download the Artery Network application for Windows and macOS from 
+[our site](https://artery.network). It is probably what you want. If you are using another OS or just interested 
 what's under the hood, you can start your full node by yourself following these steps.     
 
 0. Make you sure you have [Go](https://golang.org/) 1.15+ installed.
