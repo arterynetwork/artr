@@ -15,10 +15,10 @@ git clone https://github.com/arterynetwork/artr.git -b 1.1.0```
 0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name your like.
 0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from 
 https://artery.network/.well-known/genesis.json 
-0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set persistent peers and consensus 
-parameters: 
+0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
-            peristent_peers = "3f7d1d07d708546caf6a8a97754c0bbe7e52df52@167.172.60.181:26656,9f92b61e3ccc1bc301f236bbd95e0d83faecdf0a@165.22.118.160:26656,f1bf2da0f0b77db4223b337ccf727f4611d10c52@178.62.83.249:26656,12c42d1a14894bc1e249ee267d0d993d9649e51d@165.22.124.15:26656"
+            peristent_peers = "3f7d1d07d708546caf6a8a97754c0bbe7e52df52@167.172.60.181:26656"
+            seeders = "47deee9e7c5c68e077ced2ad2e41cf47d9675c0e@64.227.124.171:26656"
             
             timeout_propose = "3s"
             timeout_propose_delta = "500ms"
