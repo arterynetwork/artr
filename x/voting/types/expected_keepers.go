@@ -2,6 +2,7 @@ package types
 
 import (
 	"github.com/arterynetwork/artr/x/delegating"
+	"github.com/arterynetwork/artr/x/noding"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/subscription"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -30,6 +31,9 @@ type UprgadeKeeper interface {
 type NodingKeeper interface {
 	AddToStaff(ctx sdk.Context, acc sdk.AccAddress) error
 	RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) error
+
+	GetParams(ctx sdk.Context) (params noding.Params)
+	SetParams(ctx sdk.Context, params noding.Params)
 }
 
 type DelegatingKeeper interface {
@@ -60,3 +64,8 @@ type signersKeeper interface {
 }
 type EarningKeeper signersKeeper
 type VpnKeeper signersKeeper
+
+type BankKeeper interface {
+	GetMinSend(ctx sdk.Context) int64
+	SetMinSend(ctx sdk.Context, minSend int64)
+}

@@ -135,21 +135,23 @@ func GetReferralsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "coins <address>",
+		Use:   "coins <address> [max_depth]",
 		Short: "Get coins in one's network total",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
 
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryCoinsInNetwork,
-					accAddress,
-				}, "/"),
-			)
+			path := []string{
+				customRoute,
+				queryRoute,
+				types.QueryCoinsInNetwork,
+				accAddress,
+			}
+			if len(args) > 1 {
+				path = append(path, args[1])
+			}
+			data, _, err := clientCtx.Query(strings.Join(path, "/"))
 
 			if err != nil {
 				fmt.Printf("could not get coins total for %s\n", accAddress)
@@ -163,21 +165,23 @@ func GetCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetDelegatedCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "delegated <address>",
+		Use:   "delegated <address> [max_depth]",
 		Short: "Get delegated coins in one's network total",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
 
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryDelegatedInNetwork,
-					accAddress,
-				}, "/"),
-			)
+			path := []string{
+				customRoute,
+				queryRoute,
+				types.QueryDelegatedInNetwork,
+				accAddress,
+			}
+			if len(args) > 1 {
+				path = append(path, args[1])
+			}
+			data, _, err := clientCtx.Query(strings.Join(path, "/"))
 
 			if err != nil {
 				fmt.Printf("could not get delegated coins total for %s\n", accAddress)

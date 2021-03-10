@@ -2,7 +2,6 @@ package delegating
 
 import (
 	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
@@ -28,6 +27,12 @@ func NewHandler(k Keeper, supplyKeeper types.SupplyKeeper) sdk.Handler {
 
 func handleMsgDelegate(ctx sdk.Context, k Keeper, supplyKeeper types.SupplyKeeper, msg MsgDelegate) (*sdk.Result, error) {
 	amount := msg.MicroCoins
+	minCoins := sdk.NewInt(k.GetParams(ctx).MinDelegate)
+
+	if amount.LT(minCoins) {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "amount is less than minimum allowed")
+	}
+
 	fee, err := util.PayTxFee(ctx, supplyKeeper, k.Logger(ctx), msg.Acc, msg.MicroCoins)
 	if err != nil {
 		return nil, err

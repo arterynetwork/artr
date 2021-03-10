@@ -1,8 +1,8 @@
 package types
 
 import (
-	"errors"
-	"fmt"
+	"github.com/pkg/errors"
+
 	"github.com/cosmos/cosmos-sdk/x/params"
 )
 
@@ -14,11 +14,14 @@ const (
 	DefaultThousandPlusPercent = 24
 	DefaultTenKPlusPercent     = 27
 	DefaultHundredKPlusPercent = 30
+
+	DefaultMinDelegate = 1000
 )
 
 // Parameter store keys
 var (
-	KeyPercentage = []byte("Percentage")
+	KeyPercentage  = []byte("Percentage")
+	KeyMinDelegate = []byte("MinDelegate")
 )
 
 // ParamKeyTable for delegating module
@@ -46,13 +49,15 @@ func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // Params - used for initializing default parameter for delegating at genesis
 type Params struct {
-	Percentage Percentage `json:"percentage" yaml:"percentage"`
+	Percentage  Percentage `json:"percentage" yaml:"percentage"`
+	MinDelegate int64      `json:"min_delegate" yaml:"min_delegate"`
 }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage) Params {
+func NewParams(percentage Percentage, minDelegate int64) Params {
 	return Params{
-		Percentage: percentage,
+		Percentage:  percentage,
+		MinDelegate: minDelegate,
 	}
 }
 
@@ -60,6 +65,7 @@ func NewParams(percentage Percentage) Params {
 func (p *Params) ParamSetPairs() params.ParamSetPairs {
 	return params.ParamSetPairs{
 		params.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
+		params.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 	}
 }
 
@@ -72,12 +78,16 @@ func DefaultParams() Params {
 			DefaultTenKPlusPercent,
 			DefaultHundredKPlusPercent,
 		),
+		DefaultMinDelegate,
 	)
 }
 
 func (p Params) Validate() error {
 	if err := validatePercentage(p.Percentage); err != nil {
-		return err
+		return errors.Wrap(err, "invalid Percentage")
+	}
+	if err := validateMinDelegate(p.MinDelegate); err != nil {
+		return errors.Wrap(err, "invalid MinDelegate")
 	}
 	return nil
 }
@@ -85,7 +95,7 @@ func (p Params) Validate() error {
 func validatePercentage(i interface{}) error {
 	p, ok := i.(Percentage)
 	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", i)
+		return errors.Errorf("invalid Percentage parameter type: %T", i)
 	}
 	if p.Minimal <= 0 {
 		return errors.New("minimal percent is non-positive")
@@ -107,6 +117,17 @@ func validatePercentage(i interface{}) error {
 	}
 	if p.TenKPlus > p.HundredKPlus {
 		return errors.New("10k+ percent is greater than 100k+ one")
+	}
+	return nil
+}
+
+func validateMinDelegate(i interface{}) error {
+	md, ok := i.(int64)
+	if !ok {
+		return errors.Errorf("invalid MinDelegate parameter type: %T", i)
+	}
+	if md < 1 {
+		return errors.New("minimal delegation must be at least 1")
 	}
 	return nil
 }

@@ -72,6 +72,7 @@ func (s *Suite) TestParams() {
 			TenKPlus:     98,
 			HundredKPlus: 99,
 		},
+		MinDelegate: 123456,
 	})
 }
 

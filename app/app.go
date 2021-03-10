@@ -319,6 +319,7 @@ func NewArteryApp(
 		app.profileKeeper,
 		app.earningKeeper,
 		app.vpnKeeper,
+		app.bankKeeper,
 	)
 
 	app.bankKeeper.AddHook("SetCoins", "update-referral",
@@ -355,6 +356,10 @@ func NewArteryApp(
 		RestoreTrafficLimit(app.storageKeeper),
 		ScheduleCompression(app.referralKeeper),
 		CountRevoking(app.accountKeeper, app.referralKeeper),
+	))
+	app.upgradeKeeper.SetUpgradeHandler("1.2.1", Chain(
+		ClearInvalidNicknames(app.accountKeeper, app.profileKeeper),
+		InitializeMinDelegate(app.delegatingKeeper, app.subspaces[delegating.ModuleName]),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

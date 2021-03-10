@@ -87,7 +87,7 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 	}
 
 	// 10k ARTR delegated
-	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr)
+	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr, 10)
 	if err != nil {
 		return
 	}
@@ -178,10 +178,11 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 
 	power := k.power(ctx, delegation.Int64())
 	if k.has(ctx, accAddr) {
-		err = k.update(ctx, accAddr, func(d *types.D) {
+		err = k.update(ctx, accAddr, func(d *types.D) (save bool) {
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
 			d.Power = power
+			return true
 		})
 	} else {
 		err = k.set(ctx, accAddr, types.NewD(power, bech32FromCryptoPubKey(key)))
@@ -195,9 +196,14 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 }
 
 func (k Keeper) SwitchOff(ctx sdk.Context, accAddr sdk.AccAddress) error {
-	err := k.update(ctx, accAddr, func(d *types.D) {
+	err := k.update(ctx, accAddr, func(d *types.D) (save bool) {
+		if d.Power == 0 && !d.Status {
+			return false
+		}
+
 		d.Power = 0
 		d.Status = false
+		return true
 	})
 	if err != nil {
 		return err
@@ -311,9 +317,10 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 					PubKey: abciPubKeyFromBech32(data.LastPubKey),
 					Power:  0,
 				})
-				if err := k.update(ctx, addr, func(d *types.D) {
+				if err := k.update(ctx, addr, func(d *types.D) (save bool) {
 					d.LastPower = 0
 					d.LastPubKey = ""
+					return true
 				}); err != nil {
 					defer it.Close()
 					return nil, err
@@ -372,9 +379,14 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			PubKey: abciPubKeyFromBech32(d.PubKey),
 			Power:  d.Power,
 		})
-		if err := k.update(ctx, d.Account, func(d *types.D) {
+		if err := k.update(ctx, d.Account, func(d *types.D) (save bool) {
+			if d.LastPower == d.Power && d.LastPubKey == d.PubKey {
+				return false
+			}
+
 			d.LastPower = d.Power
 			d.LastPubKey = d.PubKey
+			return true
 		}); err != nil {
 			return nil, err
 		}
@@ -386,9 +398,14 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 				PubKey: abciPubKeyFromBech32(d.LastPubKey),
 				Power:  0,
 			})
-			if err := k.update(ctx, d.Account, func(d *types.D) {
+			if err := k.update(ctx, d.Account, func(d *types.D) (save bool) {
+				if d.LastPower == 0 && d.LastPubKey == "" {
+					return false
+				}
+
 				d.LastPower = 0
 				d.LastPubKey = ""
+				return true
 			}); err != nil {
 				return nil, err
 			}
@@ -433,6 +450,27 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) 
 		}
 		addr := sdk.AccAddress(it.Key())
 		result = append(result, types.GenesisValidatorFromD(addr, value, proposed[addr.String()]))
+	}
+
+	return result, nil
+}
+
+// GetActiveValidatorList is just like GetActiveValidators but returns sccount addresses only without any detail.
+func (k Keeper) GetActiveValidatorList(ctx sdk.Context) ([]sdk.AccAddress, error) {
+	var result []sdk.AccAddress
+	store := ctx.KVStore(k.dataStoreKey)
+	it := store.Iterator(nil, nil)
+	defer it.Close()
+	for ; it.Valid(); it.Next() {
+		var value types.D
+		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
+			return nil, err
+		}
+		if !value.IsActive() {
+			continue
+		}
+		addr := sdk.AccAddress(it.Key())
+		result = append(result, addr)
 	}
 
 	return result, nil
@@ -493,7 +531,11 @@ func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Valid
 func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 	p := k.GetParams(ctx)
 
-	return k.update(ctx, acc, func(d *types.D) {
+	return k.update(ctx, acc, func(d *types.D) (save bool) {
+		if d.Jailed {
+			return false
+		}
+
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
@@ -508,19 +550,21 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 				sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
 			))
 		}
+		return true
 	})
 }
 
 // MarkTick - to be called every time the validator signs a block successfully.
 func (k Keeper) MarkTick(ctx sdk.Context, acc sdk.AccAddress) error {
-	return k.update(ctx, acc, func(d *types.D) {
+	return k.update(ctx, acc, func(d *types.D) (save bool) {
 		d.MissedBlocksInRow = 0
 		d.OkBlocksInRow++
+		return true
 	})
 }
 
 func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci.Evidence) error {
-	return k.update(ctx, acc, func(d *types.D) {
+	return k.update(ctx, acc, func(d *types.D) (save bool) {
 		var eventType string
 		d.Infractions = append(d.Infractions, evidence)
 		if len(d.Infractions) > 1 {
@@ -535,6 +579,7 @@ func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci
 			sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
 			sdk.NewAttribute(types.AttributeKeyEvidences, fmt.Sprintf("%+v", d.Infractions)),
 		))
+		return true
 	})
 }
 
@@ -574,7 +619,10 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 
 func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 	k.addProposerToIndex(ctx, ctx.BlockHeight()-1, acc)
-	if err := k.update(ctx, acc, func(d *types.D) { d.ProposedCount++ }); err != nil {
+	if err := k.update(ctx, acc, func(d *types.D) (save bool) {
+		d.ProposedCount++
+		return true
+	}); err != nil {
 		return err
 	}
 
@@ -599,7 +647,14 @@ func (k Keeper) GetBlockProposer(ctx sdk.Context, height int64) (sdk.AccAddress,
 
 func (k Keeper) AddToStaff(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 	if k.has(ctx, acc) {
-		err = k.update(ctx, acc, func(d *types.D) { d.Staff = true })
+		err = k.update(ctx, acc, func(d *types.D) (save bool) {
+			if d.Staff {
+				return false
+			}
+
+			d.Staff = true
+			return true
+		})
 	} else {
 		err = k.set(ctx, acc, types.D{Staff: true})
 	}
@@ -612,10 +667,15 @@ func (k Keeper) RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) (err error)
 	}
 
 	var isActive bool
-	err = k.update(ctx, acc, func(d *types.D) {
+	err = k.update(ctx, acc, func(d *types.D) (save bool) {
 		isActive = d.Staff && d.IsActive()
 
+		if !d.Staff {
+			return false
+		}
+
 		d.Staff = false
+		return true
 	})
 	if err != nil {
 		return err
@@ -685,7 +745,7 @@ func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.D) error {
 	return nil
 }
 
-func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.D)) error {
+func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.D) (save bool)) error {
 	var (
 		store      = ctx.KVStore(k.dataStoreKey)
 		keyBytes   = []byte(acc)
@@ -701,7 +761,9 @@ func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *typ
 		return err
 	}
 
-	callback(&value)
+	if !callback(&value) {
+		return nil
+	}
 	valueBytes, err = k.cdc.MarshalBinaryLengthPrefixed(value)
 	if err != nil {
 		return err

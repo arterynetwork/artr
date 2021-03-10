@@ -1,13 +1,16 @@
 package profile
 
 import (
-	"github.com/arterynetwork/artr/x/profile/types"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/x/auth"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+
+	"github.com/arterynetwork/artr/x/profile/types"
 )
 
 // NewHandler creates an sdk.Handler for all the profile type messages
@@ -41,7 +44,9 @@ func handleMsgSetProfile(ctx sdk.Context, keeper Keeper, msg types.MsgSetProfile
 		}
 	}
 
-	keeper.SetProfile(ctx, msg.Address, msg.Profile)
+	if err := keeper.SetProfile(ctx, msg.Address, msg.Profile); err != nil {
+		return new(sdk.Result), errors.Wrap(err, "cannot set profile")
+	}
 	return &sdk.Result{}, nil
 }
 
@@ -93,7 +98,9 @@ func handleMsgCreateAccount(ctx sdk.Context, keeper Keeper, msg types.MsgCreateA
 		}
 	}
 
-	keeper.CreateAccount(ctx, msg.NewAccount, msg.ReferralAddress)
+	if err := keeper.CreateAccount(ctx, msg.NewAccount, msg.ReferralAddress); err != nil {
+		return new(sdk.Result), errors.Wrap(err, "cannot create account")
+	}
 
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }
@@ -146,7 +153,9 @@ func handleMsgCreateAccountWithProfile(ctx sdk.Context, keeper Keeper, msg types
 		}
 	}
 
-	keeper.CreateAccountWithProfile(ctx, msg.NewAccount, msg.ReferralAddress, msg.Profile)
+	if err := keeper.CreateAccountWithProfile(ctx, msg.NewAccount, msg.ReferralAddress, msg.Profile); err != nil {
+		return new(sdk.Result), errors.Wrap(err, "cannot create account")
+	}
 
 	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

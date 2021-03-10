@@ -364,23 +364,33 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 // GetCoinsInNetwork returns total amount of coins (delegated and not) in a person's network
-// (at levels that are open according the person's current status). Own coins inclusive.
-func (k Keeper) GetCoinsInNetwork(ctx sdk.Context, acc sdk.AccAddress) (sdk.Int, error) {
+// (at levels that are open according the person's current status, but no deeper than `maxDepth` levels down).
+// Own coins inclusive.
+func (k Keeper) GetCoinsInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error) {
 	data, err := k.get(ctx, acc)
 	if err != nil {
 		return sdk.Int{}, err
 	}
-	return data.CoinsAtLevelsUpTo(data.Status.LinesOpened()), nil
+	d := data.Status.LinesOpened()
+	if d > maxDepth {
+		d = maxDepth
+	}
+	return data.CoinsAtLevelsUpTo(d), nil
 }
 
 // GetDelegatedInNetwork returns total amount of delegated coins in a person's network
-// (at levels that are open according the person's current status). Own coins inclusive.
-func (k Keeper) GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress) (sdk.Int, error) {
+// (at levels that are open according the person's current status, but no deeper than `maxDepth` levels down).
+// Own coins inclusive.
+func (k Keeper) GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error) {
 	data, err := k.get(ctx, acc)
 	if err != nil {
 		return sdk.Int{}, err
 	}
-	return data.DelegatedAtLevelsUpTo(data.Status.LinesOpened()), nil
+	d := data.Status.LinesOpened()
+	if d > maxDepth {
+		d = maxDepth
+	}
+	return data.DelegatedAtLevelsUpTo(d), nil
 }
 
 func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc sdk.AccAddress) error {
@@ -611,9 +621,11 @@ func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent sdk.AccAdd
 	}
 
 	params := k.GetParams(ctx)
-	err = k.supplyKeeper.SendCoinsFromAccountToModule(ctx, subject, auth.FeeCollectorName, util.UartrsUint64(params.TransitionCost))
-	if err != nil {
-		return errors.Wrap(err, "cannot pay commission")
+	if params.TransitionCost > 0 {
+		err = k.supplyKeeper.SendCoinsFromAccountToModule(ctx, subject, auth.FeeCollectorName, util.UartrsUint64(params.TransitionCost))
+		if err != nil {
+			return errors.Wrap(err, "cannot pay commission")
+		}
 	}
 
 	r.Transition = newParent

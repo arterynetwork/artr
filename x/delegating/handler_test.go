@@ -71,27 +71,8 @@ func (s *HandlerSuite) TestDelegate_Fee() {
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 
-	// below 1 uARTR fee
-
-	msg = types.NewMsgDelegate(user, sdk.NewInt(333))
-	_, err = s.handler(s.ctx, msg)
-	s.NoError(err)
-
-	s.Equal(
-		int64(3_000000), // 3(initial) +nothing
-		s.supplyKeeper.GetModuleAccount(s.ctx, auth.FeeCollectorName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
-	)
-	s.Equal(
-		int64(847_450284), // = 847.45(initial) + 0.000333 * 85%
-		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigDelegatedDenom).Int64(),
-	)
-	s.Equal(
-		int64(998_999_999667), // 999000(initial) - 0.000333
-		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
-	)
-
 	// maximal fee
-	msg = types.NewMsgDelegate(user, sdk.NewInt(998_999_999667))
+	msg = types.NewMsgDelegate(user, sdk.NewInt(999_000_000000))
 	_, err = s.handler(s.ctx, msg)
 	s.NoError(err)
 
@@ -100,11 +81,24 @@ func (s *HandlerSuite) TestDelegate_Fee() {
 		s.supplyKeeper.GetModuleAccount(s.ctx, auth.FeeCollectorName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
 	s.Equal(
-		int64(849_988_950002), // = 847.450284(initial) + (998999.999667 - 10) * 85%
+		int64(849_988_950000), // = 847.45(initial) + (999000 - 10) * 85%
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigDelegatedDenom).Int64(),
 	)
 	s.Equal(
 		int64(0),
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
 	)
+}
+
+func (s *HandlerSuite) TestDelegate_BelowMinimum() {
+	user := app.DefaultGenesisUsers["root"]
+	s.Equal(
+		int64(1_000_000_000000), // (from genesis)
+		s.accKeeper.GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
+	)
+
+	// < 0.001 ARTR
+	msg := types.NewMsgDelegate(user, sdk.NewInt(999))
+	_, err := s.handler(s.ctx, msg)
+	s.Error(err)
 }

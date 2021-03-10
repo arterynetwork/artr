@@ -19,7 +19,6 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	// Group schedule queries under a subcommand
 	referralQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
-		Aliases:                    []string{"ref", "r"},
 		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,

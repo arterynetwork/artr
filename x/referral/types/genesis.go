@@ -73,7 +73,6 @@ type GenesisState struct {
 	Transitions      []Transition             `json:"transitions,omitempty"`
 }
 
-
 // NewGenesisState creates a new GenesisState object
 func NewGenesisState(
 	params Params,

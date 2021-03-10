@@ -1,6 +1,8 @@
 package types
 
-// You can see how they are constructed below:
+import sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
 var (
-//ErrInvalid = sdkerrors.Register(ModuleName, 1, "custom error message")
+	ErrNicknamePrefix       = sdkerrors.Register(ModuleName, 1, "nickname cannot start with 'ARTR-' prefix")
+	ErrNicknameAlreadyInUse = sdkerrors.Register(ModuleName, 2, "nickname is already in use")
 )

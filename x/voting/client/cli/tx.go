@@ -54,6 +54,9 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		GetCmdVpnCurrentSignerAdd(cdc),
 		GetCmdVpnCurrentSignerRemove(cdc),
 		getCmdAccountTransitionPrice(cdc),
+		getCmdSetMinSend(cdc),
+		getCmdSetMinDelegate(cdc),
+		getCmdSetMaxValidators(cdc),
 		util.LineBreak(),
 		GetCmdVote(cdc),
 	)...)
@@ -770,7 +773,117 @@ func getCmdAccountTransitionPrice(cdc *codec.Codec) *cobra.Command {
 	}
 }
 
-// GetCmdAddGovernor is the CLI command for creating AddGovernor proposal
+func getCmdSetMinSend(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-min-send <amount> <proposal name>",
+		Example: `artrcli tx voting set-min-send 1000 "0.001 ARTR minimum" --from ivan`,
+		Aliases: []string{"set_min_send", "sms"},
+		Short:   "Propose to change minimum amount allowed to send (in uARTR)",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var n int64
+			{
+				var err error
+				n, err = strconv.ParseInt(args[0], 0, 64)
+				if err != nil {
+					return err
+				}
+			}
+
+			params := types.MinAmountProposalParams{MinAmount: n}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeMinSend,
+				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdSetMinDelegate(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-min-delegate <amount> <proposal name>",
+		Example: `artrcli tx voting set-min-delegate 1000 "0.001 ARTR minimum" --from ivan`,
+		Aliases: []string{"set_min_delegate", "smd"},
+		Short:   "Propose to change minimum amount allowed to delegate (in uARTR)",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var n int64
+			{
+				var err error
+				n, err = strconv.ParseInt(args[0], 0, 64)
+				if err != nil {
+					return err
+				}
+			}
+
+			params := types.MinAmountProposalParams{MinAmount: n}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeMinDelegate,
+				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdSetMaxValidators(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-max-validators <count> <proposal name>",
+		Example: `artrcli tx voting set-max-validators 200 "let's double the count'" --from ivan`,
+		Aliases: []string{"set_max_validators", "smv"},
+		Short:   "Propose to change maximum validator count",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var count uint16
+			{
+				n, err := strconv.ParseUint(args[0], 0, 16)
+				if err != nil {
+					return err
+				}
+				count = uint16(n)
+			}
+
+			params := types.ShortCountProposalParams{Count: count}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeMaxValidators,
+				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
 func GetCmdVote(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
 		Use:   "vote [agree/disagree]",

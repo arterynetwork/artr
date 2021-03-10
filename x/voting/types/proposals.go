@@ -44,6 +44,12 @@ const (
 	ProposalTypeVpnCurrentSignerRemove = 21
 	// Стоимость переноса аккаунта к другому пригласившему
 	ProposalTypeTransitionCost = 22
+	// Минимальная сумма перевода
+	ProposalTypeMinSend = 23
+	// Минимальная сумма делегирования
+	ProposalTypeMinDelegate = 24
+	// Максимальное количество валидаторов
+	ProposalTypeMaxValidators = 25
 )
 
 // EmptyProposalParams
@@ -129,4 +135,28 @@ type SoftwareUpgradeProposalParams struct {
 
 func (p SoftwareUpgradeProposalParams) String() string {
 	return fmt.Sprintf("Name: %s; Height: %d; Binaries: %s", p.Name, p.Height, p.Info)
+}
+
+// MinAmountProposalParams
+
+var _ ProposalParams = &MinAmountProposalParams{}
+
+type MinAmountProposalParams struct {
+	MinAmount int64 `json:"min_amount" yaml:"min_amount"`
+}
+
+func (params MinAmountProposalParams) String() string {
+	return fmt.Sprintf("MinAmount: %d", params.MinAmount)
+}
+
+// ShortCountProposalParams
+
+var _ ProposalParams = &ShortCountProposalParams{}
+
+type ShortCountProposalParams struct {
+	Count uint16 `json:"count" yaml:"count"`
+}
+
+func (params ShortCountProposalParams) String() string {
+	return fmt.Sprintf("Count: %d", params.Count)
 }

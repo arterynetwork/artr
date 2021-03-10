@@ -218,11 +218,11 @@ func (s *Suite) TestGetCoinsInNetwork() {
 		s.Nil(s.k.SetActive(s.ctx, accounts[i], true))
 	}
 
-	res, err := s.k.GetCoinsInNetwork(s.ctx, accounts[0])
+	res, err := s.k.GetCoinsInNetwork(s.ctx, accounts[0], 10)
 	s.Nil(err, "GetCoinsInNetwork")
 	s.Equal(uint64(0x00CFF3FF), res.Uint64(), "GetCoinsInNetwork")
 
-	res, err = s.k.GetDelegatedInNetwork(s.ctx, accounts[0])
+	res, err = s.k.GetDelegatedInNetwork(s.ctx, accounts[0], 10)
 	s.Nil(err, "GetDelegatedInNetwork")
 	s.Equal(uint64(0x008AA2AA), res.Uint64(), "GetDelegatedInNetwork")
 }
@@ -857,13 +857,13 @@ func (s Suite) TestTransition() {
 	s.NoError(err, "get pending transition")
 	s.Nil(acc, "pending transition")
 
-	for i, n := range []int64 {
+	for i, n := range []int64{
 		35_000_000000,
 		14_000_000000, 20_000_000000,
 		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
@@ -915,13 +915,13 @@ func (s Suite) TestTransition_Decline() {
 	s.NoError(err, "get pending transition")
 	s.Nil(acc, "pending transition")
 
-	for i, n := range []int64 {
+	for i, n := range []int64{
 		35_000_000000,
 		17_000_000000, 17_000_000000,
 		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
@@ -975,13 +975,13 @@ func (s Suite) TestTransition_Timeout() {
 	s.NoError(err, "get pending transition")
 	s.Nil(acc, "pending transition")
 
-	for i, n := range []int64 {
+	for i, n := range []int64{
 		35_000_000000,
 		17_000_000000, 17_000_000000,
 		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
@@ -1015,7 +1015,6 @@ func (s Suite) TestTransition_Validate_OldParent() {
 		"transition is invalid: destination address is already subject's referrer",
 	)
 }
-
 
 type StatusUpgradeSuite struct {
 	BaseSuite

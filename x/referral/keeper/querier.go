@@ -95,7 +95,16 @@ func queryCoins(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
 	}
-	coins, err := k.GetCoinsInNetwork(ctx, addr)
+
+	var d = 10
+	if len(path) > 1 {
+		d, err = strconv.Atoi(path[1])
+		if err != nil {
+			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
+		}
+	}
+
+	coins, err := k.GetCoinsInNetwork(ctx, addr, d)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +120,16 @@ func queryDelegated(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
 	}
-	coins, err := k.GetDelegatedInNetwork(ctx, addr)
+
+	var d = 10
+	if len(path) > 1 {
+		d, err = strconv.Atoi(path[1])
+		if err != nil {
+			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
+		}
+	}
+
+	coins, err := k.GetDelegatedInNetwork(ctx, addr, d)
 	if err != nil {
 		return nil, err
 	}

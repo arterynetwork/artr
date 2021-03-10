@@ -3,18 +3,21 @@
 package voting_test
 
 import (
-	"github.com/arterynetwork/artr/x/voting/types"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
-	"github.com/stretchr/testify/suite"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/upgrade"
 
 	"github.com/arterynetwork/artr/app"
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/noding"
 	"github.com/arterynetwork/artr/x/voting"
+	"github.com/arterynetwork/artr/x/voting/types"
 )
 
 func TestVotingHandler(t *testing.T) {
@@ -138,6 +141,63 @@ func (s *HandlerSuite) TestCancelSoftwareUpgrade() {
 
 	_, ok := s.app.GetUpgradeKeeper().GetUpgradePlan(s.ctx)
 	s.False(ok)
+}
+
+func (s *HandlerSuite) TestMaxValidators() {
+	msg := types.NewMsgCreateProposal(
+		app.DefaultGenesisUsers["user1"],
+		"Счастье, для всех, даром",
+		types.ProposalTypeMaxValidators,
+		types.ShortCountProposalParams{
+			Count: 142,
+		},
+	)
+	_, err := s.handler(s.ctx, msg)
+	s.NoError(err)
+	s.voteFor()
+
+	s.Equal(
+		noding.Params{
+			MaxValidators: 142,
+			JailAfter:     2,
+			UnjailAfter:   util.BlocksOneHour,
+		},
+		s.app.GetNodingKeeper().GetParams(s.ctx),
+	)
+}
+
+func (s *HandlerSuite) TestMinSend() {
+	msg := types.NewMsgCreateProposal(
+		app.DefaultGenesisUsers["user1"],
+		"entire coins only",
+		types.ProposalTypeMinSend,
+		types.MinAmountProposalParams{MinAmount: 1_000000},
+	)
+	_, err := s.handler(s.ctx, msg)
+	s.NoError(err)
+	s.voteFor()
+
+	s.Equal(
+		int64(1_000000),
+		s.app.GetBankKeeper().GetMinSend(s.ctx),
+	)
+}
+
+func (s *HandlerSuite) TestMinDelegate() {
+	msg := types.NewMsgCreateProposal(
+		app.DefaultGenesisUsers["user1"],
+		"entire coins only",
+		types.ProposalTypeMinDelegate,
+		types.MinAmountProposalParams{MinAmount: 1_000000},
+	)
+	_, err := s.handler(s.ctx, msg)
+	s.NoError(err)
+	s.voteFor()
+
+	s.Equal(
+		int64(1_000000),
+		s.app.GetDelegatingKeeper().GetParams(s.ctx).MinDelegate,
+	)
 }
 
 func (s *HandlerSuite) voteFor() {

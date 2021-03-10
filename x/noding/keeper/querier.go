@@ -31,6 +31,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryOperator(ctx, k, path[1:])
 		case types.QueryParams:
 			return queryParams(ctx, k)
+		case types.QuerySwitchedOn:
+			return querySwitchedOn(ctx, k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown noding query endpoint")
 		}
@@ -157,4 +159,18 @@ func queryOperator(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func querySwitchedOn(ctx sdk.Context, k Keeper) ([]byte, error) {
+	list, err := k.GetActiveValidatorList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := codec.MarshalJSONIndent(types.ModuleCdc, list)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+
+	return res, nil
 }

@@ -27,6 +27,9 @@ var (
 
 	// variable aliases
 	ModuleCdc = types.ModuleCdc
+
+	ErrNicknamePrefix       = types.ErrNicknamePrefix
+	ErrNicknameAlreadyInUse = types.ErrNicknameAlreadyInUse
 )
 
 type (

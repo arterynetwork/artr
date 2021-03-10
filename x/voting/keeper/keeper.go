@@ -27,6 +27,7 @@ type Keeper struct {
 	profileKeeper      types.ProfileKeeper
 	earningKeeper      types.EarningKeeper
 	vpnKeeper          types.VpnKeeper
+	bankKeeper         types.BankKeeper
 }
 
 // NewKeeper creates a voting keeper
@@ -41,6 +42,7 @@ func NewKeeper(
 	profileKeeper types.ProfileKeeper,
 	earningKeeper types.EarningKeeper,
 	vpnKeeper types.VpnKeeper,
+	bankKeeper types.BankKeeper,
 ) Keeper {
 	keeper := Keeper{
 		storeKey:           key,
@@ -55,6 +57,7 @@ func NewKeeper(
 		profileKeeper:      profileKeeper,
 		earningKeeper:      earningKeeper,
 		vpnKeeper:          vpnKeeper,
+		bankKeeper:         bankKeeper,
 	}
 	return keeper
 }
@@ -272,6 +275,16 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p := k.referralKeeper.GetParams(ctx)
 			p.TransitionCost = uint64(proposal.Params.(types.PriceProposalParams).Price)
 			k.referralKeeper.SetParams(ctx, p)
+		case types.ProposalTypeMinSend:
+			k.bankKeeper.SetMinSend(ctx, proposal.Params.(types.MinAmountProposalParams).MinAmount)
+		case types.ProposalTypeMinDelegate:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.MinDelegate = proposal.Params.(types.MinAmountProposalParams).MinAmount
+			k.delegatingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeMaxValidators:
+			p := k.nodingKeeper.GetParams(ctx)
+			p.MaxValidators = proposal.Params.(types.ShortCountProposalParams).Count
+			k.nodingKeeper.SetParams(ctx, p)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

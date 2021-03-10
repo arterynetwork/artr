@@ -61,7 +61,7 @@ func (s GenSuite) TestTransition_Declined() {
 
 func (s GenSuite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
-		CompanyAccounts:   referral.CompanyAccounts{
+		CompanyAccounts: referral.CompanyAccounts{
 			TopReferrer:     app.DefaultGenesisUsers["user1"],
 			ForSubscription: app.DefaultGenesisUsers["user2"],
 			PromoBonuses:    app.DefaultGenesisUsers["user3"],
@@ -69,10 +69,10 @@ func (s GenSuite) TestParams() {
 			LeaderBonuses:   app.DefaultGenesisUsers["user5"],
 			ForDelegating:   app.DefaultGenesisUsers["user6"],
 		},
-		DelegatingAward:   referral.NetworkAward{
+		DelegatingAward: referral.NetworkAward{
 			Network: [10]util.Fraction{
-				util.Percent(1), 
-				util.Percent(2), 
+				util.Percent(1),
+				util.Percent(2),
 				util.Percent(3),
 				util.Percent(4),
 				util.Percent(5),
@@ -99,7 +99,7 @@ func (s GenSuite) TestParams() {
 			},
 			Company: util.Permille(13),
 		},
-		TransitionCost:    49_000000,
+		TransitionCost: 49_000000,
 	})
 	s.checkExportImport()
 }

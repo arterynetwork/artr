@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -136,11 +138,14 @@ func (k Keeper) removeProfileAccountByCardNumber(ctx sdk.Context, cardNumber uin
 	store.Delete(buf)
 }
 
-func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.Profile) {
+func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.Profile) error {
 	// 1 - load current profile
 	oldProfile := k.GetProfile(ctx, addr)
 
 	nickname := strings.TrimSpace(profile.Nickname)
+	if err := k.ValidateProfileNickname(ctx, addr, nickname); err != nil {
+		return errors.Wrap(err, "invalid nickname")
+	}
 
 	// If old profile filled
 	if oldProfile != nil {
@@ -188,20 +193,42 @@ func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.P
 		acc = k.AccountKeeper.NewAccountWithAddress(ctx, addr)
 		k.AccountKeeper.SetAccount(ctx, acc)
 	}
+
+	return nil
 }
 
-func (k Keeper) CreateAccount(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress) {
-	k.CreateAccountWithProfile(ctx, addr, refAddr, types.Profile{})
+func (k Keeper) ValidateProfileNickname(ctx sdk.Context, addr sdk.AccAddress, nickname string) error {
+	if len(nickname) == 0 {
+		return nil
+	}
+
+	if strings.HasPrefix(strings.ToTitle(nickname), "ARTR-") {
+		return types.ErrNicknamePrefix
+	}
+
+	namesake := k.GetProfileAccountByNickname(ctx, nickname)
+	if namesake != nil && !namesake.Equals(addr) {
+		return types.ErrNicknameAlreadyInUse
+	}
+
+	return nil
 }
 
-func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress, profile types.Profile) {
+func (k Keeper) CreateAccount(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress) error {
+	return k.CreateAccountWithProfile(ctx, addr, refAddr, types.Profile{})
+}
+
+func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress, profile types.Profile) error {
 	acc := k.AccountKeeper.NewAccountWithAddress(ctx, addr)
 	acc.SetCoins(sdk.NewCoins(sdk.NewCoin(types.MainDenom, sdk.NewInt(0))))
 	k.AccountKeeper.SetAccount(ctx, acc)
 	k.ReferralsKeeper.AppendChild(ctx, refAddr, addr)
 	k.ReferralsKeeper.ScheduleCompression(ctx, addr, ctx.BlockHeight()+referral.CompressionPeriod)
 	profile.CardNumber = k.CardNumberByAccountNumber(ctx, acc.GetAccountNumber())
-	k.SetProfile(ctx, addr, profile)
+	if err := k.SetProfile(ctx, addr, profile); err != nil {
+		return errors.Wrap(err, "cannot set profile")
+	}
+	return nil
 }
 
 func (k Keeper) CardNumberByAccountNumber(ctx sdk.Context, accNumber uint64) uint64 {

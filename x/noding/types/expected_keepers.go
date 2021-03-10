@@ -19,7 +19,7 @@ type ParamSubspace interface {
 
 type ReferralKeeper interface {
 	GetStatus(ctx sdk.Context, acc sdk.AccAddress) (referral.Status, error)
-	GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress) (sdk.Int, error)
+	GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error)
 }
 
 type ScheduleKeeper interface {

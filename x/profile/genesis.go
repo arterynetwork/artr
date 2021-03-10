@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"github.com/pkg/errors"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -11,7 +13,9 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 	for _, record := range data.ProfileRecords {
 		acc := k.AccountKeeper.GetAccount(ctx, record.Address)
 		record.Profile.CardNumber = k.CardNumberByAccountNumber(ctx, acc.GetAccountNumber())
-		k.SetProfile(ctx, record.Address, record.Profile)
+		if err := k.SetProfile(ctx, record.Address, record.Profile); err != nil {
+			panic(errors.Wrapf(err, "invalid profile %s", record.Address))
+		}
 	}
 }
 

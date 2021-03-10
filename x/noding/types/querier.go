@@ -2,12 +2,13 @@ package types
 
 // Query endpoints supported by the noding querier
 const (
-	QueryStatus   = "status"
-	QueryInfo     = "info"
-	QueryProposer = "proposer"
-	QueryAllowed  = "allowed"
-	QueryOperator = "operator"
-	QueryParams   = "params"
+	QueryStatus     = "status"
+	QueryInfo       = "info"
+	QueryProposer   = "proposer"
+	QueryAllowed    = "allowed"
+	QueryOperator   = "operator"
+	QueryParams     = "params"
+	QuerySwitchedOn = "switched-on"
 
 	QueryOperatorFormatHex    = "hex"
 	QueryOperatorFormatBech32 = "bech32"

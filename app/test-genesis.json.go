@@ -832,7 +832,8 @@ const defaultGenesis = `{
           "thousand_plus": "24",
           "ten_k_plus": "27",
           "hundred_k_plus": "30"
-        }
+        },
+        "min_delegate": "1000"
       }
     },
     "earning": {

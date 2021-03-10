@@ -11,6 +11,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/upgrade"
 
 	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/delegating"
+	dTypes "github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/profile"
 	"github.com/arterynetwork/artr/x/referral"
 	refTypes "github.com/arterynetwork/artr/x/referral/types"
 	"github.com/arterynetwork/artr/x/storage"
@@ -99,6 +102,63 @@ func InitializeTransitionCost(k referral.Keeper, paramspace params.Subspace) upg
 			}
 		}
 		logger.Debug("Finished InitializeTransitionCost", "params", pz)
+		k.SetParams(ctx, pz)
+	}
+}
+
+func ClearInvalidNicknames(ak auth.AccountKeeper, pk profile.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		originals := make(map[string]sdk.AccAddress)
+
+		ak.IterateAccounts(ctx, func(acc authTypes.Account) (stop bool) {
+			address := acc.GetAddress()
+			p := pk.GetProfile(ctx, address)
+			if p == nil {
+				return
+			}
+			nickname := p.Nickname
+
+			if _, ok := originals[nickname]; !ok {
+				if err := pk.ValidateProfileNickname(ctx, address, nickname); err == nil {
+					return
+				} else if err == profile.ErrNicknameAlreadyInUse {
+					originals[nickname] = pk.GetProfileAccountByNickname(ctx, nickname)
+				}
+			}
+
+			p.Nickname = ""
+			if err := pk.SetProfile(ctx, address, *p); err != nil {
+				// This cannot happen because the nickname is empty.
+				panic(err)
+			}
+
+			return
+		})
+
+		for nick, address := range(originals) {
+			p := pk.GetProfile(ctx, address)
+			p.Nickname = nick
+			if err := pk.SetProfile(ctx, address, *p); err != nil {
+				// This cannot happen because we've just cleaned all up.
+				panic(err)
+			}
+		}
+	}
+}
+
+func InitializeMinDelegate(k delegating.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting InitializeMinDelegate...")
+		var pz delegating.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, dTypes.KeyMinDelegate) {
+				pz.MinDelegate = dTypes.DefaultMinDelegate
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		logger.Debug("Finished InitializeMinDelegate", "params", pz)
 		k.SetParams(ctx, pz)
 	}
 }

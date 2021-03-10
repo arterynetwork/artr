@@ -76,6 +76,30 @@ func (s *Suite) TestCreateAccountWithProfile() {
 	}
 }
 
+func (s *Suite) TestCreateAccountWithProfile_NonUniqueNick() {
+	_, _, addr := authtypes.KeyTestPubAddr()
+	data := types.Profile{
+		Nickname:   "v_pupkin",
+		CardNumber: 12345,
+	}
+	s.NoError(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data))
+
+	_, _, addr = authtypes.KeyTestPubAddr()
+	s.Error(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user2"], data))
+}
+
+func (s *Suite) TestCreateAccountWithProfile_NickLikeCard() {
+	_, _, addr := authtypes.KeyTestPubAddr()
+	data := types.Profile{
+		Nickname:   "ARTR-1122-3344-5566",
+		CardNumber: 12345,
+	}
+	s.Error(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data))
+
+	data.Nickname = "artr-1122-3344-5566"
+	s.Error(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data))
+}
+
 func (s *Suite) TestCreateAccount() {
 	_, _, addr := authtypes.KeyTestPubAddr()
 	s.k.CreateAccount(s.ctx, addr, app.DefaultGenesisUsers["user1"])

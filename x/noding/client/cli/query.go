@@ -35,6 +35,8 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetCmdIsAllowed(queryRoute, cdc),
 			GetCmdOperator(queryRoute, cdc),
 			util.LineBreak(),
+			getCmdSwitchedOn(queryRoute, cdc),
+			util.LineBreak(),
 			getCmdParams(queryRoute, cdc),
 		)...,
 	)
@@ -207,9 +209,9 @@ func GetCmdOperator(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use: "params",
+		Use:   "params",
 		Short: "Get the module params",
-		Args: cobra.NoArgs,
+		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 
@@ -226,6 +228,34 @@ func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			}
 
 			var out types.Params
+			cdc.MustUnmarshalJSON(res, &out)
+			return cliCtx.PrintOutput(out)
+		},
+	}
+}
+
+func getCmdSwitchedOn(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "switched-on",
+		Aliases: []string{"so", "on"},
+		Short:   "Get the list of validators that are switched on and not jailed",
+		Args:    cobra.NoArgs,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QuerySwitchedOn,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Println("could not get a list")
+				return err
+			}
+
+			var out []sdk.AccAddress
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
 		},
