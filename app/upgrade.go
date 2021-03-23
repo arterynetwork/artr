@@ -21,6 +21,14 @@ import (
 
 func NopUpgradeHandler(_ sdk.Context, _ upgrade.Plan) {}
 
+func Chain(handlers ...upgrade.UpgradeHandler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, plan upgrade.Plan) {
+		for _, handler := range handlers {
+			handler(ctx, plan)
+		}
+	}
+}
+
 func CliWarningUpgradeHandler(_ sdk.Context, _ upgrade.Plan) {
 	fmt.Println(`
 ╔═════════════════════════════════════════════════════════════╗
@@ -135,7 +143,7 @@ func ClearInvalidNicknames(ak auth.AccountKeeper, pk profile.Keeper) upgrade.Upg
 			return
 		})
 
-		for nick, address := range(originals) {
+		for nick, address := range originals {
 			p := pk.GetProfile(ctx, address)
 			p.Nickname = nick
 			if err := pk.SetProfile(ctx, address, *p); err != nil {
@@ -163,10 +171,93 @@ func InitializeMinDelegate(k delegating.Keeper, paramspace params.Subspace) upgr
 	}
 }
 
-func Chain(handlers ...upgrade.UpgradeHandler) upgrade.UpgradeHandler {
-	return func(ctx sdk.Context, plan upgrade.Plan) {
-		for _, handler := range handlers {
-			handler(ctx, plan)
+func RebuildTeamCoinsCache(rk referral.Keeper, ak auth.AccountKeeper) upgrade.UpgradeHandler {
+	type teamCoinsCacheData struct {
+		total     []sdk.Int
+		delegated []sdk.Int
+		parent    string
+	}
+
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting RebuildTeamCoinsCache...")
+		data := make(map[string]teamCoinsCacheData, 100_000)
+
+		logger.Debug("    gathering data...")
+		rk.Iterate(ctx, func(acc sdk.AccAddress, r *referral.DataRecord) (changed, checkForStatusUpdate bool) {
+			key := acc.String()
+			coins := ak.GetAccount(ctx, acc).GetCoins()
+			var parent string
+			if r.Referrer != nil {
+				parent = r.Referrer.String()
+			}
+
+			data[key] = teamCoinsCacheData{
+				total: []sdk.Int{
+					coins.AmountOf(util.ConfigMainDenom).Add(coins.AmountOf(util.ConfigDelegatedDenom)).Add(coins.AmountOf(util.ConfigRevokingDenom)),
+					sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+					sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+				},
+				delegated: []sdk.Int{
+					coins.AmountOf(util.ConfigDelegatedDenom),
+					sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+					sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+				},
+				parent: parent,
+			}
+			return false, false
+		})
+		logger.Debug("    calculating...", "count", len(data))
+		for key, x := range data {
+			c := x.total[0]
+			d := x.delegated[0]
+
+			var anc = key
+			for i := 1; i <= 10; i++ {
+				anc = data[anc].parent
+				if anc == "" {
+					break
+				}
+
+				y := data[anc]
+				y.total[i] = y.total[i].Add(c)
+				y.delegated[i] = y.delegated[i].Add(d)
+			}
 		}
+		logger.Debug("    applying...")
+		rk.Iterate(ctx, func(acc sdk.AccAddress, r *referral.DataRecord) (changed, checkForStatusUpdate bool) {
+			key := acc.String()
+			x := data[key]
+
+			for i := 0; i <= 10; i++ {
+				if !r.Coins[i].Equal(x.total[i]) {
+					changed = true
+					checkForStatusUpdate = true
+					break
+				}
+			}
+			if !changed {
+				for i := 0; i <= 10; i++ {
+					if !r.Delegated[i].Equal(x.delegated[i]) {
+						changed = true
+						break
+					}
+				}
+			}
+
+			if changed {
+				logger.Debug("    record fixed",
+					"address", acc,
+					"coins_0", r.Coins,
+					"coins", x.total,
+					"delegated_0", r.Delegated,
+					"delegated", x.delegated,
+				)
+				copy(r.Coins[:], x.total)
+				copy(r.Delegated[:], x.delegated)
+			}
+			return
+		})
+		logger.Debug("    all done")
 	}
 }

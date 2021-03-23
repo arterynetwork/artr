@@ -626,6 +626,11 @@ func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent sdk.AccAdd
 		if err != nil {
 			return errors.Wrap(err, "cannot pay commission")
 		}
+
+		if r, err = k.get(ctx, subject); err != nil {
+			// This cannot be, because the same data was read just fine a moment ago.
+			panic(err)
+		}
 	}
 
 	r.Transition = newParent

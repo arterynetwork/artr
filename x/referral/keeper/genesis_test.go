@@ -3,6 +3,7 @@
 package keeper_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
@@ -14,6 +15,7 @@ import (
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral"
+	"github.com/arterynetwork/artr/x/referral/types"
 	"github.com/arterynetwork/artr/x/schedule"
 )
 
@@ -117,10 +119,19 @@ func (s GenSuite) checkExportImport() {
 			params.StoreKey:   app.DummyDecoder,
 		},
 		map[string]app.Decoder{
-			referral.StoreKey: app.DummyDecoder,
+			referral.StoreKey: s.RDecoder,
 			schedule.StoreKey: app.DummyDecoder,
 			params.StoreKey:   app.DummyDecoder,
 		},
 		map[string][][]byte{},
 	)
+}
+
+func (s *GenSuite) RDecoder(bz []byte) (string, error) {
+	var item types.R
+	err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &item)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%+v", item), nil
 }

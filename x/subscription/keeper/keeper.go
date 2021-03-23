@@ -369,7 +369,17 @@ func (k Keeper) deactivateAccount(ctx sdk.Context, addr sdk.AccAddress, info typ
 	k.SetActivityInfo(ctx, addr, info)
 	err := k.ReferralKeeper.SetActive(ctx, addr, false)
 	if err != nil {
-		k.Logger(ctx).Error(err.Error(), addr)
+		k.Logger(ctx).Error("cannot deactivate account", "err", err, "addr", addr)
+	}
+
+	profile := k.profileKeeper.GetProfile(ctx, addr)
+	if profile.VPN || profile.Storage {
+		profile.VPN = false
+		profile.Storage = false
+		err = k.profileKeeper.SetProfile(ctx, addr, *profile)
+		if err != nil {
+			k.Logger(ctx).Error("cannot switch off VPN and Storage", "err", err, "addr", addr)
+		}
 	}
 
 	ctx.EventManager().EmitEvent(sdk.NewEvent(

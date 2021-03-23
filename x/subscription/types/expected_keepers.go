@@ -55,4 +55,5 @@ type SupplyKeeper interface {
 
 type ProfileKeeper interface {
 	GetProfile(ctx sdk.Context, addr sdk.AccAddress) *types.Profile
+	SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.Profile) error
 }

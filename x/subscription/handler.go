@@ -7,6 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/subscription/types"
 )
 
@@ -43,6 +44,10 @@ func handleMsgPaySubscription(ctx sdk.Context, k Keeper, msg types.MsgPaySubscri
 
 // handleMsgPayVPN process payments for VPN
 func handleMsgPayVPN(ctx sdk.Context, k Keeper, msg types.MsgPayVPN) (*sdk.Result, error) {
+	if msg.Amount < util.GBSize {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "amount must be at least 1GB")
+	}
+
 	err := k.PayForVPN(ctx, msg.Address, msg.Amount)
 
 	if err != nil {
@@ -54,6 +59,10 @@ func handleMsgPayVPN(ctx sdk.Context, k Keeper, msg types.MsgPayVPN) (*sdk.Resul
 
 // MsgPayStorage process payments for storage
 func handleMsgPayStorage(ctx sdk.Context, k Keeper, msg types.MsgPayStorage) (*sdk.Result, error) {
+	if msg.Amount < util.GBSize {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "amount must be at least 1GB")
+	}
+
 	err := k.PayForStorage(ctx, msg.Address, msg.Amount)
 
 	if err != nil {

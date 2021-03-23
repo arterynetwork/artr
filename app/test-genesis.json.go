@@ -7,6 +7,7 @@ import (
 )
 
 var DefaultGenesisUsers map[string]sdk.AccAddress
+var NonExistingUser sdk.AccAddress
 
 func initDefaultGenesisUsers() {
 	DefaultGenesisUsers = map[string]sdk.AccAddress{
@@ -34,6 +35,7 @@ func initDefaultGenesisUsers() {
 		"user15": accAddr("artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf"),
 		"root":   accAddr("artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"),
 	}
+	NonExistingUser = accAddr("artr1t8h48rk0wyvuvdae5aysmlnfly6rpqe68unx5k")
 }
 func accAddr(s string) sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(s)
@@ -728,14 +730,15 @@ const defaultGenesis = `{
           "leader_bonuses": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3",
           "for_delegating": "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76"
         },
-	"delegating_award": {
-	  "company": "5/1000",
-	  "network": ["5%", "1%", "1%", "2%", "1%", "1%", "1%", "1%", "1%", "5/1000"]
-	},
-	"subscription_award": {
-	  "company": "10%",
-	  "network": ["15%", "10%", "7%", "7%", "7%", "7%", "7%", "5%", "2%", "2%"]
-	}
+		"delegating_award": {
+		  "company": "5/1000",
+		  "network": ["5%", "1%", "1%", "2%", "1%", "1%", "1%", "1%", "1%", "5/1000"]
+		},
+		"subscription_award": {
+		  "company": "10%",
+		  "network": ["15%", "10%", "7%", "7%", "7%", "7%", "7%", "5%", "2%", "2%"]
+		},
+		"transition_cost": "10000000"
       },
       "top_level_accounts": [
         "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"

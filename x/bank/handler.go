@@ -15,13 +15,13 @@ import (
 )
 
 // NewHandler returns a handler for "bank" type messages.
-func NewHandler(k keeper.Keeper, sk types.SupplyKeeper) sdk.Handler {
+func NewHandler(k keeper.Keeper, sk types.SupplyKeeper, ak types.AccountKeeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
 
 		switch msg := msg.(type) {
 		case types.MsgSend:
-			return handleMsgSend(ctx, k, sk, msg)
+			return handleMsgSend(ctx, k, sk, ak, msg)
 
 		case types.MsgMultiSend:
 			return handleMsgMultiSend(ctx, k, sk, msg)
@@ -33,9 +33,13 @@ func NewHandler(k keeper.Keeper, sk types.SupplyKeeper) sdk.Handler {
 }
 
 // Handle MsgSend.
-func handleMsgSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper, msg types.MsgSend) (*sdk.Result, error) {
+func handleMsgSend(ctx sdk.Context, k keeper.Keeper, sk types.SupplyKeeper, ak types.AccountKeeper, msg types.MsgSend) (*sdk.Result, error) {
 	if !k.GetSendEnabled(ctx) {
 		return nil, types.ErrSendDisabled
+	}
+
+	if ak.GetAccount(ctx, msg.ToAddress) == nil {
+		return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidAddress, "%s account doesn't exist", msg.ToAddress)
 	}
 
 	if k.BlacklistedAddr(msg.ToAddress) {

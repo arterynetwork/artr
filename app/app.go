@@ -361,6 +361,9 @@ func NewArteryApp(
 		ClearInvalidNicknames(app.accountKeeper, app.profileKeeper),
 		InitializeMinDelegate(app.delegatingKeeper, app.subspaces[delegating.ModuleName]),
 	))
+	app.upgradeKeeper.SetUpgradeHandler("1.2.2",
+		RebuildTeamCoinsCache(app.referralKeeper, app.accountKeeper),
+	)
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

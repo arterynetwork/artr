@@ -60,6 +60,14 @@ type Suite struct{ BaseSuite }
 
 func (s *Suite) SetupTest() { s.setupTest(nil) }
 
+var (
+	THOUSAND = util.Uartrs(1_000_000000)
+	STAKE    = sdk.NewCoins(
+		sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+		sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+	)
+)
+
 func (s *Suite) TestAppendChild() {
 	accounts := [12]sdk.AccAddress{}
 	for i := 0; i < 12; i++ {
@@ -819,7 +827,16 @@ func (s Suite) TestTransition() {
 	oldParent := app.DefaultGenesisUsers["user2"]
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.Equal(
+		util.Uartrs(990_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
+
 	s.NoError(s.k.AffirmTransition(s.ctx, subj), "affirm transition")
+	s.Equal(
+		util.Uartrs(990_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
 
 	acc, err := s.k.GetParent(s.ctx, subj)
 	s.NoError(err, "get parent")
@@ -858,9 +875,9 @@ func (s Suite) TestTransition() {
 	s.Nil(acc, "pending transition")
 
 	for i, n := range []int64{
-		35_000_000000,
-		14_000_000000, 20_000_000000,
-		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		34_990_000000,
+		14_000_000000, 19_990_000000,
+		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
@@ -875,7 +892,16 @@ func (s Suite) TestTransition_Decline() {
 	oldParent := app.DefaultGenesisUsers["user2"]
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.Equal(
+		util.Uartrs(990_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
+
 	s.NoError(s.k.CancelTransition(s.ctx, subj, false), "decline transition")
+	s.Equal(
+		util.Uartrs(990_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
 
 	acc, err := s.k.GetParent(s.ctx, subj)
 	s.NoError(err, "get parent")
@@ -916,9 +942,9 @@ func (s Suite) TestTransition_Decline() {
 	s.Nil(acc, "pending transition")
 
 	for i, n := range []int64{
-		35_000_000000,
-		17_000_000000, 17_000_000000,
-		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		34_990_000000,
+		16_990_000000, 17_000_000000,
+		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
@@ -933,9 +959,42 @@ func (s Suite) TestTransition_Timeout() {
 	oldParent := app.DefaultGenesisUsers["user2"]
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.Equal(
+		util.Uartrs(990_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
+
+	for i, n := range []sdk.Coins{
+		THOUSAND,
+		STAKE, STAKE,
+		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND, // transition fee
+		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
+	} {
+		cz := s.accKeeper.GetAccount(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)]).GetCoins()
+		s.Equal(n, cz)
+	}
+	for i, n := range []int64{
+		34_990_000000,
+		16_990_000000, 17_000_000000,
+		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
+	} {
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
+		s.NoError(err, "get coins of user%d", i+1)
+		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
+	}
 
 	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneDay)
 	s.nextBlock()
+	for i, n := range []sdk.Coins{
+		util.Uartrs(1_010_000000), // validator's award
+		STAKE, STAKE,
+		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND,
+		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
+	} {
+		cz := s.accKeeper.GetAccount(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)]).GetCoins()
+		s.Equal(n, cz)
+	}
 
 	acc, err := s.k.GetParent(s.ctx, subj)
 	s.NoError(err, "get parent")
@@ -977,8 +1036,8 @@ func (s Suite) TestTransition_Timeout() {
 
 	for i, n := range []int64{
 		35_000_000000,
-		17_000_000000, 17_000_000000,
-		3_000_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		16_990_000000, 17_000_000000,
+		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
@@ -995,6 +1054,13 @@ func (s Suite) TestTransition_Validate_Circle() {
 		s.k.RequestTransition(s.ctx, subj, dest),
 		"transition is invalid: cycles are not allowed",
 	)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+	)
 }
 
 func (s Suite) TestTransition_Validate_Self() {
@@ -1003,6 +1069,13 @@ func (s Suite) TestTransition_Validate_Self() {
 	s.EqualError(
 		s.k.RequestTransition(s.ctx, subj, subj),
 		"transition is invalid: subject cannot be their own referral",
+	)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
 	)
 }
 
@@ -1013,6 +1086,10 @@ func (s Suite) TestTransition_Validate_OldParent() {
 	s.EqualError(
 		s.k.RequestTransition(s.ctx, subj, oldParent),
 		"transition is invalid: destination address is already subject's referrer",
+	)
+	s.Equal(
+		util.Uartrs(1_000_000000),
+		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
 	)
 }
 

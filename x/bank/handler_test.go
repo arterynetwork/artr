@@ -29,7 +29,7 @@ func TestBankHandler(t *testing.T) {
 type OriginalBankSuite struct{ suite.Suite }
 
 func (s *OriginalBankSuite) TestInvalidMsg() {
-	h := bank.NewHandler(nil, nil)
+	h := bank.NewHandler(nil, nil, nil)
 
 	res, err := h(sdk.NewContext(nil, abci.Header{}, false, nil), sdk.NewTestMsg())
 	require.Error(s.T(), err)
@@ -57,7 +57,7 @@ func (s *HandlerSuite) SetupTest() {
 	s.k = s.app.GetBankKeeper()
 	s.supplyKeeper = s.app.GetSupplyKeeper()
 	s.accKeeper = s.app.GetAccountKeeper()
-	s.handler = bank.NewHandler(s.k, s.supplyKeeper)
+	s.handler = bank.NewHandler(s.k, s.supplyKeeper, s.accKeeper)
 }
 
 func (s *HandlerSuite) TearDownTest() { s.cleanup() }
@@ -109,6 +109,28 @@ func (s *HandlerSuite) TestSend_SendAll() {
 	s.Error(err)
 	_, _, log := sdkerrors.ABCIInfo(err, false)
 	require.True(s.T(), strings.Contains(log, "insufficient funds"))
+}
+
+func (s*HandlerSuite) TestSend_ToNowhere() {
+	userA := app.DefaultGenesisUsers["user1"]
+	s.Equal(
+		int64(1_000_000000),
+		s.accKeeper.GetAccount(s.ctx, userA).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
+	)
+	userB := app.NonExistingUser
+	s.Nil(s.accKeeper.GetAccount(s.ctx, userB))
+
+	msg := bank.NewMsgSend(userA, userB, util.Uartrs(1_000))
+	_, err := s.handler(s.ctx, msg)
+	s.Error(err)
+	_, _, log := sdkerrors.ABCIInfo(err, false)
+	s.Contains(log, "account doesn't exist")
+
+	s.Equal(
+		int64(1_000_000000), // as it was
+		s.accKeeper.GetAccount(s.ctx, userA).GetCoins().AmountOf(util.ConfigMainDenom).Int64(),
+	)
+	s.Nil(s.accKeeper.GetAccount(s.ctx, userB))
 }
 
 func (s *HandlerSuite) TestMultiSend_TxFee() {
