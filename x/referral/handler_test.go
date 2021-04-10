@@ -33,6 +33,11 @@ type HandlerSuite struct {
 }
 
 func (s *HandlerSuite) SetupTest() {
+	defer func() {
+		if err := recover(); err != nil {
+			s.FailNow("panic in test setup", err)
+		}
+	}()
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
 	s.k = s.app.GetReferralKeeper()

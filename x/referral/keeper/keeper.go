@@ -202,11 +202,11 @@ func (k Keeper) GetTopLevelAccounts(ctx sdk.Context) ([]sdk.AccAddress, error) {
 // AppendChild adds a new account to the referral structure. The parent account should already exist and the child one
 // should not.
 func (k Keeper) AppendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc sdk.AccAddress) error {
+	return k.appendChild(ctx, parentAcc, childAcc, false)
+}
+func (k Keeper) appendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc sdk.AccAddress, skipActivityCheck bool) error {
 	if parentAcc == nil {
-		return sdkerrors.Wrap(
-			sdkerrors.ErrInvalidRequest,
-			"parentAcc cannot be nil",
-		)
+		return types.ErrParentNil
 	}
 	if k.exists(ctx, childAcc) {
 		return sdkerrors.Wrap(
@@ -226,7 +226,26 @@ func (k Keeper) AppendChild(ctx sdk.Context, parentAcc sdk.AccAddress, childAcc 
 	if err != nil {
 		return sdkerrors.Wrap(err, "cannot set "+childAcc.String())
 	}
-	for i := 0; i < 10; i++ {
+
+	var registrationClosed bool
+	err = bu.update(parentAcc, true, func(value *types.R) {
+		value.Coins[1] = value.Coins[1].Add(coins)
+		value.Delegated[1] = value.Delegated[1].Add(delegated)
+		bu.addCallback(StakeChangedCallback, anc)
+		value.Referrals = append(value.Referrals, childAcc)
+		anc = value.Referrer
+		if !skipActivityCheck {
+			registrationClosed = value.RegistrationClosed(ctx)
+		}
+	})
+	if err != nil {
+		return sdkerrors.Wrap(err, "cannot update "+anc.String())
+	}
+	if registrationClosed {
+		return types.ErrRegistrationClosed
+	}
+
+	for i := 1; i < 10; i++ {
 		if anc == nil {
 			break
 		}
@@ -268,8 +287,6 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 	//   * status dump
 	//   * shorten legs
 	//   * no own children
-	//   * new compression in a time
-	compressionAt := ctx.BlockHeight() + CompressionPeriod
 
 	err := bu.update(acc, false, func(value *types.R) {
 		children = value.Referrals
@@ -290,16 +307,11 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 			sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
 			sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
 		}
-		value.CompressionAt = compressionAt
+		value.CompressionAt = -1
 		bu.addCallback(StakeChangedCallback, acc)
 		k.setStatus(ctx, value, types.Lucky, acc)
 		bu.addCallback(StatusUpdatedCallback, acc)
 	})
-	if err != nil {
-		return err
-	}
-
-	err = k.ScheduleCompression(ctx, acc, compressionAt)
 	if err != nil {
 		return err
 	}
@@ -807,7 +819,10 @@ func (k Keeper) GetPendingTransition(ctx sdk.Context, acc sdk.AccAddress) (sdk.A
 func (k Keeper) get(ctx sdk.Context, acc sdk.AccAddress) (types.R, error) {
 	store := ctx.KVStore(k.storeKey)
 	var item types.R
-	err := k.cdc.UnmarshalBinaryLengthPrefixed(store.Get([]byte(acc)), &item)
+	err := errors.Wrapf(
+		k.cdc.UnmarshalBinaryLengthPrefixed(store.Get([]byte(acc)), &item),
+		"no data for %s", acc,
+	)
 	return item, err
 }
 
@@ -885,7 +900,11 @@ func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(value 
 }
 
 func (k Keeper) getBalance(ctx sdk.Context, acc sdk.AccAddress) sdk.Int {
-	coins := k.accKeeper.GetAccount(ctx, acc).GetCoins()
+	account := k.accKeeper.GetAccount(ctx, acc)
+	if account == nil {
+		panic(errors.Errorf("account %s not found", acc))
+	}
+	coins := account.GetCoins()
 	return coins.AmountOf(util.ConfigMainDenom).
 		Add(coins.AmountOf(util.ConfigDelegatedDenom)).
 		Add(coins.AmountOf(util.ConfigRevokingDenom))
@@ -977,6 +996,9 @@ func (k Keeper) validateTransition(ctx sdk.Context, subject, newParent sdk.AccAd
 	}
 	if p, err = k.get(ctx, newParent); err != nil {
 		return errors.Wrap(err, "destination account data missing")
+	}
+	if p.RegistrationClosed(ctx) {
+		return types.ErrRegistrationClosed
 	}
 	for p.Referrer != nil {
 		if p.Referrer.Equals(subject) {

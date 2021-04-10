@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pkg/errors"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -57,6 +59,7 @@ func NewKeeper(
 
 var IdxPrefixNodeOperator = []byte{0x01}
 var IdxPrefixBlockProposer = []byte{0x02}
+var IdxPrefixLotteryQueue = []byte{0x03}
 
 // Logger returns a module-specific logger.
 func (k Keeper) Logger(ctx sdk.Context) log.Logger {
@@ -139,7 +142,7 @@ func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress
 func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.PubKey) error {
 	isBanned, err := k.IsBanned(ctx, accAddr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot check for ban")
 	}
 	if isBanned {
 		return types.ErrBannedForLifetime
@@ -330,10 +333,22 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 	}
 	it.Close()
 
-	var i, n int
-	maxValidatorCount := int(k.GetParams(ctx).MaxValidators)
-	if len(active) > maxValidatorCount {
-		n = maxValidatorCount
+	var (
+		params             = k.GetParams(ctx)
+		maxTopValidators   = int(params.MaxValidators)
+		maxLuckyValidators = int(params.LotteryValidators)
+		totalMaxValidators = maxTopValidators + maxLuckyValidators
+
+		i, n1, n2 int
+	)
+
+	if len(active) > maxTopValidators {
+		n1 = maxTopValidators
+		if len(active) > totalMaxValidators {
+			n2 = maxLuckyValidators
+		} else {
+			n2 = len(active) - n1
+		}
 		sort.Slice(active, func(i, j int) bool {
 			xi := active[i]
 			xj := active[j]
@@ -355,59 +370,103 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			return xi.OkBlocksInRow > xj.OkBlocksInRow
 		})
 	} else {
-		n = len(active)
+		n1 = len(active)
+		n2 = 0
 		// No one will be left out, so all're equal. No need to sort items.
 	}
 
-	for i = 0; i < n; i++ {
-		d := active[i]
-		if len(d.PubKey) == 0 {
+	for i = 0; i < n1; i++ {
+		data := active[i]
+		if len(data.PubKey) == 0 {
 			panic("validator cannot be active without PubKey")
 		}
-		if d.PubKey != d.LastPubKey {
-			if len(d.LastPubKey) != 0 {
+
+		updated := data.LastPower != data.Power
+		if data.PubKey != data.LastPubKey {
+			if len(data.LastPubKey) != 0 {
 				result = append(result, abci.ValidatorUpdate{
-					PubKey: abciPubKeyFromBech32(d.LastPubKey),
+					PubKey: abciPubKeyFromBech32(data.LastPubKey),
 					Power:  0,
 				})
 			}
-		} else if d.LastPower == d.Power {
-			continue
+			updated = true
 		}
 
-		result = append(result, abci.ValidatorUpdate{
-			PubKey: abciPubKeyFromBech32(d.PubKey),
-			Power:  d.Power,
-		})
-		if err := k.update(ctx, d.Account, func(d *types.D) (save bool) {
-			if d.LastPower == d.Power && d.LastPubKey == d.PubKey {
-				return false
-			}
-
-			d.LastPower = d.Power
-			d.LastPubKey = d.PubKey
-			return true
-		}); err != nil {
-			return nil, err
-		}
-	}
-	for ; i < len(active); i++ {
-		d := active[i]
-		if d.LastPower != 0 {
+		if updated {
 			result = append(result, abci.ValidatorUpdate{
-				PubKey: abciPubKeyFromBech32(d.LastPubKey),
-				Power:  0,
+				PubKey: abciPubKeyFromBech32(data.PubKey),
+				Power:  data.Power,
 			})
-			if err := k.update(ctx, d.Account, func(d *types.D) (save bool) {
-				if d.LastPower == 0 && d.LastPubKey == "" {
-					return false
-				}
-
-				d.LastPower = 0
-				d.LastPubKey = ""
+		}
+		if data.LotteryNo != 0 {
+			if err := k.lotteryExclude(ctx, &data.D); err != nil {
+				// Should never happen, we've just checked they has been participating
+				panic(err)
+			}
+			updated = true
+		}
+		if updated {
+			if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+				d.LastPower = d.Power
+				d.LastPubKey = d.PubKey
+				d.LotteryNo = data.LotteryNo
 				return true
 			}); err != nil {
 				return nil, err
+			}
+		}
+	}
+	maxLotNo := k.lotteryLastNo(ctx, n2)
+	for ; i < len(active); i++ {
+		data := active[i]
+		if data.LotteryNo != 0 && data.LotteryNo <= maxLotNo {
+			if data.PubKey != data.LastPubKey {
+				if len(data.LastPubKey) != 0 {
+					result = append(result, abci.ValidatorUpdate{
+						PubKey: abciPubKeyFromBech32(data.LastPubKey),
+						Power:  0,
+					})
+				}
+			} else if data.LastPower == data.Power {
+				continue
+			}
+
+			result = append(result, abci.ValidatorUpdate{
+				PubKey: abciPubKeyFromBech32(data.PubKey),
+				Power:  data.Power,
+			})
+			if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+				d.LastPower = d.Power
+				d.LastPubKey = d.PubKey
+				return true
+			}); err != nil {
+				return nil, err
+			}
+		} else {
+			updated := false
+			if data.LastPower != 0 {
+				result = append(result, abci.ValidatorUpdate{
+					PubKey: abciPubKeyFromBech32(data.LastPubKey),
+					Power:  0,
+				})
+				updated = true
+			}
+			if data.LotteryNo == 0 {
+				if err := k.lotteryAddNew(ctx, data.Account, &data.D); err != nil {
+					// Should never happen, we've just checked that the account hasn't been participating yet.
+					panic(err)
+				}
+				updated = true
+			}
+			if updated {
+				if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+					d.LastPower = 0
+					d.LastPubKey = ""
+					d.LotteryNo = data.LotteryNo
+					return true
+				}); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
@@ -503,13 +562,13 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 		pubkey := cryptoPubKeyFromBech32(v.Pubkey)
 
 		if err := k.set(ctx, v.Account, v.ToD()); err != nil {
-			return err
+			return errors.Wrap(err, "cannot set data")
 		}
 		for _, h := range v.ProposedBlocks {
 			k.addProposerToIndex(ctx, int64(h), v.Account)
 		}
 		if err := k.SwitchOn(ctx, v.Account, pubkey); err != nil {
-			return err
+			return errors.Wrap(err, "cannot switch on")
 		}
 	}
 	return nil
@@ -539,6 +598,12 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
+		if d.LotteryNo != 0 {
+			if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+				// Should never happen
+				panic(err)
+			}
+		}
 		if d.MissedBlocksInRow >= int64(p.JailAfter) {
 			d.Power = 0
 			d.Jailed = true
@@ -621,6 +686,12 @@ func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err erro
 	k.addProposerToIndex(ctx, ctx.BlockHeight()-1, acc)
 	if err := k.update(ctx, acc, func(d *types.D) (save bool) {
 		d.ProposedCount++
+		if d.LotteryNo != 0 {
+			if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+				// should never happen
+				panic(err)
+			}
+		}
 		return true
 	}); err != nil {
 		return err
@@ -714,6 +785,45 @@ func (k Keeper) GetBlocksProposedByAll(ctx sdk.Context) (heightsByAccAddress map
 		heightsByAccAddress[key] = append(heightsByAccAddress[key], height)
 	}
 	return heightsByAccAddress
+}
+
+func (k Keeper) GeneralAmnesty(ctx sdk.Context) {
+	store := ctx.KVStore(k.dataStoreKey)
+	it := store.Iterator(nil, nil)
+	defer it.Close()
+	for ; it.Valid(); it.Next() {
+		var item types.D
+		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &item)
+		if item.Strokes == 0 && item.JailCount == 0 {
+			continue
+		}
+		item.Strokes = 0
+		item.JailCount = 0
+		store.Set(it.Key(), k.cdc.MustMarshalBinaryLengthPrefixed(item))
+	}
+}
+
+func (k Keeper) GetValidatorState(ctx sdk.Context, acc sdk.AccAddress) types.ValidatorState {
+	data, err := k.Get(ctx, acc)
+	if err != nil {
+		return types.ValidatorStateOff
+	}
+	if data.BannedForLife {
+		return types.ValidatorStateBan
+	}
+	if data.Jailed {
+		return types.ValidatorStateJail
+	}
+	if !data.Status {
+		return types.ValidatorStateOff
+	}
+	if data.LastPower == 0 {
+		return types.ValidatorStateSpare
+	}
+	if data.LotteryNo == 0 {
+		return types.ValidatorStateTop
+	}
+	return types.ValidatorStateLucky
 }
 
 //----------------------------------------------------------------------------------

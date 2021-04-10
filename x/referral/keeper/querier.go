@@ -36,6 +36,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryValidateTransition(ctx, path[1:], k)
 		case types.QueryParams:
 			return queryParams(ctx, k)
+		case types.QueryInfo:
+			return queryInfo(ctx, path[1:], k)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown referral query endpoint")
 		}
@@ -223,4 +225,20 @@ func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
 	}
 
 	return res, nil
+}
+
+func queryInfo(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
+	addr, err := sdk.AccAddressFromBech32(path[0])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+	}
+	data, err := k.get(ctx, addr)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
+	}
+	json, err := codec.MarshalJSONIndent(types.ModuleCdc, data)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
+	}
+	return json, nil
 }

@@ -247,18 +247,19 @@ func (s *Suite) TestReferralFees() {
 			}}),
 		)
 	}
-	s.Nil(
+	s.NoError(
 		s.set(accounts[0], types.R{
 			Status:    types.Lucky,
 			Coins:     [11]sdk.Int{sdk.NewInt(1)},
 			Delegated: [11]sdk.Int{},
 		}),
 	)
+	s.NoError(s.k.SetActive(s.ctx, accounts[0], true))
 	for i := 0; i < 12-1; i++ {
-		s.Nil(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
+		s.NoError(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
 	}
 	for i := 0; i < 12; i++ {
-		s.Nil(s.k.SetActive(s.ctx, accounts[i], true))
+		s.NoError(s.k.SetActive(s.ctx, accounts[i], true))
 	}
 
 	var companyAccs types.CompanyAccounts
@@ -677,7 +678,7 @@ func (s *Suite) TestCompression() {
 				sdk.NewInt(0x000200),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: 1 + referral.CompressionPeriod,
+			CompressionAt: -1,
 		},
 		{ // item #5
 			Status:            types.Lucky,

@@ -3,7 +3,6 @@ PACKAGES=$(shell go list ./... | grep -v '/simulation')
 VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
 
-# TODO: Update the ldflags with the app, client & server names
 ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=Artery \
 	-X github.com/cosmos/cosmos-sdk/version.ServerName=artrd \
 	-X github.com/cosmos/cosmos-sdk/version.ClientName=artrcli \

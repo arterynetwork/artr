@@ -74,6 +74,14 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 		if _, ok := msg.Params.(types.ShortCountProposalParams); !ok {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
 		}
+	case types.ProposalTypeGeneralAmnesty:
+		if _, ok := msg.Params.(types.EmptyProposalParams); !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		}
+	case types.ProposalTypeLotteryValidators:
+		if _, ok := msg.Params.(types.ShortCountProposalParams); !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		}
 	}
 
 	proposal := types.Proposal{

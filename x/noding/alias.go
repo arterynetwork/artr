@@ -15,6 +15,13 @@ const (
 	SwitchOnConst     = types.SwitchOnConst
 	SwitchOffConst    = types.SwitchOffConst
 	UnjailConst       = types.UnjailConst
+
+	ValidatorStateOff   = types.ValidatorStateOff
+	ValidatorStateBan   = types.ValidatorStateBan
+	ValidatorStateJail  = types.ValidatorStateJail
+	ValidatorStateSpare = types.ValidatorStateSpare
+	ValidatorStateLucky = types.ValidatorStateLucky
+	ValidatorStateTop   = types.ValidatorStateTop
 )
 
 var (
@@ -48,4 +55,6 @@ type (
 	MsgSwitchOn  = types.MsgSwitchOn
 	MsgSwitchOff = types.MsgSwitchOff
 	MsgUnjail    = types.MsgUnjail
+
+	ValidatorState = types.ValidatorState
 )

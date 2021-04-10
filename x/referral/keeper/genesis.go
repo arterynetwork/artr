@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"github.com/pkg/errors"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/x/referral/types"
@@ -86,10 +88,29 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 
 func (k Keeper) ImportFromGenesis(
 	ctx sdk.Context,
+	topLevel []sdk.AccAddress,
+	otherAccounts []types.Refs,
 	compressions []types.GenesisCompression,
 	downgrades []types.GenesisStatusDowngrade,
 	transitions []types.Transition,
 ) error {
+	for _, acc := range topLevel {
+		err := k.AddTopLevelAccount(ctx, acc)
+		if err != nil {
+			panic(errors.Wrapf(err, "cannot add %s", acc))
+		}
+		k.Logger(ctx).Debug("account added", "acc", acc, "parent", nil)
+	}
+	for _, r := range otherAccounts {
+		for _, acc := range r.Referrals {
+			err := k.appendChild(ctx, r.Referrer, acc, true)
+			if err != nil {
+				panic(errors.Wrapf(err, "cannot add %s", acc))
+			}
+			k.Logger(ctx).Debug("account added", "acc", acc, "parent", r.Referrer)
+		}
+	}
+
 	bu := newBunchUpdater(k, ctx)
 	for _, x := range compressions {
 		if err := bu.update(x.Account, false, func(value *types.R) {

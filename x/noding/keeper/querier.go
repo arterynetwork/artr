@@ -33,6 +33,8 @@ func NewQuerier(k Keeper) sdk.Querier {
 			return queryParams(ctx, k)
 		case types.QuerySwitchedOn:
 			return querySwitchedOn(ctx, k)
+		case types.QueryState:
+			return queryState(ctx, k, path[1:])
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown noding query endpoint")
 		}
@@ -173,4 +175,18 @@ func querySwitchedOn(ctx sdk.Context, k Keeper) ([]byte, error) {
 	}
 
 	return res, nil
+}
+
+func queryState(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
+	if len(path) < 1 {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "not enough arguments")
+	}
+
+	accAddress, err := sdk.AccAddressFromBech32(path[0])
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, fmt.Sprintf("cannot parse address: %s", path[0]))
+	}
+
+	data := k.GetValidatorState(ctx, accAddress)
+	return []byte{byte(data)}, nil
 }

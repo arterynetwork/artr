@@ -9,6 +9,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/auth"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 
@@ -34,6 +35,7 @@ type Suite struct {
 	k              profile.Keeper
 	refKeeper      referral.Keeper
 	scheduleKeeper schedule.Keeper
+	authKeeper     auth.AccountKeeper
 }
 
 func (s *Suite) SetupTest() {
@@ -44,6 +46,7 @@ func (s *Suite) SetupTest() {
 	s.k = s.app.GetProfileKeeper()
 	s.refKeeper = s.app.GetReferralKeeper()
 	s.scheduleKeeper = s.app.GetScheduleKeeper()
+	s.authKeeper = s.app.GetAccountKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -56,7 +59,7 @@ func (s *Suite) TestCreateAccountWithProfile() {
 		Nickname:   "v_pupkin",
 		CardNumber: 12345,
 	}
-	s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data)
+	s.NoError(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data))
 
 	s.Equal(addr, s.k.GetProfileAccountByNickname(s.ctx, "v_pupkin"))
 
@@ -102,9 +105,9 @@ func (s *Suite) TestCreateAccountWithProfile_NickLikeCard() {
 
 func (s *Suite) TestCreateAccount() {
 	_, _, addr := authtypes.KeyTestPubAddr()
-	s.k.CreateAccount(s.ctx, addr, app.DefaultGenesisUsers["user1"])
+	s.NoError(s.k.CreateAccount(s.ctx, addr, app.DefaultGenesisUsers["user1"]))
 
-	s.NotNil(s.k.GetProfile(s.ctx, addr))
+	s.NotNil(s.k.GetProfile(s.ctx, addr), "profile created")
 
 	{
 		parent, err := s.refKeeper.GetParent(s.ctx, addr)
@@ -120,4 +123,106 @@ func (s *Suite) TestCreateAccount() {
 		tasks := s.scheduleKeeper.GetTasks(s.ctx, 1+2*util.BlocksOneMonth)
 		s.Equal(schedule.Schedule{schedule.Task{referral.CompressionHookName, addr}}, tasks)
 	}
+}
+
+func (s *Suite) TestRename() {
+	user := app.DefaultGenesisUsers["user2"]
+	p := s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // from genesis
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	p.Nickname = "user2a"
+	s.NoError(s.k.SetProfile(s.ctx, user, *p))
+	p = s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2a", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // -1 ARTR for rename
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+}
+
+func (s *Suite) TestRename_InsufficientFunds() {
+	user := app.DefaultGenesisUsers["user2"]
+	s.NoError(s.app.GetBankKeeper().SendCoins(s.ctx, user, app.DefaultGenesisUsers["user3"], util.Uartrs(999_000001)))
+	p := s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // from genesis
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	p.Nickname = "user2a"
+	s.Error(s.k.SetProfile(s.ctx, user, *p))
+	p = s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // nothing changed
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+}
+
+func (s *Suite) TestRename_ClearAndSet() {
+	user := app.DefaultGenesisUsers["user2"]
+	p := s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // from genesis
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	p.Nickname = ""
+	s.NoError(s.k.SetProfile(s.ctx, user, *p))
+	p = s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // nothing changed, removal is free
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
+
+	p.Nickname = "user2"
+	s.NoError(s.k.SetProfile(s.ctx, user, *p))
+	p = s.k.GetProfile(s.ctx, user)
+
+	s.NotNil(p)
+	s.Equal("user2", p.Nickname)
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		), // -1 ARTR
+		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+	)
 }

@@ -21,9 +21,11 @@ import (
 	"github.com/arterynetwork/artr/x/noding"
 )
 
-func TestNodingKeeper(t *testing.T) { suite.Run(t, new(Suite)) }
+func TestNodingKeeper(t *testing.T) {
+	suite.Run(t, new(Suite))
+}
 
-type Suite struct {
+type BaseSuite struct {
 	suite.Suite
 
 	app     *app.ArteryApp
@@ -34,16 +36,20 @@ type Suite struct {
 	k   noding.Keeper
 }
 
-func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
+type Suite struct {
+	BaseSuite
+}
+
+func (s *BaseSuite) setupTest(genesis []byte) {
+	s.app, s.cleanup = app.NewAppFromGenesis(genesis)
 
 	s.cdc = s.app.Codec()
 	s.ctx = s.app.NewContext(true, abci.Header{})
 	s.k = s.app.GetNodingKeeper()
 }
 
-func (s *Suite) TearDownTest() {
-	s.cleanup()
+func (s *Suite) SetupTest() {
+	s.setupTest(nil)
 }
 
 func (s *Suite) TestSwitchOn() {
@@ -470,7 +476,11 @@ func (s *Suite) TestDoubleJail() {
 	}
 }
 
-func (s *Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzantine []abci.Evidence) (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
+func (s *BaseSuite) TearDownTest() {
+	s.cleanup()
+}
+
+func (s *BaseSuite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzantine []abci.Evidence) (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
 	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
@@ -485,4 +495,6 @@ func (s *Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzanti
 	return ebr, bbr
 }
 
-func (s *Suite) user(n int) sdk.AccAddress { return app.DefaultGenesisUsers[fmt.Sprintf("user%d", n)] }
+func (s *BaseSuite) user(n int) sdk.AccAddress {
+	return app.DefaultGenesisUsers[fmt.Sprintf("user%d", n)]
+}

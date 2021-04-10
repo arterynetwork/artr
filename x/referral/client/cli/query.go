@@ -39,6 +39,7 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			GetWhenCompressionCmd(queryRoute, cdc),
 			getPendingTransitionCmd(queryRoute, cdc),
 			getValidateTransitionCmd(queryRoute, cdc),
+			getCmdInfo(queryRoute, cdc),
 			util.LineBreak(),
 			getCmdParams(queryRoute, cdc),
 		)...,
@@ -336,6 +337,34 @@ func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			var out types.Params
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
+		},
+	}
+}
+
+func getCmdInfo(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "info",
+		Short: "Get all info for the account",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			address := args[0]
+
+			data, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryInfo,
+					address,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Printf("cannot obtain info for " + address)
+				return err
+			}
+			var res types.R
+			cdc.MustUnmarshalJSON(data, &res)
+			return cliCtx.PrintOutput(res)
 		},
 	}
 }

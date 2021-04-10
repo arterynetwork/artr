@@ -17,6 +17,7 @@ const (
 	QueryPendingTransition  = "pending-transition"
 	QueryValidateTransition = "validate-transition"
 	QueryParams             = "params"
+	QueryInfo               = "info"
 )
 
 type QueryResChildren []sdk.AccAddress

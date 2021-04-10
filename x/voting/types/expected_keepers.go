@@ -34,6 +34,8 @@ type NodingKeeper interface {
 
 	GetParams(ctx sdk.Context) (params noding.Params)
 	SetParams(ctx sdk.Context, params noding.Params)
+
+	GeneralAmnesty(ctx sdk.Context)
 }
 
 type DelegatingKeeper interface {

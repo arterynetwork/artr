@@ -9,6 +9,7 @@ const (
 	QueryOperator   = "operator"
 	QueryParams     = "params"
 	QuerySwitchedOn = "switched-on"
+	QueryState      = "state"
 
 	QueryOperatorFormatHex    = "hex"
 	QueryOperatorFormatBech32 = "bech32"

@@ -57,6 +57,8 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		getCmdSetMinSend(cdc),
 		getCmdSetMinDelegate(cdc),
 		getCmdSetMaxValidators(cdc),
+		getCmdSetLotteryValidators(cdc),
+		getCmdGeneralAmnesty(cdc),
 		util.LineBreak(),
 		GetCmdVote(cdc),
 	)...)
@@ -850,7 +852,7 @@ func getCmdSetMinDelegate(cdc *codec.Codec) *cobra.Command {
 func getCmdSetMaxValidators(cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
 		Use:     "set-max-validators <count> <proposal name>",
-		Example: `artrcli tx voting set-max-validators 200 "let's double the count'" --from ivan`,
+		Example: `artrcli tx voting set-max-validators 200 "let's double the count" --from ivan`,
 		Aliases: []string{"set_max_validators", "smv"},
 		Short:   "Propose to change maximum validator count",
 		Args:    cobra.ExactArgs(2),
@@ -877,6 +879,68 @@ func getCmdSetMaxValidators(cdc *codec.Codec) *cobra.Command {
 				proposalName,
 				types.ProposalTypeMaxValidators,
 				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdSetLotteryValidators(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-lottery-validators <count> <proposal name>",
+		Example: `artrcli tx voting set-lottery-validators 20 "lucky 20" --from ivan`,
+		Aliases: []string{"set_lottery_validators", "slv"},
+		Short:   `Propose to change the count of "lucky" (aka "lottery") validators`,
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var count uint16
+			{
+				n, err := strconv.ParseUint(args[0], 0, 16)
+				if err != nil {
+					return err
+				}
+				count = uint16(n)
+			}
+
+			params := types.ShortCountProposalParams{Count: count}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeLotteryValidators,
+				params,
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdGeneralAmnesty(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "general-amnesty <proposal name>",
+		Aliases: []string{"general_amnesty"},
+		Short:   "Zero all users' missed block count and jail count",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeGeneralAmnesty,
+				types.EmptyProposalParams{},
 			)
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})

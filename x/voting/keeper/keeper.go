@@ -285,6 +285,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p := k.nodingKeeper.GetParams(ctx)
 			p.MaxValidators = proposal.Params.(types.ShortCountProposalParams).Count
 			k.nodingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeGeneralAmnesty:
+			k.nodingKeeper.GeneralAmnesty(ctx)
+		case types.ProposalTypeLotteryValidators:
+			p := k.nodingKeeper.GetParams(ctx)
+			p.LotteryValidators = proposal.Params.(types.ShortCountProposalParams).Count
+			k.nodingKeeper.SetParams(ctx, p)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

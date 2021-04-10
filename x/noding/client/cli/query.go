@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -30,6 +31,7 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	nodingQueryCmd.AddCommand(
 		flags.GetCommands(
 			GetCmdStatus(queryRoute, cdc),
+			getCmdState(queryRoute, cdc),
 			GetCmdInfo(queryRoute, cdc),
 			GetCmdProposer(queryRoute, cdc),
 			GetCmdIsAllowed(queryRoute, cdc),
@@ -46,9 +48,10 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 
 func GetCmdStatus(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	return &cobra.Command{
-		Use:   "status <address>",
-		Short: "query if noding's on",
-		Args:  cobra.ExactArgs(1),
+		Use:        "status <address>",
+		Short:      "query if noding's on",
+		Deprecated: `use "state" instead`,
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := context.NewCLIContext().WithCodec(cdc)
 			accAddress := args[0]
@@ -69,6 +72,37 @@ func GetCmdStatus(queryRoute string, cdc *codec.Codec) *cobra.Command {
 			var out bool
 			cdc.MustUnmarshalJSON(res, &out)
 			return cliCtx.PrintOutput(out)
+		},
+	}
+}
+
+func getCmdState(queryRoute string, cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:   "state <address>",
+		Short: `query account's validation status (is it on, is the validator jailed, is it in the set, and so on)`,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			accAddress := args[0]
+
+			res, _, err := cliCtx.Query(strings.Join(
+				[]string{
+					"custom",
+					queryRoute,
+					types.QueryState,
+					accAddress,
+				}, "/",
+			))
+			if err != nil {
+				fmt.Printf("could not get noding status for address %s\n", accAddress)
+				return nil
+			}
+
+			if len(res) != 1 {
+				panic(errors.Errorf("cannot parse response, 1 byte expected, got %X", res))
+			}
+			var out = types.ValidatorState(res[0])
+			return cliCtx.PrintOutput(out.String())
 		},
 	}
 }

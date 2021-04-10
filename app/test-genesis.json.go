@@ -599,13 +599,13 @@ const defaultGenesis = `{
       },
       "activity": [
         {
-	  "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-	  "renew_block": "9000",
-	  "info": {
-	    "active": true,
-	    "expire_at": "9000"
-	  }
-	},
+		  "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
+		  "renew_block": "9000",
+		  "info": {
+			"active": true,
+			"expire_at": "9000"
+		  }
+		},
         {
 	  "address": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
 	  "renew_block": "9000",

@@ -13,6 +13,8 @@ import (
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/delegating"
 	dTypes "github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/noding"
+	nodingTypes "github.com/arterynetwork/artr/x/noding/types"
 	"github.com/arterynetwork/artr/x/profile"
 	"github.com/arterynetwork/artr/x/referral"
 	refTypes "github.com/arterynetwork/artr/x/referral/types"
@@ -259,5 +261,22 @@ func RebuildTeamCoinsCache(rk referral.Keeper, ak auth.AccountKeeper) upgrade.Up
 			return
 		})
 		logger.Debug("    all done")
+	}
+}
+
+func InitializeNodingLottery(k noding.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting InitializeNodingLottery...")
+		var pz noding.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, nodingTypes.KeyLotteryValidators) {
+				pz.LotteryValidators = nodingTypes.DefaultLotteryValidators
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Debug("Finished InitializeNodingLottery", "params", pz)
 	}
 }

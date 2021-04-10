@@ -130,6 +130,10 @@ func (r R) DelegatedAtLevelsUpTo(n int) sdk.Int {
 	return result
 }
 
+func (r R) RegistrationClosed(ctx sdk.Context) bool {
+	return !r.Active && (r.CompressionAt == -1 || ctx.BlockHeight() >= r.CompressionAt - util.BlocksOneMonth)
+}
+
 type ReferralFee struct {
 	Beneficiary sdk.AccAddress `json:"beneficiary"`
 	Ratio       util.Fraction  `json:"ratio"`

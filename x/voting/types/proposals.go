@@ -50,6 +50,10 @@ const (
 	ProposalTypeMinDelegate = 24
 	// Максимальное количество валидаторов
 	ProposalTypeMaxValidators = 25
+	// Амнистия
+	ProposalTypeGeneralAmnesty = 26
+	// "Счастливые" валидаторы
+	ProposalTypeLotteryValidators = 27
 )
 
 // EmptyProposalParams

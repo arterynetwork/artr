@@ -148,7 +148,8 @@ func NewArteryApp(
 		profile.StoreKey, profile.AliasStoreKey, profile.CardStoreKey,
 		schedule.StoreKey, referral.StoreKey, referral.IndexStoreKey, delegating.MainStoreKey,
 		delegating.ClusterStoreKey, vpn.StoreKey, storage.StoreKey,
-		subscription.StoreKey, voting.StoreKey, noding.StoreKey, noding.IdxStoreKey, earning.StoreKey)
+		subscription.StoreKey, voting.StoreKey, noding.StoreKey, noding.IdxStoreKey,
+		earning.StoreKey)
 
 	tKeys := sdk.NewTransientStoreKeys(params.TStoreKey)
 
@@ -364,6 +365,7 @@ func NewArteryApp(
 	app.upgradeKeeper.SetUpgradeHandler("1.2.2",
 		RebuildTeamCoinsCache(app.referralKeeper, app.accountKeeper),
 	)
+	app.upgradeKeeper.SetUpgradeHandler("1.3.0", InitializeNodingLottery(app.nodingKeeper, app.subspaces[noding.ModuleName]))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

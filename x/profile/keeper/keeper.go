@@ -13,6 +13,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/types"
 	"github.com/arterynetwork/artr/x/referral"
 )
@@ -158,6 +159,12 @@ func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.P
 
 			// If new nickname not empty - add it to KVStore
 			if nickname != "" {
+				if err := k.SupplyKeeper.SendCoinsFromAccountToModule(
+					ctx, addr, auth.FeeCollectorName,
+					util.Uartrs(1_000000),
+				); err != nil {
+					return errors.Wrap(err, "cannot charge a rename fee")
+				}
 				k.setProfileAccountByNickname(ctx, nickname, addr)
 			}
 		}
@@ -220,10 +227,16 @@ func (k Keeper) CreateAccount(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.
 
 func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress, profile types.Profile) error {
 	acc := k.AccountKeeper.NewAccountWithAddress(ctx, addr)
-	acc.SetCoins(sdk.NewCoins(sdk.NewCoin(types.MainDenom, sdk.NewInt(0))))
+	if err := acc.SetCoins(sdk.NewCoins(sdk.NewCoin(types.MainDenom, sdk.NewInt(0)))); err != nil {
+		return errors.Wrap(err, "cannot initialize account balance")
+	}
 	k.AccountKeeper.SetAccount(ctx, acc)
-	k.ReferralsKeeper.AppendChild(ctx, refAddr, addr)
-	k.ReferralsKeeper.ScheduleCompression(ctx, addr, ctx.BlockHeight()+referral.CompressionPeriod)
+	if err := k.ReferralsKeeper.AppendChild(ctx, refAddr, addr); err != nil {
+		return errors.Wrap(err, "cannot add account to referral")
+	}
+	if err := k.ReferralsKeeper.ScheduleCompression(ctx, addr, ctx.BlockHeight()+referral.CompressionPeriod); err != nil {
+		return errors.Wrap(err, "cannot schedule compression")
+	}
 	profile.CardNumber = k.CardNumberByAccountNumber(ctx, acc.GetAccountNumber())
 	if err := k.SetProfile(ctx, addr, profile); err != nil {
 		return errors.Wrap(err, "cannot set profile")
