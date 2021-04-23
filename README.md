@@ -8,16 +8,16 @@ First of all, you can download the Artery Network application for Windows and ma
 what's under the hood, you can start your full node by yourself following these steps.     
 
 0. Make you sure you have [Go](https://golang.org/) 1.15+ installed.
-0. Download this repo and checkout 1.1.0 version with ```
-git clone https://github.com/arterynetwork/artr.git -b 1.1.0```
+0. Download this repo and checkout 1.3.0 version with ```
+git clone https://github.com/arterynetwork/artr.git -b 1.3.0```
 0. Build and install the daemon and the CLI client with `make all`
 0. (Optional) Look around with `artrd --help` and `artrcli --help`
 0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name your like.
 0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from 
-https://artery.network/.well-known/genesis.json 
+https://artery.network/.well-known/genesis1.3.0.json 
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
-            peristent_peers = "3f7d1d07d708546caf6a8a97754c0bbe7e52df52@167.172.60.181:26656"
+            peristent_peers = ""
             seeders = "47deee9e7c5c68e077ced2ad2e41cf47d9675c0e@64.227.124.171:26656"
             
             timeout_propose = "3s"
