@@ -52,6 +52,11 @@ type HandlerSuite struct {
 }
 
 func (s *HandlerSuite) SetupTest() {
+	defer func() {
+		if err := recover(); err != nil {
+			s.FailNow("panic on setup", err)
+		}
+	}()
 	s.app, s.cleanup = app.NewAppFromGenesis(nil)
 	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
 	s.k = s.app.GetBankKeeper()

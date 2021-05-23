@@ -84,7 +84,7 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 	if err != nil {
 		return
 	}
-	if !result && status < referral.StatusLeader {
+	if !result && status < referral.Status(k.GetParams(ctx).MinStatus) {
 		reason = types.AttributeValueNotEnoughStatus
 		return
 	}

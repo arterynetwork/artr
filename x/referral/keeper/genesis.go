@@ -121,7 +121,7 @@ func (k Keeper) ImportFromGenesis(
 	}
 	for _, x := range downgrades {
 		if err := bu.update(x.Account, false, func(value *types.R) {
-			value.Status = types.Status(x.Current)
+			k.setStatus(ctx, value, types.Status(x.Current), x.Account)
 			value.StatusDowngradeAt = x.Height
 		}); err != nil {
 			return err

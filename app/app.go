@@ -1,6 +1,29 @@
 package app
 
 import (
+	"encoding/json"
+	"io"
+	"os"
+
+	bam "github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/simapp"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/types/module"
+	"github.com/cosmos/cosmos-sdk/version"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+	authexported "github.com/cosmos/cosmos-sdk/x/auth/exported"
+	"github.com/cosmos/cosmos-sdk/x/auth/vesting"
+	"github.com/cosmos/cosmos-sdk/x/params"
+	"github.com/cosmos/cosmos-sdk/x/supply"
+	"github.com/cosmos/cosmos-sdk/x/upgrade"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	tmos "github.com/tendermint/tendermint/libs/os"
+	dbm "github.com/tendermint/tm-db"
+
+	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating"
 	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/noding"
@@ -11,30 +34,6 @@ import (
 	"github.com/arterynetwork/artr/x/subscription"
 	"github.com/arterynetwork/artr/x/voting"
 	"github.com/arterynetwork/artr/x/vpn"
-	"encoding/json"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	authexported "github.com/cosmos/cosmos-sdk/x/auth/exported"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
-	"io"
-	"os"
-
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	tmos "github.com/tendermint/tendermint/libs/os"
-	dbm "github.com/tendermint/tm-db"
-
-	"github.com/arterynetwork/artr/x/bank"
-	bam "github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/codec"
-	"github.com/cosmos/cosmos-sdk/simapp"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/cosmos-sdk/version"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/vesting"
-	//distr "github.com/cosmos/cosmos-sdk/x/distribution"
-	"github.com/cosmos/cosmos-sdk/x/params"
-	"github.com/cosmos/cosmos-sdk/x/supply"
 )
 
 const appName = "artery"
@@ -366,6 +365,11 @@ func NewArteryApp(
 		RebuildTeamCoinsCache(app.referralKeeper, app.accountKeeper),
 	)
 	app.upgradeKeeper.SetUpgradeHandler("1.3.0", InitializeNodingLottery(app.nodingKeeper, app.subspaces[noding.ModuleName]))
+	app.upgradeKeeper.SetUpgradeHandler("1.3.1", Chain(
+		CheckStatusIndex(app.referralKeeper, keys[referral.IndexStoreKey]),
+		InitializeNodingMinStatus(app.nodingKeeper, app.subspaces[noding.ModuleName]),
+		ShardCompression(app.referralKeeper, cdc, keys[referral.StoreKey], keys[schedule.StoreKey]),
+	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

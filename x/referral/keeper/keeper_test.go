@@ -43,6 +43,12 @@ type BaseSuite struct {
 }
 
 func (s *BaseSuite) setupTest(genesis json.RawMessage) {
+	defer func() {
+		if err := recover(); err != nil {
+			s.FailNow("panic in setup", err)
+		}
+	}()
+
 	s.app, s.cleanup = app.NewAppFromGenesis(genesis)
 
 	s.cdc = s.app.Codec()

@@ -54,6 +54,8 @@ const (
 	ProposalTypeGeneralAmnesty = 26
 	// "Счастливые" валидаторы
 	ProposalTypeLotteryValidators = 27
+	// Статус, начиная с которого доступна валидация
+	ProposalTypeValidatorMinimalStatus = 28
 )
 
 // EmptyProposalParams
@@ -163,4 +165,14 @@ type ShortCountProposalParams struct {
 
 func (params ShortCountProposalParams) String() string {
 	return fmt.Sprintf("Count: %d", params.Count)
+}
+
+var _ ProposalParams = &StatusProposalParams{}
+
+type StatusProposalParams struct {
+	Status uint8 `json:"status" yaml:"status"`
+}
+
+func (p StatusProposalParams) String() string {
+	return fmt.Sprintf("Status: %d", p.Status)
 }

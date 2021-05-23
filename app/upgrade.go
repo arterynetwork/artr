@@ -2,8 +2,11 @@ package app
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	authTypes "github.com/cosmos/cosmos-sdk/x/auth/exported"
@@ -18,6 +21,7 @@ import (
 	"github.com/arterynetwork/artr/x/profile"
 	"github.com/arterynetwork/artr/x/referral"
 	refTypes "github.com/arterynetwork/artr/x/referral/types"
+	schTypes "github.com/arterynetwork/artr/x/schedule/types"
 	"github.com/arterynetwork/artr/x/storage"
 )
 
@@ -278,5 +282,190 @@ func InitializeNodingLottery(k noding.Keeper, paramspace params.Subspace) upgrad
 		}
 		k.SetParams(ctx, pz)
 		logger.Debug("Finished InitializeNodingLottery", "params", pz)
+	}
+}
+
+func CheckStatusIndex(k referral.Keeper, indexStoreKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting CheckStatusIndex...")
+		k.Iterate(ctx, func(acc sdk.AccAddress, r *refTypes.R) (changed, checkForStatusUpdate bool) {
+			if r.Status < referral.StatusBusinessman {
+				return false, false
+			}
+
+			store := ctx.KVStore(indexStoreKey)
+			key := make([]byte, len([]byte(acc))+1)
+			copy(key[1:], acc)
+
+			for status := referral.StatusBusinessman; status < r.Status; status++ {
+				key[0] = uint8(status)
+				if store.Has(key) {
+					logger.Info("Clear wrong entry", "status", status, "acc", acc.String())
+					store.Delete(key)
+				}
+			}
+			key[0] = uint8(r.Status)
+			if !store.Has(key) {
+				logger.Info("Add missing entry", "status", r.Status, "acc", acc.String())
+				store.Set(key, []byte{0x01})
+			}
+			return false, false
+		})
+	}
+}
+
+func InitializeNodingMinStatus(k noding.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting InitializeNodingMinStatus...")
+		var pz noding.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, nodingTypes.KeyMinStatus) {
+				pz.MinStatus = nodingTypes.DefaultMinStatus
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Debug("Finished InitializeNodingMinStatus", "params", pz)
+	}
+}
+
+func ShardCompression(rk referral.Keeper, cdc *codec.Codec, rKey, schKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Debug("Starting ShardCompression...")
+		const MAX_PER_BLOCK = 10
+
+		var (
+			store = cachekv.NewStore(ctx.KVStore(schKey)) // CacheKV allows us to mutate the store while iterating over it.
+
+			carryOn   []schTypes.Task
+			carryOnTo uint64
+		)
+
+		var updateReferral func(sdk.AccAddress, uint64)
+		{
+			store := ctx.KVStore(rKey)
+			updateReferral = func(acc sdk.AccAddress, height uint64) {
+				var refData referral.DataRecord
+				if err := cdc.UnmarshalBinaryLengthPrefixed(store.Get(acc), &refData); err != nil {
+					panic(err)
+				}
+				refData.CompressionAt = int64(height)
+				bz, err := cdc.MarshalBinaryLengthPrefixed(refData)
+				if err != nil {
+					panic(err)
+				}
+				store.Set(acc, bz)
+			}
+		}
+
+		var bunchUpdateReferral = func(list schTypes.Schedule, height uint64) {
+			for _, item := range list {
+				updateReferral(item.Data, height)
+			}
+		}
+
+		var scheduleNew = func(list schTypes.Schedule, height uint64, stop uint64) (remain schTypes.Schedule) {
+			key := make([]byte, 8)
+			var now schTypes.Schedule
+			for ; list != nil && height != stop; height += 1 {
+				binary.BigEndian.PutUint64(key, height)
+				if len(carryOn) <= MAX_PER_BLOCK {
+					now = carryOn
+					carryOn = nil
+				} else {
+					now = carryOn[:MAX_PER_BLOCK]
+					carryOn = carryOn[MAX_PER_BLOCK:]
+				}
+				bz, err := cdc.MarshalBinaryBare(now)
+				if err != nil {
+					panic(err)
+				}
+				store.Set(key, bz)
+				bunchUpdateReferral(now, height)
+			}
+			return list
+		}
+
+		it := store.Iterator(nil, nil)
+		for ; it.Valid(); it.Next() {
+			var (
+				all,
+				head,
+				tail schTypes.Schedule
+				trash,
+				n int
+				height = binary.BigEndian.Uint64(it.Key())
+			)
+			if err := cdc.UnmarshalBinaryBare(it.Value(), &all); err != nil {
+				panic(err)
+			}
+			carryOn = scheduleNew(carryOn, carryOnTo, height)
+			for _, item := range carryOn {
+				if n++; n > MAX_PER_BLOCK {
+					tail = append(tail, item)
+				} else {
+					head = append(head, item)
+					updateReferral(item.Data, height)
+				}
+			}
+			for _, item := range all {
+				if item.HandlerName == referral.CompressionHookName {
+					h, err := rk.GetCompressionBlockHeight(ctx, item.Data)
+					if err != nil {
+						panic(err)
+					}
+					if h != int64(height) {
+						trash++
+						continue
+					}
+					if n++; n > MAX_PER_BLOCK {
+						tail = append(tail, item)
+						continue
+					}
+				}
+				head = append(head, item)
+			}
+			if trash == 0 && carryOn == nil && tail == nil {
+				continue
+			}
+
+			if trash != 0 {
+				logger.Info(
+					"Dropping obsolete compressions",
+					"height", height,
+					"count", trash,
+				)
+			}
+			if head == nil {
+				store.Delete(it.Key())
+			} else {
+				bz, err := cdc.MarshalBinaryBare(head)
+				if err != nil {
+					panic(err)
+				}
+				store.Set(it.Key(), bz)
+			}
+
+			carryOn = tail
+			if tail != nil {
+				logger.Info(
+					"Too many compressions, rescheduling some to the next block",
+					"height", height,
+					"count", n,
+				)
+				carryOnTo = height + 1
+			}
+		}
+		it.Close()
+		if scheduleNew(carryOn, carryOnTo, 0) != nil {
+			panic("Unscheduled compressions remain")
+		}
+		store.Write()
+
+		logger.Debug("Finished ShardCompression")
 	}
 }

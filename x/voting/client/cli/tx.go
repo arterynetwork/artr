@@ -59,6 +59,7 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		getCmdSetMaxValidators(cdc),
 		getCmdSetLotteryValidators(cdc),
 		getCmdGeneralAmnesty(cdc),
+		getCmdSetValidatorMinStatus(cdc),
 		util.LineBreak(),
 		GetCmdVote(cdc),
 	)...)
@@ -934,13 +935,48 @@ func getCmdGeneralAmnesty(cdc *codec.Codec) *cobra.Command {
 			inBuf := bufio.NewReader(cmd.InOrStdin())
 			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
 
-			proposalName := args[1]
+			proposalName := args[0]
 
 			msg := types.NewMsgCreateProposal(
 				cliCtx.GetFromAddress(),
 				proposalName,
 				types.ProposalTypeGeneralAmnesty,
 				types.EmptyProposalParams{},
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdSetValidatorMinStatus(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-validator-min-status <status (number)> <proposal name>",
+		Aliases: []string{"set_validator_min_status", "svms"},
+		Short:   `Propose to set minimal status required for validation`,
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+
+			var status uint8
+			{
+				n, err := strconv.ParseUint(args[0], 0, 8)
+				if err != nil {
+					return err
+				}
+				status = uint8(n)
+			}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeValidatorMinimalStatus,
+				types.StatusProposalParams{Status: status},
 			)
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})

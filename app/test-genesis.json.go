@@ -555,14 +555,15 @@ const defaultGenesis = `{
     "noding": {
       "params": {
         "max_validators": 100,
-	"jail_after": 2,
-	"unjail_after": "120"
+        "jail_after": 2,
+        "unjail_after": "120",
+        "min_status": 2
       },
       "active": [
         {
           "account": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
           "pubkey": "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e"
-	}
+        }
       ]
     },
     "schedule": {},

@@ -161,6 +161,7 @@ func (s *HandlerSuite) TestMaxValidators() {
 			MaxValidators: 142,
 			JailAfter:     2,
 			UnjailAfter:   util.BlocksOneHour,
+			MinStatus:     uint8(2),
 		},
 		s.app.GetNodingKeeper().GetParams(s.ctx),
 	)

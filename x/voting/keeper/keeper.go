@@ -291,6 +291,10 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p := k.nodingKeeper.GetParams(ctx)
 			p.LotteryValidators = proposal.Params.(types.ShortCountProposalParams).Count
 			k.nodingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeValidatorMinimalStatus:
+			p := k.nodingKeeper.GetParams(ctx)
+			p.MinStatus = proposal.Params.(types.StatusProposalParams).Status
+			k.nodingKeeper.SetParams(ctx, p)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

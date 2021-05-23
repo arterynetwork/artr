@@ -5,7 +5,8 @@
         "max_validators": 3,
         "lottery_validators": 2,
         "jail_after": 2,
-        "unjail_after": "120"
+        "unjail_after": "120",
+        "min_status": 2
       },
       "active": [
         {

@@ -51439,7 +51439,8 @@
       "params": {
         "max_validators": 100,
         "jail_after": 2,
-        "unjail_after": "120"
+        "unjail_after": "120",
+        "min_status": 2
       },
       "active": [
         {
