@@ -373,12 +373,12 @@ func ShardCompression(rk referral.Keeper, cdc *codec.Codec, rKey, schKey sdk.Sto
 			var now schTypes.Schedule
 			for ; list != nil && height != stop; height += 1 {
 				binary.BigEndian.PutUint64(key, height)
-				if len(carryOn) <= MAX_PER_BLOCK {
-					now = carryOn
-					carryOn = nil
+				if len(list) <= MAX_PER_BLOCK {
+					now = list
+					list = nil
 				} else {
-					now = carryOn[:MAX_PER_BLOCK]
-					carryOn = carryOn[MAX_PER_BLOCK:]
+					now = list[:MAX_PER_BLOCK]
+					list = list[MAX_PER_BLOCK:]
 				}
 				bz, err := cdc.MarshalBinaryBare(now)
 				if err != nil {
