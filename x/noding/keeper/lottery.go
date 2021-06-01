@@ -20,7 +20,7 @@ func (k Keeper) lotteryAddNew(ctx sdk.Context, acc sdk.AccAddress, data *types.D
 
 	it := sdk.KVStoreReversePrefixIterator(store, IdxPrefixLotteryQueue)
 	if it.Valid() {
-		n = binary.BigEndian.Uint64(it.Key()) + 1
+		n = binary.BigEndian.Uint64(it.Key()[len(IdxPrefixLotteryQueue):]) + 1
 	} else {
 		n = 1 // let's leave 0 for "no value"
 	}

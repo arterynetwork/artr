@@ -22,15 +22,38 @@ func TestNodingKeeper_Lottery(t *testing.T) {
 type LotterySuite struct {
 	BaseSuite
 
-	pubKeys []crypto.PubKey
+	accAddrs []sdk.AccAddress
+	pubKeys  []crypto.PubKey
 }
 
 func (s *LotterySuite) SetupTest() {
+	defer func() {
+		if err := recover(); err != nil {
+			s.FailNow("panic on setup", "err", err)
+		}
+	}()
+
 	data, err := ioutil.ReadFile("test-genesis-lottery.json")
 	if err != nil {
 		panic(err)
 	}
 	s.setupTest(data)
+
+	for _, addr := range []string{
+		"artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
+		"artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+		"artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
+		"artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
+		"artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
+		"artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
+		"artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
+	} {
+		addr, err := sdk.AccAddressFromBech32(addr)
+		if err != nil {
+			panic(err)
+		}
+		s.accAddrs = append(s.accAddrs, addr)
+	}
 
 	for _, key := range []string{
 		"artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e",
@@ -125,6 +148,14 @@ func (s *LotterySuite) TestBecomingTop() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{0: 0, 4: 10}, resp.ValidatorUpdates)
+}
+
+func (s *LotterySuite) TestLotteryNoSeq() {
+	for i, x := range []uint64{0, 0, 0, 4, 3, 2, 1} {
+		info, err := s.k.Get(s.ctx, s.accAddrs[i])
+		s.NoError(err, "i", i)
+		s.Equal(x, info.LotteryNo)
+	}
 }
 
 func (s *LotterySuite) votes(data map[int]bool) []abci.VoteInfo {
