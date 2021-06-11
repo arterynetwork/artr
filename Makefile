@@ -13,6 +13,10 @@ BUILD_FLAGS := -ldflags '$(ldflags)'
 
 all: install
 
+build: go.sum
+		go build $(BUILD_FLAGS) ./cmd/artrd
+		go build $(BUILD_FLAGS) ./cmd/artrcli
+
 install: go.sum
 		go install $(BUILD_FLAGS) ./cmd/artrd
 		go install $(BUILD_FLAGS) ./cmd/artrcli
