@@ -68,7 +68,7 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc sdk.AccAddress) error {
 				sdk.NewAttribute(types.AttributeKeyStatusAfter, (value.Status-1).String()),
 			),
 		)
-		value.Status -= 1
+		k.setStatus(ctx, value, value.Status-1, acc)
 		value.StatusDowngradeAt = -1
 	})
 	if err != nil {

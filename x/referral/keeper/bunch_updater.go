@@ -117,7 +117,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 				downgradeAt := bu.ctx.BlockHeight() + StatusDowngradeAfter
 				value.StatusDowngradeAt = downgradeAt
 				payload := []byte(acc)
-				err = bu.k.scheduleKeeper.ScheduleTask(bu.ctx, uint64(downgradeAt), "referral/downgrade", &payload)
+				err = bu.k.scheduleKeeper.ScheduleTask(bu.ctx, uint64(downgradeAt), StatusDowngradeHookName, &payload)
 				if err != nil {
 					return err
 				}

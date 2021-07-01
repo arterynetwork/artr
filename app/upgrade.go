@@ -288,27 +288,25 @@ func InitializeNodingLottery(k noding.Keeper, paramspace params.Subspace) upgrad
 func CheckStatusIndex(k referral.Keeper, indexStoreKey sdk.StoreKey) upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Debug("Starting CheckStatusIndex...")
+		logger.Info("Starting CheckStatusIndex...")
+		store := ctx.KVStore(indexStoreKey)
 		k.Iterate(ctx, func(acc sdk.AccAddress, r *refTypes.R) (changed, checkForStatusUpdate bool) {
-			if r.Status < referral.StatusBusinessman {
-				return false, false
-			}
-
-			store := ctx.KVStore(indexStoreKey)
 			key := make([]byte, len([]byte(acc))+1)
 			copy(key[1:], acc)
 
-			for status := referral.StatusBusinessman; status < r.Status; status++ {
+			for status := referral.StatusBusinessman; status <= referral.StatusAbsoluteChampion; status++ {
 				key[0] = uint8(status)
-				if store.Has(key) {
-					logger.Info("Clear wrong entry", "status", status, "acc", acc.String())
-					store.Delete(key)
+				if status == r.Status {
+					if !store.Has(key) {
+						logger.Info("Add missing entry", "status", status, "acc", acc.String())
+						store.Set(key, []byte{0x01})
+					}
+				} else {
+					if store.Has(key) {
+						logger.Info("Clear wrong entry", "status", status, "acc", acc.String())
+						store.Delete(key)
+					}
 				}
-			}
-			key[0] = uint8(r.Status)
-			if !store.Has(key) {
-				logger.Info("Add missing entry", "status", r.Status, "acc", acc.String())
-				store.Set(key, []byte{0x01})
 			}
 			return false, false
 		})

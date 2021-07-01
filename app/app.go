@@ -371,6 +371,7 @@ func NewArteryApp(
 		ShardCompression(app.referralKeeper, cdc, keys[referral.StoreKey], keys[schedule.StoreKey]),
 	))
 	app.upgradeKeeper.SetUpgradeHandler("1.3.3", NopUpgradeHandler)
+	app.upgradeKeeper.SetUpgradeHandler("1.3.4", CheckStatusIndex(app.referralKeeper, keys[referral.IndexStoreKey]))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

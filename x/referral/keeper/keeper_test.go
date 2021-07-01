@@ -19,6 +19,7 @@ import (
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
@@ -1185,7 +1186,11 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.Equal(int64(1+2*referral.StatusDowngradeAfter), data.StatusDowngradeAt)
 }
 
-type StatusBonusSuite struct{ BaseSuite }
+type StatusBonusSuite struct{
+	BaseSuite
+
+	bk bank.Keeper
+}
 
 func (s *StatusBonusSuite) SetupTest() {
 	data, err := ioutil.ReadFile("test-genesis-status-bonus.json")
@@ -1193,6 +1198,7 @@ func (s *StatusBonusSuite) SetupTest() {
 		panic(err)
 	}
 	s.setupTest(json.RawMessage(data))
+	s.bk = s.app.GetBankKeeper()
 }
 
 func (s *StatusBonusSuite) TestStatusBonus() {
@@ -1220,7 +1226,7 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	total := util.Percent(5).MulInt64(payment - util.CalculateFee(sdk.NewInt(payment)).Int64()).Int64()
 
 	s.Equal(total,
-		s.app.GetBankKeeper().GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64(),
+		s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64(),
 		"commission from subscription",
 	)
 
@@ -1228,9 +1234,9 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	toLevel7 := total/5*2 + total/10
 	toTopRef := total / 5 * 2
 
-	b0level5 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	b0level7 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
-	b0topRef := s.app.GetBankKeeper().GetCoins(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
+	b0level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b0level7 := s.bk.GetCoins(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
+	b0topRef := s.bk.GetCoins(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
 
 	// On the week end
 	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1)
@@ -1243,6 +1249,59 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	s.Equal(b0level5+toLevel5, b1level5, "Level 5: %d + %d", b0level5, toLevel5)
 	s.Equal(b0level7+toLevel7, b1level7, "Level 7: %d + %d", b0level7, toLevel7)
 	s.Equal(b0topRef+toTopRef, b1topRef, "Top referrer: %d + %d", b0topRef, toTopRef)
+}
+
+func (s *StatusBonusSuite) TestStatusBonus_AfterDowngrade() {
+	lvl5 := app.DefaultGenesisUsers["user14"]
+	somebody := app.DefaultGenesisUsers["user1"]
+	s.nextBlock()
+
+	status, err := s.k.GetStatus(s.ctx, lvl5)
+	s.NoError(err)
+	s.Equal(referral.StatusBusinessman, status)
+	b0level5 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
+	total := s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NotZero(total)
+	toLevel5 := total / 10
+
+	// On the week end
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1)
+	s.nextBlock()
+	b1level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	s.Equal(b0level5+toLevel5, b1level5, "Week 1: %d + %d", b0level5, toLevel5)
+
+	// Fail status requirements
+	s.NoError(s.bk.SendCoins(s.ctx, lvl5, somebody, util.Uartrs(100_000_000000)))
+	check, err := s.k.AreStatusRequirementsFulfilled(s.ctx, lvl5, referral.StatusBusinessman)
+	s.NoError(err)
+	s.False(check.Overall)
+	s.nextBlock()
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
+	total = s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NotZero(total)
+	toLevel5 = total / 10
+
+	s.ctx = s.ctx.WithBlockHeight(2*util.BlocksOneWeek - 1)
+	s.nextBlock()
+	b2level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	s.Equal(b1level5-100_000_000000+toLevel5, b2level5, "Week 2: %d + %d", b1level5-100_000_000000, toLevel5)
+
+	// One month later
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek + util.BlocksOneMonth - 1)
+	s.nextBlock()
+	status, err = s.k.GetStatus(s.ctx, lvl5)
+	s.NoError(err)
+	s.Equal(referral.StatusChampion, status)
+
+	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
+	total = s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NotZero(total)
+	s.ctx = s.ctx.WithBlockHeight(5*util.BlocksOneWeek - 1)
+	s.nextBlock()
+	b5level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	s.Equal(b2level5, b5level5, "Week 5: %d + 0", b2level5)
 }
 
 // ----- private functions ------------

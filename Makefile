@@ -2,6 +2,7 @@ PACKAGES=$(shell go list ./... | grep -v '/simulation')
 
 VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 COMMIT := $(shell git log -1 --format='%H')
+DOCKER := $(shell which docker)
 
 ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=Artery \
 	-X github.com/cosmos/cosmos-sdk/version.ServerName=artrd \
@@ -11,7 +12,11 @@ ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=Artery \
 
 BUILD_FLAGS := -ldflags '$(ldflags)'
 
+
 all: install
+
+build-all:
+		$(DOCKER) run --rm -v $(CURDIR):/art-node -w /art-node golang:1.15-alpine sh ./scripts/build-all.sh
 
 build: go.sum
 		go build $(BUILD_FLAGS) ./cmd/artrd
