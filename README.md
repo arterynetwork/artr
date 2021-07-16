@@ -1,10 +1,10 @@
 # Artery Network
 
-You can learn about the project at [https://artery.network/](https://artery.network/).
+You can learn about the project at [https://artery-network.io/](https://artery-network.io/).
 
 ## Full Node Quick Start
 First of all, you can download the Artery Network application for Windows and macOS from 
-[our site](https://artery.network). It is probably what you want. If you are using another OS or just interested 
+[our site](https://artery-network.io). It is probably what you want. If you are using another OS or just interested 
 what's under the hood, you can start your full node by yourself following these steps.     
 
 0. Make you sure you have [Go](https://golang.org/) 1.15+ installed.
@@ -14,7 +14,7 @@ git clone https://github.com/arterynetwork/artr.git -b 1.3.4```
 0. (Optional) Look around with `artrd --help` and `artrcli --help`
 0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name your like.
 0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from 
-https://artery.network/.well-known/genesis1.3.4.json
+https://artery-network.io/.well-known/genesis1.3.4.json
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
             peristent_peers = ""
@@ -34,7 +34,7 @@ https://artery.network/.well-known/genesis1.3.4.json
 message like `UPGRADE "x.x.x" NEEDED at height yyyy` appears and the daemon stops.
 0. Checkout specified version and repeat steps 2 and 8.
 0. When the node reaches the current blockchain height (you can refer with the 
-[blockchain explorer](https://artery.network/blockchain) to be sure), it is ready. Now you can use the `artrcli` 
+[blockchain explorer](https://artery-network.io/blockchain) to be sure), it is ready. Now you can use the `artrcli` 
 command to send transactions.
 
 ### Upgrade Manager
@@ -51,5 +51,5 @@ downloaded one with it.
 ## How to Become a Validator
 
 To become a validator, one must have at least Leader status and 10k+ ARTR total team delegation. If you are not using 
-[Artery Node](https://artery.network/node) application, you can activate validation via CLI:
+[Artery Node](https://artery-network.io/node) application, you can activate validation via CLI:
 ```artrcli tx noding on $(artrd tendermint show-validator) --from [your_key_name]``` 
