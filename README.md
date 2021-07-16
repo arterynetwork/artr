@@ -18,7 +18,7 @@ https://artery.network/.well-known/genesis1.3.4.json
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
             peristent_peers = ""
-            seeders = "47deee9e7c5c68e077ced2ad2e41cf47d9675c0e@64.227.124.171:26656"
+            seeds = "47deee9e7c5c68e077ced2ad2e41cf47d9675c0e@64.227.124.171:26656"
             
             timeout_propose = "3s"
             timeout_propose_delta = "500ms"
