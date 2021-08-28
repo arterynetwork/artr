@@ -10,7 +10,7 @@ import (
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
-func (k Keeper) lotteryAddNew(ctx sdk.Context, acc sdk.AccAddress, data *types.D) error {
+func (k Keeper) lotteryAddNew(ctx sdk.Context, acc sdk.AccAddress, data *types.Info) error {
 	if data.LotteryNo != 0 {
 		return errors.New("already in")
 	}
@@ -31,7 +31,7 @@ func (k Keeper) lotteryAddNew(ctx sdk.Context, acc sdk.AccAddress, data *types.D
 	return nil
 }
 
-func (k Keeper) lotteryExclude(ctx sdk.Context, data *types.D) error {
+func (k Keeper) lotteryExclude(ctx sdk.Context, data *types.Info) error {
 	if data.LotteryNo == 0 {
 		return errors.New("already out")
 	}
@@ -59,7 +59,7 @@ func (k Keeper) lotteryLastNo(ctx sdk.Context, count int) uint64 {
 	return binary.BigEndian.Uint64(key[len(IdxPrefixLotteryQueue):])
 }
 
-func (k Keeper) lotteryDownshift(ctx sdk.Context, account sdk.AccAddress, data *types.D) error {
+func (k Keeper) lotteryDownshift(ctx sdk.Context, account sdk.AccAddress, data *types.Info) error {
 	if err := k.lotteryExclude(ctx, data); err != nil {
 		return errors.Wrap(err, "cannot unassign current number")
 	}

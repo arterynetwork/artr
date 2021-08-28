@@ -1,0 +1,51 @@
+syntax = "proto3";
+package artery.schedule.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "artery/schedule/v1beta1/params.proto";
+import "artery/schedule/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/schedule/types";
+
+service Query {
+  // All queries all scheduled actions.
+  rpc All(AllRequest) returns (AllResponse) {
+    option (google.api.http).get = "/artery/schedule/v1beta1/all";
+  }
+
+  // Get queries actions scheduled to a specified timeframe.
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http).get = "/artery/schedule/v1beta1/since/{since}/to/{to}";
+  }
+
+  rpc Params(ParamsRequest) returns (ParamsResponse) {
+    option (google.api.http).get = "/artery/schedule/v1beta1/params";
+  }
+}
+
+message GetRequest {
+//  google.protobuf.Timestamp since = 1 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+//  google.protobuf.Timestamp to    = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+
+  // It's a really dirty workaround. TODO: Use proper Timestamp
+  string since = 3;
+  string to    = 4;
+}
+
+message GetResponse {
+  repeated Task tasks = 1 [(gogoproto.nullable) = false];
+}
+
+message AllRequest {}
+
+message AllResponse {
+  repeated Task tasks = 1 [(gogoproto.nullable) = false];
+}
+
+message ParamsRequest {}
+
+message ParamsResponse {
+  Params params = 1 [(gogoproto.nullable) = false];
+}

@@ -1,0 +1,35 @@
+syntax="proto3";
+package artery.bank.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "artery/bank/v1beta1/bank.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/bank/types";
+
+// GenesisState is the bank state that must be provided at genesis.
+message GenesisState {
+  Params                            params   = 1 [(gogoproto.nullable) = false];
+  repeated Balance                  balances = 2 [(gogoproto.nullable) = false];
+  repeated cosmos.base.v1beta1.Coin supply   = 3 [(gogoproto.nullable) = false];
+}
+
+// Balance defines an account address and balance pair used in the bank module's
+// genesis state.
+message Balance {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  // address is the address of the balance holder.
+  string address = 1 [
+    (gogoproto.jsontag)  = "address,omitempty",
+    (gogoproto.moretags) = "yaml:\"address,omitempty\""
+  ];
+
+  // coins defines the different coins this balance holds.
+  repeated cosmos.base.v1beta1.Coin coins = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "coins",
+    (gogoproto.moretags) = "yaml:\"coins\""
+  ];
+}

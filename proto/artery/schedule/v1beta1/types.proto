@@ -1,0 +1,17 @@
+syntax = "proto3";
+package artery.schedule.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/schedule/types";
+
+message Task {
+  string handler_name = 1;
+  bytes data = 2;
+  google.protobuf.Timestamp time = 3 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+}
+
+message Schedule {
+  repeated Task tasks = 2 [(gogoproto.nullable) = false];
+}

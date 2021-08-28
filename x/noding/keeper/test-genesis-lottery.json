@@ -1,399 +1,389 @@
 {
   "app_state": {
-    "noding": {
-      "params": {
-        "max_validators": 3,
-        "lottery_validators": 2,
-        "jail_after": 2,
-        "unjail_after": "120",
-        "min_status": 2
-      },
-      "active": [
+    "artrbank": {
+      "balances": [
         {
-          "account": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-          "pubkey": "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e",
-          "ok_blocks_in_row": "10",
-          "staff": true
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "coins": [
+            {
+              "amount": "1000000000000",
+              "denom": "uartr"
+            }
+          ]
         },
         {
-          "account": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "pubkey": "artrvalconspub1zcjduepq6ju0rje9444gqkt63k5n2l9ua72545p8c5eqy0d7uhvtxf53c3xq52ydjy",
-          "ok_blocks_in_row": "10",
-          "staff": true
+          "address": "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+          "coins": [
+            {
+              "amount": "1000000000000",
+              "denom": "uartr"
+            }
+          ]
         },
         {
-          "account": "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-          "pubkey": "artrvalconspub1zcjduepqh4yvd86v0ej8zu890zlxxypgqjulf6ca3a9szyfpkpjxxw74kz3s7yf9qt",
-          "ok_blocks_in_row": "10",
-          "staff": true
+          "address": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
         },
         {
-          "account": "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
-          "pubkey": "artrvalconspub1zcjduepqka83z5c8huh88w9d2llf3asrth6gt8x5cjqk4gz7xfpk0nshfzeqlcpg6p",
-          "ok_blocks_in_row": "1",
-          "staff": true
+          "address": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            },
+            {
+              "amount": "10000000000",
+              "denom": "uartrd"
+            }
+          ]
         },
         {
-          "account": "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-          "pubkey": "artrvalconspub1zcjduepqtczsyayrexuaxg294al04qrvqzg738s9e5jfx82sm87w87w3hq6sc3xq82",
-          "ok_blocks_in_row": "2",
-          "staff": true
+          "address": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
         },
         {
-          "account": "artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
-          "pubkey": "artrvalconspub1zcjduepq753pcpuhu2kyugz9z4lyvye222rtjxraazxffqw9yz0rv7m270jqurvy6q",
-          "ok_blocks_in_row": "3",
-          "staff": true
+          "address": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
         },
         {
-          "account": "artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
-          "pubkey": "artrvalconspub1zcjduepqucxw7h4cz59c3hdnqucu702fcw556l9c5dyewkjzkjjxgvklxnzqfufx5s",
-          "ok_blocks_in_row": "4",
-          "staff": true
+          "address": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
         }
-      ]
+      ],
+      "params": {}
     },
     "auth": {
-      "params": {
-        "max_memo_characters": "256",
-        "tx_sig_limit": "7",
-        "tx_size_cost_per_byte": "10",
-        "sig_verify_cost_ed25519": "590",
-        "sig_verify_cost_secp256k1": "1000"
-      },
       "accounts": [
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt135qfyv227zu3cclmyycnc4u7f7vm86t8t0p4h2",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "0"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8xw3x8p",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              },
-              {
-                "denom": "uartrd",
-                "amount": "10000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+          "sequence": "0"
         },
         {
-          "type": "cosmos-sdk/Account",
-          "value": {
-            "address": "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
-            "coins": [
-              {
-                "denom": "uartr",
-                "amount": "1000000000"
-              }
-            ],
-            "public_key": null,
-            "account_number": "0",
-            "sequence": "0"
-          }
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+          "sequence": "0"
         }
-      ]
+      ],
+      "params": {
+        "max_memo_characters": "256",
+        "sig_verify_cost_ed25519": "590",
+        "sig_verify_cost_secp256k1": "1000",
+        "tx_sig_limit": "7",
+        "tx_size_cost_per_byte": "10"
+      }
+    },
+    "delegating": {
+      "accounts": [],
+      "params": {
+        "min_delegate": "1000",
+        "percentage": {
+          "hundred_k_plus": "30",
+          "minimal": "21",
+          "ten_k_plus": "27",
+          "thousand_plus": "24"
+        }
+      }
+    },
+    "earning": {
+      "params": {
+        "signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ]
+      }
+    },
+    "noding": {
+      "active": [
+        {
+          "account": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "ok_blocks_in_row": "10",
+          "pub_key": "artrtvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qv3rnr2",
+          "staff": true
+        },
+        {
+          "account": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "ok_blocks_in_row": "10",
+          "pub_key": "artrtvalconspub1zcjduepq6ju0rje9444gqkt63k5n2l9ua72545p8c5eqy0d7uhvtxf53c3xq78k3kh",
+          "staff": true
+        },
+        {
+          "account": "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+          "ok_blocks_in_row": "10",
+          "pub_key": "artrtvalconspub1zcjduepqh4yvd86v0ej8zu890zlxxypgqjulf6ca3a9szyfpkpjxxw74kz3s5fmeyc",
+          "staff": true
+        },
+        {
+          "account": "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu",
+          "ok_blocks_in_row": "1",
+          "pub_key": "artrtvalconspub1zcjduepqka83z5c8huh88w9d2llf3asrth6gt8x5cjqk4gz7xfpk0nshfzeq44n57j",
+          "staff": true
+        },
+        {
+          "account": "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+          "ok_blocks_in_row": "2",
+          "pub_key": "artrtvalconspub1zcjduepqtczsyayrexuaxg294al04qrvqzg738s9e5jfx82sm87w87w3hq6sju5ure",
+          "staff": true
+        },
+        {
+          "account": "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+          "ok_blocks_in_row": "3",
+          "pub_key": "artrtvalconspub1zcjduepq753pcpuhu2kyugz9z4lyvye222rtjxraazxffqw9yz0rv7m270jqkw7c7n",
+          "staff": true
+        },
+        {
+          "account": "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+          "ok_blocks_in_row": "4",
+          "pub_key": "artrtvalconspub1zcjduepqucxw7h4cz59c3hdnqucu702fcw556l9c5dyewkjzkjjxgvklxnzqr3m6sr",
+          "staff": true
+        }
+      ],
+      "params": {
+        "jail_after": 2,
+        "lottery_validators": 2,
+        "max_validators": 3,
+        "min_status": "STATUS_LEADER",
+        "unjail_after": "120"
+      }
+    },
+    "profile": {
+      "params": {
+        "creators": ["artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"],
+        "token_rate_signers": ["artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"],
+        "storage_signers": ["artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"],
+        "vpn_signers": ["artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"],
+        "base_storage_gb": 5,
+        "base_vpn_gb": 7,
+        "card_magic": "112233592347",
+        "storage_gb_price": 10,
+        "subscription_price": 1990,
+        "token_rate": "100000",
+        "vpn_gb_price": 10
+      }
     },
     "referral": {
+      "compressions": [],
+      "downgrades": [],
+      "other_accounts": [],
       "params": {
         "company_accounts": {
-          "top_referrer": "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
-          "for_subscription": "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-          "promo_bonuses": "artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
-          "status_bonuses": "artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
-          "leader_bonuses": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3",
-          "for_delegating": "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76"
+          "for_delegating": "artrt1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8xw3x8p",
+          "for_subscription": "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+          "leader_bonuses": "artrt135qfyv227zu3cclmyycnc4u7f7vm86t8t0p4h2",
+          "promo_bonuses": "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+          "status_bonuses": "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+          "top_referrer": "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"
         },
         "delegating_award": {
+          "company": "5/1000",
           "network": [
             "5%",
             "1%",
@@ -405,10 +395,10 @@
             "1%",
             "1%",
             "5/1000"
-          ],
-          "company": "5/1000"
+          ]
         },
         "subscription_award": {
+          "company": "10%",
           "network": [
             "15%",
             "10%",
@@ -420,36 +410,50 @@
             "5%",
             "2%",
             "2%"
-          ],
-          "company": "10%"
+          ]
         }
       },
       "top_level_accounts": [
-        "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-        "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-        "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
-        "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-        "artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
-        "artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
-        "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76",
-        "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-        "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
-        "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
-        "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-        "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
-        "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
-        "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
-        "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-        "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
-        "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
-        "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
-        "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun"
-      ]
+        "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+        "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+        "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu",
+        "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+        "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+        "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+        "artrt1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8xw3x8p",
+        "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+        "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+        "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+        "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+        "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+        "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+        "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+        "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+        "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+        "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+        "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+        "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g"
+      ],
+      "transitions": []
     },
     "schedule": {
       "params": {
-        "initial_height": "0"
+        "day_nanos": "86400000000000"
+      },
+      "tasks": []
+    },
+    "voting": {
+      "government": [
+        "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+        "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+        "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8"
+      ],
+      "params": {
+        "voting_period": 18
       }
     }
-  }
+  },
+  "chain_id": "4utests",
+  "genesis_time": "2022-01-01T00:00:00.000000Z",
+  "initial_height": "0"
 }

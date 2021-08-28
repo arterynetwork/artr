@@ -21,7 +21,7 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 // ExportGenesis writes the current store values
 // to a genesis file, which can be imported again
 // with InitGenesis
-func ExportGenesis(ctx sdk.Context, k Keeper) GenesisState {
+func ExportGenesis(ctx sdk.Context, k Keeper) *GenesisState {
 	return NewGenesisState(
 		k.GetParams(ctx),
 		k.GetState(ctx),

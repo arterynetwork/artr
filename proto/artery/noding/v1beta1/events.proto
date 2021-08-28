@@ -1,0 +1,23 @@
+syntax="proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "tendermint/abci/types.proto";
+import "artery/noding/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+message EventValidatorBanished {
+  string address = 1;
+  Reason reason = 2;
+}
+
+message EventValidatorJailed {
+  string address = 1;
+}
+
+message EventByzantine {
+  string address = 1;
+  bool banned = 2;
+  repeated tendermint.abci.Evidence evidences = 3 [(gogoproto.nullable) = false];
+}

@@ -1,9 +1,10 @@
 package types
 
 import (
+	"time"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
-	supply "github.com/cosmos/cosmos-sdk/x/supply/exported"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -14,13 +15,17 @@ type ParamSubspace interface {
 	SetParamSet(ctx sdk.Context, ps params.ParamSet)
 }
 
-type SupplyKeeper interface {
-	GetModuleAccount(ctx sdk.Context, moduleName string) supply.ModuleAccountI
+type AccountKeeper interface {
+	GetModuleAddress(moduleName string) sdk.AccAddress
+}
+
+type BankKeeper interface {
+	GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
 
 	SendCoinsFromModuleToModule(ctx sdk.Context, senderModule, recipientModule string, amt sdk.Coins) error
 	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 }
 
 type ScheduleKeeper interface {
-	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
+	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
 }

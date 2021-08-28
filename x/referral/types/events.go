@@ -1,28 +1,19 @@
 package types
 
-// referral module event types
-const (
-	EventTypeStatusUpdated           = "status_updated"
-	EventTypeStatusWillBeDowngraded  = "status_will_be_downgraded"
-	EventTypeStatusDowngradeCanceled = "status_downgrade_canceled"
-	EventTypeCompression             = "compression"
-	EventTypeStatusBonus             = "status_bonus"
-	EventTypeTransitionRequested     = "transition_requested"
-	EventTypeTransitionDeclined      = "transition_declined"
-	EventTypeTransitionPerformed     = "transition_performed"
+func (EventStatusUpdated) XXX_MessageName() string { return "status_updated" }
 
-	AttributeKeyAddress        = "address"
-	AttributeKeyBlockHeight    = "block_height"
-	AttributeKeyStatusBefore   = "status_before"
-	AttributeKeyStatusAfter    = "status_after"
-	AttributeKeyReferrer       = "referrer"
-	AttributeKeyReferrals      = "referrals"
-	AttributeKeyAmount         = "amount"
-	AttributeKeyReferrerBefore = "referrer_before"
-	AttributeKeyReferrerAfter  = "referrer_after"
-	AttributeKeyReason         = "reason"
+func (EventStatusWillBeDowngraded) XXX_MessageName() string { return "status_will_be_downgraded" }
 
-	AttributeValueCategory = ModuleName
-	AttributeValueTimeout  = "timeout"
-	AttributeValueDeclined = "declined"
-)
+func (EventStatusDowngradeCanceled) XXX_MessageName() string { return "status_downgrade_canceled" }
+
+func (EventCompression) XXX_MessageName() string { return "compression" }
+
+func (EventStatusBonus) XXX_MessageName() string { return "status_bonus" }
+
+func (EventTransitionRequested) XXX_MessageName() string { return "transition_requested" }
+
+func (EventTransitionPerformed) XXX_MessageName() string { return "transition_performed" }
+
+func (EventTransitionDeclined) XXX_MessageName() string { return "transition_declined" }
+
+func (EventAccBanished) XXX_MessageName() string { return "acc_banished" }

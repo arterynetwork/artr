@@ -1,17 +1,7 @@
 package types
 
-// voting module event types
-const (
-	EventTypeCreateProposal = "create_proposal"
-	EventTypeProposalVote   = "proposal_vote"
-	EventTypeProposalEnd    = "proposal_end"
+func (EventProposalCreated) XXX_MessageName() string { return "proposal_created" }
 
-	AttributeKeyAuthor     = "author"
-	AttributeKeyTypeCode   = "type_code"
-	AttributeKeyAgree      = "agree"
-	AttributeKeyAgreed     = "agreed"
-	AttributeKeyDisagreed  = "disagreed"
-	AttributeKeyGovernment = "government"
+func (EventProposalVote) XXX_MessageName() string { return "proposal_vote" }
 
-	AttributeValueCategory = ModuleName
-)
+func (EventVotingFinished) XXX_MessageName() string { return "voting_finished" }

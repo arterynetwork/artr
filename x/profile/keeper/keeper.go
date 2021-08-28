@@ -11,47 +11,47 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
+	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/types"
-	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the profile store
 type Keeper struct {
-	storeKey        sdk.StoreKey
-	aliasStoreKey   sdk.StoreKey
-	cardsStoreKey   sdk.StoreKey
-	cdc             *codec.Codec
-	paramspace      types.ParamSubspace
-	AccountKeeper   types.AccountKeeper
-	BankKeeper      types.BankKeeper
-	ReferralsKeeper types.ReferralsKeeper
-	SupplyKeeper    types.SupplyKeeper
+	cdc            codec.BinaryMarshaler
+	storeKey       sdk.StoreKey
+	aliasStoreKey  sdk.StoreKey
+	cardsStoreKey  sdk.StoreKey
+	paramspace     types.ParamSubspace
+	accountKeeper  types.AccountKeeper
+	bankKeeper     types.BankKeeper
+	referralKeeper types.ReferralKeeper
+	scheduleKeeper types.ScheduleKeeper
 }
 
 // NewKeeper creates a profile keeper
-func NewKeeper(cdc *codec.Codec,
+func NewKeeper(
+	cdc codec.BinaryMarshaler,
 	key sdk.StoreKey,
 	aliasKey sdk.StoreKey,
 	cardsKey sdk.StoreKey,
 	paramspace types.ParamSubspace,
 	accountKeeper types.AccountKeeper,
 	bankKeeper types.BankKeeper,
-	referralsKeeper types.ReferralsKeeper,
-	supplyKeeper types.SupplyKeeper,
+	referralKeeper types.ReferralKeeper,
+	scheduleKeeper types.ScheduleKeeper,
 ) Keeper {
 	keeper := Keeper{
-		storeKey:        key,
-		aliasStoreKey:   aliasKey,
-		cardsStoreKey:   cardsKey,
-		cdc:             cdc,
-		paramspace:      paramspace.WithKeyTable(types.ParamKeyTable()),
-		AccountKeeper:   accountKeeper,
-		BankKeeper:      bankKeeper,
-		ReferralsKeeper: referralsKeeper,
-		SupplyKeeper:    supplyKeeper,
+		cdc:            cdc,
+		storeKey:       key,
+		aliasStoreKey:  aliasKey,
+		cardsStoreKey:  cardsKey,
+		paramspace:     paramspace.WithKeyTable(types.ParamKeyTable()),
+		accountKeeper:  accountKeeper,
+		bankKeeper:     bankKeeper,
+		referralKeeper: referralKeeper,
+		scheduleKeeper: scheduleKeeper,
 	}
 	return keeper
 }
@@ -67,36 +67,26 @@ func (k Keeper) GetProfile(ctx sdk.Context, addr sdk.AccAddress) *types.Profile 
 
 	var item types.Profile
 
-	bz := store.Get(auth.AddressStoreKey(addr))
-
+	bz := store.Get(addr)
 	if bz == nil {
 		return nil
 	}
 
-	k.cdc.MustUnmarshalBinaryBare(bz, &item)
-
+	err := k.cdc.UnmarshalBinaryBare(bz, &item)
+	if err != nil {
+		panic(err)
+	}
 	return &item
 }
 
 func (k Keeper) GetProfileAccountByNickname(ctx sdk.Context, nickname string) sdk.AccAddress {
 	store := ctx.KVStore(k.aliasStoreKey)
-	var addr sdk.AccAddress
-
-	bz := store.Get([]byte(strings.ToLower(nickname)))
-
-	if bz == nil {
-		return nil
-	}
-
-	k.cdc.MustUnmarshalBinaryBare(bz, &addr)
-
-	return addr
+	return store.Get([]byte(strings.ToLower(nickname)))
 }
 
 func (k Keeper) setProfileAccountByNickname(ctx sdk.Context, nickname string, addr sdk.AccAddress) {
 	store := ctx.KVStore(k.aliasStoreKey)
-	bz := k.cdc.MustMarshalBinaryBare(addr)
-	store.Set([]byte(strings.ToLower(nickname)), bz)
+	store.Set([]byte(strings.ToLower(nickname)), addr)
 }
 
 func (k Keeper) removeProfileAccountByNickname(ctx sdk.Context, nickname string) {
@@ -106,21 +96,10 @@ func (k Keeper) removeProfileAccountByNickname(ctx sdk.Context, nickname string)
 
 func (k Keeper) GetProfileAccountByCardNumber(ctx sdk.Context, cardNumber uint64) sdk.AccAddress {
 	store := ctx.KVStore(k.cardsStoreKey)
-	var addr sdk.AccAddress
-
 	buf := make([]byte, 8)
-
 	binary.BigEndian.PutUint64(buf, cardNumber)
 
-	bz := store.Get(buf)
-
-	if bz == nil {
-		return nil
-	}
-
-	k.cdc.MustUnmarshalBinaryBare(bz, &addr)
-
-	return addr
+	return store.Get(buf)
 }
 
 func (k Keeper) setProfileAccountByCardNumber(ctx sdk.Context, cardNumber uint64, addr sdk.AccAddress) {
@@ -128,8 +107,7 @@ func (k Keeper) setProfileAccountByCardNumber(ctx sdk.Context, cardNumber uint64
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, cardNumber)
 
-	bz := k.cdc.MustMarshalBinaryBare(addr)
-	store.Set(buf, bz)
+	store.Set(buf, addr)
 }
 
 func (k Keeper) removeProfileAccountByCardNumber(ctx sdk.Context, cardNumber uint64) {
@@ -159,7 +137,7 @@ func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.P
 
 			// If new nickname not empty - add it to KVStore
 			if nickname != "" {
-				if err := k.SupplyKeeper.SendCoinsFromAccountToModule(
+				if err := k.bankKeeper.SendCoinsFromAccountToModule(
 					ctx, addr, auth.FeeCollectorName,
 					util.Uartrs(1_000000),
 				); err != nil {
@@ -192,13 +170,20 @@ func (k Keeper) SetProfile(ctx sdk.Context, addr sdk.AccAddress, profile types.P
 	}
 
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryBare(profile)
-	store.Set(auth.AddressStoreKey(addr), bz)
+	bz, err := k.cdc.MarshalBinaryBare(&profile)
+	if err != nil {
+		panic(err)
+	}
+	store.Set(addr, bz)
 
-	acc := k.AccountKeeper.GetAccount(ctx, addr)
+	acc := k.accountKeeper.GetAccount(ctx, addr)
 	if acc == nil {
-		acc = k.AccountKeeper.NewAccountWithAddress(ctx, addr)
-		k.AccountKeeper.SetAccount(ctx, acc)
+		acc = k.accountKeeper.NewAccountWithAddress(ctx, addr)
+		k.accountKeeper.SetAccount(ctx, acc)
+	}
+
+	if active := profile.IsActive(ctx); active != (oldProfile != nil && oldProfile.IsActive(ctx)) {
+		k.referralKeeper.MustSetActive(ctx, addr.String(), active)
 	}
 
 	return nil
@@ -226,17 +211,12 @@ func (k Keeper) CreateAccount(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.
 }
 
 func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, refAddr sdk.AccAddress, profile types.Profile) error {
-	acc := k.AccountKeeper.NewAccountWithAddress(ctx, addr)
-	if err := acc.SetCoins(sdk.NewCoins(sdk.NewCoin(types.MainDenom, sdk.NewInt(0)))); err != nil {
-		return errors.Wrap(err, "cannot initialize account balance")
-	}
-	k.AccountKeeper.SetAccount(ctx, acc)
-	if err := k.ReferralsKeeper.AppendChild(ctx, refAddr, addr); err != nil {
+	acc := k.accountKeeper.NewAccountWithAddress(ctx, addr)
+	k.accountKeeper.SetAccount(ctx, acc)
+	if err := k.referralKeeper.AppendChild(ctx, refAddr.String(), addr.String()); err != nil {
 		return errors.Wrap(err, "cannot add account to referral")
 	}
-	if err := k.ReferralsKeeper.ScheduleCompression(ctx, addr, ctx.BlockHeight()+referral.CompressionPeriod); err != nil {
-		return errors.Wrap(err, "cannot schedule compression")
-	}
+	k.referralKeeper.ScheduleCompression(ctx, addr.String(), ctx.BlockTime().Add(k.referralKeeper.CompressionPeriod(ctx)))
 	profile.CardNumber = k.CardNumberByAccountNumber(ctx, acc.GetAccountNumber())
 	if err := k.SetProfile(ctx, addr, profile); err != nil {
 		return errors.Wrap(err, "cannot set profile")
@@ -246,4 +226,38 @@ func (k Keeper) CreateAccountWithProfile(ctx sdk.Context, addr sdk.AccAddress, r
 
 func (k Keeper) CardNumberByAccountNumber(ctx sdk.Context, accNumber uint64) uint64 {
 	return accNumber ^ k.GetParams(ctx).CardMagic
+}
+
+func (k Keeper) SetStorageCurrent(ctx sdk.Context, addr sdk.AccAddress, value uint64) error {
+	profile := k.GetProfile(ctx, addr)
+	if profile == nil {
+		return types.ErrNotFound
+	}
+	profile.StorageCurrent = value
+
+	store := ctx.KVStore(k.storeKey)
+	bz, err := k.cdc.MarshalBinaryBare(profile)
+	if err != nil {
+		panic(err)
+	}
+	store.Set(addr, bz)
+
+	return nil
+}
+
+func (k Keeper) SetVpnCurrent(ctx sdk.Context, addr sdk.AccAddress, value uint64) error {
+	profile := k.GetProfile(ctx, addr)
+	if profile == nil {
+		return types.ErrNotFound
+	}
+	profile.VpnCurrent = value
+
+	store := ctx.KVStore(k.storeKey)
+	bz, err := k.cdc.MarshalBinaryBare(profile)
+	if err != nil {
+		panic(err)
+	}
+	store.Set(addr, bz)
+
+	return nil
 }

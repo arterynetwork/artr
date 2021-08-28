@@ -1,0 +1,96 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/referral/v1beta1/params.proto";
+import "artery/referral/v1beta1/types.proto";
+import "artery/delegating/v1beta1/params.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+message PriceArgs {
+  option (gogoproto.equal) = true;
+
+  uint32 price = 1 [
+    (gogoproto.jsontag)  = "price",
+    (gogoproto.moretags) = "yaml:\"price\""
+  ];
+}
+
+message DelegationAwardArgs {
+  option (gogoproto.equal) = true;
+
+  artery.delegating.v1beta1.Percentage award = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "award",
+    (gogoproto.moretags) = "yaml:\"award\""
+  ];
+}
+
+message NetworkAwardArgs {
+  option (gogoproto.equal) = true;
+
+  artery.referral.v1beta1.NetworkAward award = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "award",
+    (gogoproto.moretags) = "yaml:\"award\""
+  ];
+}
+
+message AddressArgs {
+  option (gogoproto.goproto_getters) = false;
+  option (gogoproto.equal)           = true;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+}
+
+message SoftwareUpgradeArgs {
+  option (gogoproto.equal) = true;
+
+  // Name - upgrade name
+  string name = 1 [
+    (gogoproto.jsontag)  = "name",
+    (gogoproto.moretags) = "yaml:\"name\""
+  ];
+  // Height - block height to schedule the upgrade at
+  int64 height = 2 [
+    (gogoproto.jsontag)  = "height",
+    (gogoproto.moretags) = "yaml:\"height\""
+  ];
+  // Info - a link (with a checksum) to a JSON file containing upgrade data (binary URIs and so on)
+  // Please refer to https://github.com/regen-network/cosmosd#auto-download
+  string info = 3 [
+    (gogoproto.jsontag)  = "info",
+    (gogoproto.moretags) = "yaml:\"info\""
+  ];
+}
+
+message MinAmountArgs {
+  option (gogoproto.equal) = true;
+
+  int64 min_amount = 1 [
+    (gogoproto.jsontag)  = "min_amount",
+    (gogoproto.moretags) = "yaml:\"min_amount\""
+  ];
+}
+
+message CountArgs {
+  option (gogoproto.equal) = true;
+
+  uint32 count = 1 [
+    (gogoproto.jsontag)  = "count",
+    (gogoproto.moretags) = "yaml:\"count\""
+  ];
+}
+
+message StatusArgs {
+  option (gogoproto.equal) = true;
+
+  artery.referral.v1beta1.Status status = 1 [
+    (gogoproto.jsontag)  = "status",
+    (gogoproto.moretags) = "yaml:\"status\""
+  ];
+}

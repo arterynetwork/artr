@@ -1,41 +1,46 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/storage"
-	"github.com/arterynetwork/artr/x/vpn"
 	"fmt"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/arterynetwork/artr/x/earning/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/earning/types"
 )
 
 // Keeper of the earning store
 type Keeper struct {
+	cdc            codec.BinaryMarshaler
 	storeKey       sdk.StoreKey
-	cdc            *codec.Codec
 	paramspace     types.ParamSubspace
-	supplyKeeper   types.SupplyKeeper
+	accountKeeper  types.AccountKeeper
+	bankKeeper     types.BankKeeper
 	scheduleKeeper types.ScheduleKeeper
 }
 
 // NewKeeper creates a earning keeper
 func NewKeeper(
-	cdc *codec.Codec,
+	cdc codec.BinaryMarshaler,
 	key sdk.StoreKey,
 	paramspace types.ParamSubspace,
-	supplyKeeper types.SupplyKeeper,
+	accountKeeper types.AccountKeeper,
+	bankKeeper types.BankKeeper,
 	scheduleKeeper types.ScheduleKeeper,
 ) Keeper {
 	keeper := Keeper{
-		storeKey:       key,
 		cdc:            cdc,
+		storeKey:       key,
 		paramspace:     paramspace.WithKeyTable(types.ParamKeyTable()),
-		supplyKeeper:   supplyKeeper,
+		accountKeeper:  accountKeeper,
+		bankKeeper:     bankKeeper,
 		scheduleKeeper: scheduleKeeper,
 	}
 	return keeper
@@ -51,41 +56,47 @@ func (k Keeper) ListEarners(ctx sdk.Context, items []types.Earner) error {
 		return types.ErrLocked
 	}
 	for _, earner := range items {
-		if k.has(ctx, earner.Account) {
-			k.Logger(ctx).Error("account listed twice", "accAddress", earner.Account.String())
+		if k.has(ctx, earner.GetAccount()) {
+			k.Logger(ctx).Error("account listed twice", "accAddress", earner.Account)
 			return types.ErrAlreadyListed
 		}
-		k.set(ctx, earner.Account, earner.Points)
+		k.set(ctx, earner.GetAccount(), earner.GetPoints())
 	}
 	return nil
 }
 
-func (k Keeper) Run(ctx sdk.Context, fundPart util.Fraction, perBlock uint16, total types.Points, height int64) error {
-	if ctx.BlockHeight() >= height {
+func (k Keeper) Run(ctx sdk.Context, fundPart util.Fraction, perBlock uint32, total types.Points, time time.Time) error {
+	if ctx.BlockTime().After(time) {
 		return types.ErrTooLate
 	}
 
 	//TODO: Get VPN/Storage account states for a specific moment of the time
-	vpnFund := fundPart.MulInt64(k.supplyKeeper.GetModuleAccount(ctx, vpn.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()).Int64()
-	storageFund := fundPart.MulInt64(k.supplyKeeper.GetModuleAccount(ctx, storage.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64()).Int64()
+	vpnFund := fundPart.MulInt64(k.getModuleBalance(ctx, types.VpnCollectorName)).Int64()
+	storageFund := fundPart.MulInt64(k.getModuleBalance(ctx, types.StorageCollectorName)).Int64()
 	if vpnFund == 0 && storageFund == 0 {
 		return types.ErrNoMoney
 	}
-	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, vpn.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnFund)))); err != nil {
-		return err
+	if vpnFund > 0 {
+		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.VpnCollectorName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnFund)))); err != nil {
+			panic(errors.Wrap(err, "cannot send coins from VPN"))
+		}
 	}
-	if err := k.supplyKeeper.SendCoinsFromModuleToModule(ctx, storage.ModuleName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(storageFund)))); err != nil {
-		return err
+	if storageFund > 0 {
+		if err := k.bankKeeper.SendCoinsFromModuleToModule(ctx, types.StorageCollectorName, types.ModuleName, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(storageFund)))); err != nil {
+			panic(errors.Wrap(err, "cannot send coins from Storage"))
+		}
 	}
-	residualQuotient := util.NewFraction(k.supplyKeeper.GetModuleAccount(ctx, types.ModuleName).GetCoins().AmountOf(util.ConfigMainDenom).Int64(), vpnFund+storageFund).Reduce()
+	residualQuotient := util.NewFraction(k.getModuleBalance(ctx, types.ModuleName), vpnFund+storageFund).Reduce()
 	vpnPointCost := util.NewFraction(vpnFund, total.Vpn).Mul(residualQuotient)
 	storagePointCost := util.NewFraction(storageFund, total.Storage).Mul(residualQuotient)
 	k.SetState(ctx, types.NewStateLocked(vpnPointCost, storagePointCost, perBlock))
-	if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(height), types.StartHookName, &noPayload); err != nil {
-		return err
-	}
+	k.scheduleKeeper.ScheduleTask(ctx, time, types.StartHookName, nil)
 
 	return nil
+}
+
+func (k Keeper) getModuleBalance(ctx sdk.Context, module string) int64 {
+	return k.bankKeeper.GetBalance(ctx, k.accountKeeper.GetModuleAddress(module)).AmountOf(util.ConfigMainDenom).Int64()
 }
 
 func (k Keeper) Reset(ctx sdk.Context) {
@@ -93,28 +104,28 @@ func (k Keeper) Reset(ctx sdk.Context) {
 	k.SetState(ctx, types.NewStateUnlocked())
 }
 
-func (k Keeper) MustPerformStart(ctx sdk.Context, payload []byte) {
-	if err := k.PerformStart(ctx, payload); err != nil {
+func (k Keeper) MustPerformStart(ctx sdk.Context, _ []byte, _ time.Time) {
+	if err := k.PerformStart(ctx); err != nil {
 		panic(sdkerrors.Wrap(err, fmt.Sprintf("cannot process %s hook", types.StartHookName)))
 	}
 }
 
-func (k Keeper) MustPerformContinue(ctx sdk.Context, payload []byte) {
-	if err := k.PerformContinue(ctx, payload); err != nil {
+func (k Keeper) MustPerformContinue(ctx sdk.Context, _ []byte, _ time.Time) {
+	if err := k.PerformContinue(ctx); err != nil {
 		panic(sdkerrors.Wrap(err, fmt.Sprintf("cannot process %s hook", types.ContinueHookName)))
 	}
 }
 
-func (k Keeper) PerformStart(ctx sdk.Context, _ []byte) error {
-	ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeStart))
+func (k Keeper) PerformStart(ctx sdk.Context) error {
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventStartPaying{},
+	); err != nil { panic(err) }
 	return k.proceed(ctx)
 }
 
-func (k Keeper) PerformContinue(ctx sdk.Context, _ []byte) error { return k.proceed(ctx) }
+func (k Keeper) PerformContinue(ctx sdk.Context) error { return k.proceed(ctx) }
 
 //-----------------------------------------------------------------------------------------------------------
-
-var noPayload []byte = nil
 
 func (k Keeper) has(ctx sdk.Context, key sdk.AccAddress) bool {
 	store := ctx.KVStore(k.storeKey)
@@ -127,7 +138,7 @@ func (k Keeper) get(ctx sdk.Context, key sdk.AccAddress) (types.Points, error) {
 	store := ctx.KVStore(k.storeKey)
 	var item types.Points
 	byteKey := []byte(key)
-	err := k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(byteKey), &item)
+	err := k.cdc.UnmarshalBinaryBare(store.Get(byteKey), &item)
 	if err != nil {
 		return types.Points{}, err
 	}
@@ -136,7 +147,10 @@ func (k Keeper) get(ctx sdk.Context, key sdk.AccAddress) (types.Points, error) {
 
 func (k Keeper) set(ctx sdk.Context, key sdk.AccAddress, value types.Points) {
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryLengthPrefixed(value)
+	bz, err := k.cdc.MarshalBinaryBare(&value)
+	if err != nil {
+		panic(err)
+	}
 	store.Set([]byte(key), bz)
 }
 
@@ -166,15 +180,16 @@ func (k Keeper) proceed(ctx sdk.Context) error {
 	page := make([]types.Earner, 0, p.ItemsPerBlock)
 	store := ctx.KVStore(k.storeKey)
 	it := store.Iterator(nil, nil)
-	for i := uint16(0); i < p.ItemsPerBlock && it.Valid(); i++ {
+	for i := uint32(0); i < p.ItemsPerBlock && it.Valid(); i++ {
 		var points types.Points
-		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &points); err != nil {
+		if err := k.cdc.UnmarshalBinaryBare(it.Value(), &points); err != nil {
 			defer it.Close()
 			return err
 		}
 		page = append(page, types.Earner{
-			Points:  points,
-			Account: it.Key(),
+			Account: sdk.AccAddress(it.Key()).String(),
+			Vpn:     points.Vpn,
+			Storage: points.Storage,
 		})
 		it.Next()
 	}
@@ -184,24 +199,24 @@ func (k Keeper) proceed(ctx sdk.Context) error {
 	for _, item := range page {
 		vpnAmt := p.VpnPointCost.MulInt64(item.Vpn).Int64()
 		storageAmt := p.StoragePointCost.MulInt64(item.Storage).Int64()
-		if err := k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, item.Account, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnAmt+storageAmt)))); err != nil {
+		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, item.GetAccount(), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnAmt+storageAmt)))); err != nil {
 			return err
 		}
-		ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeEarn,
-			sdk.NewAttribute(types.AttributeKeyAddress, item.Account.String()),
-			sdk.NewAttribute(types.AttributeKeyVpn, fmt.Sprintf("%d", vpnAmt)),
-			sdk.NewAttribute(types.AttributeKeyStorage, fmt.Sprintf("%d", storageAmt)),
-		))
-		k.delete(ctx, item.Account)
+		if err := ctx.EventManager().EmitTypedEvent(
+			&types.EventEarn{
+				Address: item.Account,
+				Vpn:     uint64(vpnAmt),
+				Storage: uint64(storageAmt),
+			},
+		); err != nil { panic(err) }
+		k.delete(ctx, item.GetAccount())
 	}
 
 	if finished {
-		ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeFinish))
+		if err := ctx.EventManager().EmitTypedEvent(&types.EventFinishPaying{}); err != nil { panic(err) }
 		k.SetState(ctx, types.NewStateUnlocked())
 	} else {
-		if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(ctx.BlockHeight()+1), types.ContinueHookName, &noPayload); err != nil {
-			return err
-		}
+		k.scheduleKeeper.ScheduleTask(ctx, ctx.BlockTime().Add(time.Nanosecond), types.ContinueHookName, nil)
 	}
 	return nil
 }

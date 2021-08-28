@@ -1,0 +1,199 @@
+syntax = "proto3";
+package artery.profile.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/profile/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/profile/types";
+
+service Msg {
+  rpc CreateAccount(MsgCreateAccount) returns (MsgCreateAccountResponse);
+  rpc UpdateProfile(MsgUpdateProfile) returns (MsgUpdateProfileResponse);
+  rpc SetStorageCurrent(MsgSetStorageCurrent) returns (MsgSetStorageCurrentResponse);
+  rpc SetVpnCurrent(MsgSetVpnCurrent) returns (MsgSetVpnCurrentResponse);
+  rpc PayTariff(MsgPayTariff) returns (MsgPayTariffResponse);
+  rpc BuyStorage(MsgBuyStorage) returns (MsgBuyStorageResponse);
+  rpc GiveStorageUp(MsgGiveStorageUp) returns (MsgGiveStorageUpResponse);
+  rpc BuyVpn(MsgBuyVpn) returns (MsgBuyVpnResponse);
+  rpc SetRate(MsgSetRate) returns (MsgSetRateResponse);
+}
+
+message MsgUpdateProfile {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+
+  repeated Update updates = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "updates",
+    (gogoproto.moretags) = "yaml:\"updates\""
+  ];
+
+  message Update {
+    Field field = 1;
+    oneof value {
+      string string = 2;
+      bool   bool   = 3;
+    }
+
+    enum Field {
+      FIELD_UNSPECIFIED = 0;
+      FIELD_AUTO_PAY    = 1;
+      FIELD_NODING      = 3;
+      FIELD_STORAGE     = 4;
+      FIELD_VALIDATOR   = 5;
+      FIELD_VPN         = 6;
+      FIELD_NICKNAME    = 7;
+    }
+  }
+}
+
+message MsgUpdateProfileResponse {}
+
+message MsgCreateAccount {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string creator = 1 [
+    (gogoproto.jsontag)  = "creator",
+    (gogoproto.moretags) = "yaml:\"creator\""
+  ];
+  string address = 2 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  string referrer = 3 [
+    (gogoproto.jsontag)  = "referrer",
+    (gogoproto.moretags) = "yaml:\"referrer\""
+  ];
+  Profile profile = 4 [
+    (gogoproto.moretags) = "yaml:\"profile,omitempty\""
+  ];
+}
+
+message MsgCreateAccountResponse {}
+
+message MsgSetStorageCurrent {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string sender = 1 [
+    (gogoproto.jsontag)  = "sender",
+    (gogoproto.moretags) = "yaml:\"sender\""
+  ];
+  string address = 2 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint64 value = 3 [
+    (gogoproto.jsontag)  = "value",
+    (gogoproto.moretags) = "yaml:\"value\""
+  ];
+}
+
+message MsgSetStorageCurrentResponse {}
+
+message MsgSetVpnCurrent {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string sender = 1 [
+    (gogoproto.jsontag)  = "sender",
+    (gogoproto.moretags) = "yaml:\"sender\""
+  ];
+  string address = 2 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint64 value = 3 [
+    (gogoproto.jsontag)  = "value",
+    (gogoproto.moretags) = "yaml:\"value\""
+  ];
+}
+
+message MsgSetVpnCurrentResponse {}
+
+message MsgPayTariff {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint32 storage_amount = 2 [
+    (gogoproto.moretags) = "yaml:\"storage_amount,omitempty\""
+  ];
+}
+
+message MsgPayTariffResponse {}
+
+message MsgBuyStorage {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint32 extra_storage = 2 [
+    (gogoproto.jsontag)  = "extra_storage",
+    (gogoproto.moretags) = "yaml:\"extra_storage\""
+  ];
+}
+
+message MsgBuyStorageResponse {}
+
+message MsgGiveStorageUp {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint32 amount = 2 [
+    (gogoproto.jsontag)  = "amount",
+    (gogoproto.moretags) = "yaml:\"amount\""
+  ];
+}
+
+message MsgGiveStorageUpResponse {}
+
+message MsgBuyVpn {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint32 extra_traffic = 2 [
+    (gogoproto.jsontag)  = "extra_traffic",
+    (gogoproto.moretags) = "yaml:\"extra_traffic\""
+  ];
+}
+
+message MsgBuyVpnResponse {}
+
+message MsgSetRate {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string sender = 1 [
+    (gogoproto.jsontag)  = "sender",
+    (gogoproto.moretags) = "yaml:\"sender\""
+  ];
+  string value = 2 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "value",
+    (gogoproto.moretags)   = "yaml:\"value\""
+  ];
+}
+
+message MsgSetRateResponse {}

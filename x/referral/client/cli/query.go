@@ -1,23 +1,22 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"strings"
+	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
 
-// GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+// NewQueryCmd returns the cli query commands for this module
+func NewQueryCmd() *cobra.Command {
 	// Group referral queries under a subcommand
 	referralQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
@@ -29,342 +28,235 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	referralQueryCmd.AddCommand(
-		flags.GetCommands(
-			GetStatusCmd(queryRoute, cdc),
-			GetReferrerCmd(queryRoute, cdc),
-			GetReferralsCmd(queryRoute, cdc),
-			GetCoinsCmd(queryRoute, cdc),
-			GetDelegatedCoinsCmd(queryRoute, cdc),
-			GetCheckStatusCmd(queryRoute, cdc),
-			GetWhenCompressionCmd(queryRoute, cdc),
-			getPendingTransitionCmd(queryRoute, cdc),
-			getValidateTransitionCmd(queryRoute, cdc),
-			getCmdInfo(queryRoute, cdc),
-			util.LineBreak(),
-			getCmdParams(queryRoute, cdc),
-		)...,
+		getCmdInfo(),
+		getCoinsCmd(),
+		getCheckStatusCmd(),
+		getValidateTransitionCmd(),
+
+		util.LineBreak(),
+		cmdAllWithStatus(),
+		util.LineBreak(),
+		getCmdParams(),
 	)
 
 	return referralQueryCmd
 }
 
-const customRoute = "custom"
+func getCmdInfo() *cobra.Command {
+	var light bool
 
-func GetStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "status <address>",
-		Short: "Query for account status",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryStatus,
-					accAddress,
-				}, "/"),
-			)
-
-			if err != nil {
-				fmt.Printf("could not get status of %s\n", accAddress)
-			}
-			var res types.Status
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetReferrerCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "referrer <address>",
-		Short: "Get referrer's account address",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryReferrer,
-					accAddress,
-				}, "/"),
-			)
-
-			if err != nil {
-				fmt.Printf("could not get referrer for %s\n", accAddress)
-			}
-			var res sdk.AccAddress
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetReferralsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "referrals [address]",
-		Short: "Get list of referrals' account addresses",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryReferrals,
-					accAddress,
-				}, "/"),
-			)
-
-			if err != nil {
-				fmt.Printf("could not get referrals for %s\n", accAddress)
-			}
-			var res []sdk.AccAddress
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "coins <address> [max_depth]",
-		Short: "Get coins in one's network total",
-		Args:  cobra.RangeArgs(1, 2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			path := []string{
-				customRoute,
-				queryRoute,
-				types.QueryCoinsInNetwork,
-				accAddress,
-			}
-			if len(args) > 1 {
-				path = append(path, args[1])
-			}
-			data, _, err := clientCtx.Query(strings.Join(path, "/"))
-
-			if err != nil {
-				fmt.Printf("could not get coins total for %s\n", accAddress)
-			}
-			var res sdk.Int
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetDelegatedCoinsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "delegated <address> [max_depth]",
-		Short: "Get delegated coins in one's network total",
-		Args:  cobra.RangeArgs(1, 2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			path := []string{
-				customRoute,
-				queryRoute,
-				types.QueryDelegatedInNetwork,
-				accAddress,
-			}
-			if len(args) > 1 {
-				path = append(path, args[1])
-			}
-			data, _, err := clientCtx.Query(strings.Join(path, "/"))
-
-			if err != nil {
-				fmt.Printf("could not get delegated coins total for %s\n", accAddress)
-			}
-			var res sdk.Int
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetCheckStatusCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "check-status <address> <n>",
-		Short: "Check if status #n requirements are fulfilled",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-			status := args[1]
-
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryCheckStatus,
-					accAddress,
-					status,
-				}, "/"),
-			)
-
-			if err != nil {
-				fmt.Printf("could not check %s for status %s", accAddress, status)
-			}
-			var res types.StatusCheckResult
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
-		},
-	}
-}
-
-func GetWhenCompressionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:     "when-compression <address>",
+	cmd := &cobra.Command{
+		Use:     "info <address>",
+		Aliases: []string{"i"},
+		Short:   "Get all info for the account",
 		Args:    cobra.ExactArgs(1),
-		Aliases: []string{"wc", "compression"},
-		Short:   "Get a height of a block which account compression is scheduled to (and -1 if it's not).",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
 			accAddress := args[0]
 
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryWhenCompression,
-					accAddress,
-				}, "/"),
+			res, err := queryClient.Get(
+				context.Background(),
+				&types.GetRequest{
+					AccAddress: accAddress,
+					Light:      light,
+				},
 			)
-
 			if err != nil {
-				fmt.Printf("could not get compression time of %s\n", accAddress)
 				return err
 			}
-			var res int64
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
+
+			return util.PrintConsoleOutput(clientCtx, res.Info)
 		},
 	}
+	cmd.Flags().BoolVarP(&light, "light", "l", false, "omit Referrals and ActiveReferrals fields")
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getPendingTransitionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "transition <address>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Get a new referrer, under that the account is requested to be moved",
+func getCoinsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "coins <address> [max_depth]",
+		Aliases: []string{"c"},
+		Short:   "Get coins total in one's referral structure",
+		Args:    cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
 			accAddress := args[0]
 
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryPendingTransition,
-					accAddress,
-				}, "/"),
-			)
+			var maxDepth uint32
+			if len(args) > 1 {
+				if n, err := strconv.ParseUint(args[1], 0, 32); err == nil {
+					maxDepth = uint32(n)
+				} else {
+					return errors.Wrap(err, "cannot parse max_depth")
+				}
+			}
 
+			res, err := queryClient.Coins(
+				context.Background(),
+				&types.CoinsRequest{
+					AccAddress: accAddress,
+					MaxDepth:   maxDepth,
+				},
+			)
 			if err != nil {
-				fmt.Printf("could not get pending tansition for %s\n", accAddress)
 				return err
 			}
-			res := sdk.AccAddress(data)
-			return clientCtx.PrintOutput(res)
+
+			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getValidateTransitionCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "validate-transition <subject address> <destination address>",
-		Args:  cobra.ExactArgs(2),
-		Short: "Check if the subject can be transferred under the new referrer",
+func getCheckStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "check-status <address> <n>",
+		Aliases: []string{"check_status", "cs"},
+		Short:   "Check if status #n requirements are fulfilled",
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			clientCtx := context.NewCLIContext().WithCodec(cdc)
-			subjAddress := args[0]
-			destAddress := args[1]
-
-			data, _, err := clientCtx.Query(
-				strings.Join([]string{
-					customRoute,
-					queryRoute,
-					types.QueryValidateTransition,
-					subjAddress,
-					destAddress,
-				}, "/"),
-			)
-
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Printf("internal error during transition validation")
 				return err
 			}
-			var res types.QueryResValidateTransition
-			cdc.MustUnmarshalJSON(data, &res)
-			return clientCtx.PrintOutput(res)
+			queryClient := types.NewQueryClient(clientCtx)
+
+			accAddress := args[0]
+
+			var status types.Status
+			if len(args) > 1 {
+				if n, err := strconv.ParseUint(args[1], 0, 32); err == nil {
+					status = types.Status(n)
+				} else {
+					return errors.Wrap(err, "cannot parse status (uint32 expected)")
+				}
+			}
+
+			res, err := queryClient.CheckStatus(
+				context.Background(),
+				&types.CheckStatusRequest{
+					AccAddress: accAddress,
+					Status:     status,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res.Result)
 		},
 	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func getValidateTransitionCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "validate-transition <subject address> <destination address>",
+		Aliases: []string{"validate_transition", "vt"},
+		Args:    cobra.ExactArgs(2),
+		Short:   "Check if the subject can be transferred under the new referrer",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			subject := args[0]
+			target := args[1]
+
+			res, err := queryClient.ValidateTransition(
+				context.Background(),
+				&types.ValidateTransitionRequest{
+					Subject: subject,
+					Target:  target,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res)
+		},
+	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func getCmdParams() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "params",
 		Aliases: []string{"p"},
 		Short:   "Get the module params",
 		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryParams,
-				}, "/",
-			))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get module params")
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			res, err := queryClient.Params(
+				context.Background(),
+				&types.ParamsRequest{},
+			)
+			if err != nil {
 				return err
 			}
 
-			var out types.Params
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdInfo(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "info",
-		Short: "Get all info for the account",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			address := args[0]
-
-			data, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryInfo,
-					address,
-				}, "/",
-			))
+func cmdAllWithStatus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "all-with-status <n>",
+		Aliases: []string{"all_with_status", "aws"},
+		Short:   "Get all accounts with status #n (only for n ≥ 5)",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Printf("cannot obtain info for " + address)
 				return err
 			}
-			var res types.R
-			cdc.MustUnmarshalJSON(data, &res)
-			return cliCtx.PrintOutput(res)
+			queryClient := types.NewQueryClient(clientCtx)
+
+			var status types.Status
+			if n, err := strconv.ParseUint(args[0], 0, 32); err == nil {
+				status = types.Status(n)
+			} else {
+				return errors.Wrap(err, "cannot parse status (uint32 expected)")
+			}
+
+			res, err := queryClient.AllWithStatus(
+				context.Background(),
+				&types.AllWithStatusRequest{
+					Status: status,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res.Accounts)
 		},
 	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }

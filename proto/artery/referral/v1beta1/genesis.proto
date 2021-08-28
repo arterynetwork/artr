@@ -1,0 +1,100 @@
+syntax="proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+import "artery/referral/v1beta1/params.proto";
+import "artery/referral/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+// GenesisState - all referral state that must be provided at genesis
+message GenesisState {
+  option (gogoproto.goproto_getters) = false;
+
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+  repeated string top_level_accounts = 2 [
+    (gogoproto.jsontag)  = "top_level_accounts",
+    (gogoproto.moretags) = "yaml:\"top_level_accounts\""
+  ];
+  repeated Refs other_accounts = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"other_accounts,omitempty\""
+  ];
+  repeated Compression compressions = 4 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"compressions,omitempty\""
+  ];
+  repeated Downgrade downgrades = 5 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"downgrades,omitempty\""
+  ];
+  repeated Transition transitions = 6 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"transitions,omitempty\""
+  ];
+}
+
+message Refs {
+  option (gogoproto.goproto_getters) = false;
+
+  string referrer = 1 [
+    (gogoproto.jsontag)  = "referrer",
+    (gogoproto.moretags) = "yaml:\"referrer\""
+  ];
+  repeated string referrals = 2 [
+    (gogoproto.moretags) = "yaml:\"referrals,omitempty\""
+  ];
+}
+
+message Compression {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  google.protobuf.Timestamp time = 2 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "time",
+    (gogoproto.moretags) = "yaml:\"time\""
+  ];
+}
+
+message Downgrade {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  Status current = 2 [
+    (gogoproto.jsontag)  = "current",
+    (gogoproto.moretags) = "yaml:\"current\""
+  ];
+  google.protobuf.Timestamp time = 3 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "time",
+    (gogoproto.moretags) = "yaml:\"time\""
+  ];
+}
+
+// Transition represents an account transition request. Destination is equal to Subject's R.Transition field.
+message Transition {
+  option (gogoproto.goproto_getters) = false;
+
+  string subject = 1 [
+    (gogoproto.jsontag)  = "subject",
+    (gogoproto.moretags) = "yaml:\"subject\""
+  ];
+  string destination = 2 [
+    (gogoproto.jsontag)  = "destination",
+    (gogoproto.moretags) = "yaml:\"destination\""
+  ];
+}

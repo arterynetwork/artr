@@ -1,63 +1,29 @@
 package delegating
 
 import (
-	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
-	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/delegating/keeper"
 	"github.com/arterynetwork/artr/x/delegating/types"
 )
 
-// NewHandler creates an sdk.Handler for all the delegating type messages
-func NewHandler(k Keeper, supplyKeeper types.SupplyKeeper) sdk.Handler {
+func NewHandler(k Keeper) sdk.Handler {
+	srv := keeper.NewMsgServer(k)
+
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
+		sdkCtx := sdk.WrapSDKContext(ctx)
+
 		switch msg := msg.(type) {
-		case MsgDelegate:
-			return handleMsgDelegate(ctx, k, supplyKeeper, msg)
-		case MsgRevoke:
-			return handleMsgRevoke(ctx, k, msg)
+		case *types.MsgDelegate:
+			res, err := srv.Delegate(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgRevoke:
+			res, err := srv.Revoke(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
-			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}
 	}
-}
-
-func handleMsgDelegate(ctx sdk.Context, k Keeper, supplyKeeper types.SupplyKeeper, msg MsgDelegate) (*sdk.Result, error) {
-	amount := msg.MicroCoins
-	minCoins := sdk.NewInt(k.GetParams(ctx).MinDelegate)
-
-	if amount.LT(minCoins) {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "amount is less than minimum allowed")
-	}
-
-	fee, err := util.PayTxFee(ctx, supplyKeeper, k.Logger(ctx), msg.Acc, msg.MicroCoins)
-	if err != nil {
-		return nil, err
-	}
-	amount = amount.Sub(fee)
-
-	err = k.Delegate(ctx, msg.Acc, amount)
-	if err != nil {
-		k.Logger(ctx).Error(
-			"cannot delegate",
-			"accAddress", msg.Acc,
-			"amount", amount,
-			"error", err,
-		)
-		return nil, err
-	}
-
-	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
-}
-
-func handleMsgRevoke(ctx sdk.Context, k Keeper, msg MsgRevoke) (*sdk.Result, error) {
-	err := k.Revoke(ctx, msg.Acc, msg.MicroCoins)
-	if err != nil {
-		k.Logger(ctx).Error(err.Error())
-		return nil, err
-	}
-	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

@@ -1,13 +1,17 @@
 package types
 
 import (
+	"time"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
+	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+
+	bank "github.com/arterynetwork/artr/x/bank/types"
 	"github.com/arterynetwork/artr/x/delegating"
 	"github.com/arterynetwork/artr/x/noding"
+	profile "github.com/arterynetwork/artr/x/profile/types"
 	"github.com/arterynetwork/artr/x/referral"
-	"github.com/arterynetwork/artr/x/subscription"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -19,8 +23,8 @@ type ParamSubspace interface {
 }
 
 type ScheduleKeeper interface {
-	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
-	DeleteAllTasksOnBlock(ctx sdk.Context, block uint64, event string)
+	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
+	DeleteAll(ctx sdk.Context, time time.Time, event string)
 }
 
 type UprgadeKeeper interface {
@@ -48,16 +52,18 @@ type ReferralKeeper interface {
 	SetParams(ctx sdk.Context, params referral.Params)
 }
 
-type SubscriptionKeeper interface {
-	GetParams(ctx sdk.Context) (params subscription.Params)
-	SetParams(ctx sdk.Context, params subscription.Params)
-	AddCourseChangeSigner(ctx sdk.Context, address sdk.AccAddress)
-	RemoveCourseChangeSigner(ctx sdk.Context, address sdk.AccAddress)
-}
-
 type ProfileKeeper interface {
+	GetParams(ctx sdk.Context) profile.Params
+	SetParams(ctx sdk.Context, params profile.Params)
+
 	AddFreeCreator(ctx sdk.Context, creator sdk.AccAddress)
 	RemoveFreeCreator(ctx sdk.Context, creator sdk.AccAddress)
+	AddTokenRateSigner(ctx sdk.Context, address sdk.AccAddress)
+	RemoveTokenRateSigner(ctx sdk.Context, address sdk.AccAddress)
+	AddVpnCurrentSigner(ctx sdk.Context, address sdk.AccAddress)
+	RemoveVpnCurrentSigner(ctx sdk.Context, address sdk.AccAddress)
+	AddStorageCurrentSigner(ctx sdk.Context, address sdk.AccAddress)
+	RemoveStorageCurrentSigner(ctx sdk.Context, address sdk.AccAddress)
 }
 
 type signersKeeper interface {
@@ -65,9 +71,8 @@ type signersKeeper interface {
 	RemoveSigner(ctx sdk.Context, address sdk.AccAddress)
 }
 type EarningKeeper signersKeeper
-type VpnKeeper signersKeeper
 
 type BankKeeper interface {
-	GetMinSend(ctx sdk.Context) int64
-	SetMinSend(ctx sdk.Context, minSend int64)
+	GetParams(ctx sdk.Context) bank.Params
+	SetParams(ctx sdk.Context, params bank.Params)
 }

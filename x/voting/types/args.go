@@ -1,0 +1,42 @@
+package types
+
+import (
+	"github.com/pkg/errors"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/x/referral/types"
+)
+
+func (args *PriceArgs) Validate() error           { return nil }
+func (args *DelegationAwardArgs) Validate() error { return args.Award.Validate() }
+func (args *NetworkAwardArgs) Validate() error    { return args.Award.Validate() }
+func (args *AddressArgs) Validate() error {
+	_, err := sdk.AccAddressFromBech32(args.Address)
+	return err
+}
+func (args *SoftwareUpgradeArgs) Validate() error {
+	if args.Name == "" {
+		return errors.New("empty upgrade name")
+	}
+	if args.Height <= 0 {
+		return errors.New("upgrade height must be positive")
+	}
+	return nil
+}
+func (args *MinAmountArgs) Validate() error { return nil }
+func (args *CountArgs) Validate() error     { return nil }
+func (args *StatusArgs) Validate() error {
+	if _, ok := types.Status_name[int32(args.Status)]; !ok || args.Status == types.STATUS_UNSPECIFIED {
+		return errors.New("enum value out of range")
+	}
+	return nil
+}
+
+func (args *AddressArgs) GetAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(args.Address)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}

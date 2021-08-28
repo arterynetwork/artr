@@ -9,49 +9,36 @@ import (
 )
 
 // NewQuerier creates a new querier for profile clients.
-func NewQuerier(k Keeper) sdk.Querier {
+func NewQuerier(k Keeper, legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, error) {
 		switch path[0] {
-		case types.QueryProfile:
-			return queryProfile(ctx, req, k)
-		case types.QueryCreators:
-			return queryCreators(ctx, req, k)
-		case types.QueryAccountAddressByNickname:
-			return queryAccountByNickname(ctx, req, k)
-		case types.QueryAccountAddressByCardNumber:
-			return queryAccountByCardNumber(ctx, req, k)
+		case types.QueryProfileByAddress:
+			return queryProfile(ctx, req, k, legacyQuerierCdc)
+		case types.QueryProfileByNickname:
+			return queryAccountByNickname(ctx, req, k, legacyQuerierCdc)
+		case types.QueryProfileByCardNumber:
+			return queryAccountByCardNumber(ctx, req, k, legacyQuerierCdc)
 		case types.QueryParams:
-			return queryParams(ctx, k)
+			return queryParams(ctx, k, legacyQuerierCdc)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown profile query endpoint")
 		}
 	}
 }
 
-func queryCreators(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
-	moduleParams := k.GetParams(ctx)
+func queryProfile(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.GetByAddressRequest
 
-	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, types.QueryCreatorsRes{Creators: moduleParams.Creators})
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-
-	return bz, nil
-}
-
-func queryProfile(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
-	var params types.QueryProfileParams
-
-	if err := types.ModuleCdc.UnmarshalJSON(req.Data, &params); err != nil {
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
 
-	profile := k.GetProfile(ctx, params.Address)
+	profile := k.GetProfile(ctx, params.GetAddress())
 	if profile == nil {
-		profile = &types.Profile{}
+		return nil, types.ErrNotFound
 	}
 
-	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, types.QueryResProfile{Profile: *profile})
+	bz, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.GetByAddressResponse{Profile: *profile})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -59,19 +46,23 @@ func queryProfile(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, err
 	return bz, nil
 }
 
-func queryAccountByNickname(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
-	var params types.QueryAccountByNicknameParams
+func queryAccountByNickname(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.GetByNicknameRequest
 
-	if err := types.ModuleCdc.UnmarshalJSON(req.Data, &params); err != nil {
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
 
 	addr := k.GetProfileAccountByNickname(ctx, params.Nickname)
 	if addr == nil {
-		addr = sdk.AccAddress{}
+		return nil, types.ErrNotFound
 	}
+	profile := k.GetProfile(ctx, addr)
 
-	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, types.QueryResAccountBy{Address: addr})
+	bz, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.GetByNicknameResponse{
+		Address: addr.String(),
+		Profile: *profile,
+	})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -79,19 +70,23 @@ func queryAccountByNickname(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([
 	return bz, nil
 }
 
-func queryAccountByCardNumber(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
-	var params types.QueryAccountByCardNumberParams
+func queryAccountByCardNumber(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.GetByCardNumberRequest
 
-	if err := types.ModuleCdc.UnmarshalJSON(req.Data, &params); err != nil {
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
 
 	addr := k.GetProfileAccountByCardNumber(ctx, params.CardNumber)
 	if addr == nil {
-		addr = sdk.AccAddress{}
+		return nil, types.ErrNotFound
 	}
+	profile := k.GetProfile(ctx, addr)
 
-	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, types.QueryResAccountBy{Address: addr})
+	bz, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.GetByCardNumberResponse{
+		Address: addr.String(),
+		Profile: *profile,
+	})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -99,10 +94,12 @@ func queryAccountByCardNumber(ctx sdk.Context, req abci.RequestQuery, k Keeper) 
 	return bz, nil
 }
 
-func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+func queryParams(ctx sdk.Context, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	params := k.GetParams(ctx)
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.ParamsResponse{
+		Params: params,
+	})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}

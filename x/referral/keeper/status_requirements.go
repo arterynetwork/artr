@@ -1,120 +1,154 @@
 package keeper
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/arterynetwork/artr/x/referral/types"
-	"fmt"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-var statusRequirements = map[types.Status]func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error){
-	types.Lucky: func(_ types.R, _ *bunchUpdater) (types.StatusCheckResult, error) {
-		return types.NewStatusCheckResult(), nil
+func checkStatusRequirements(status types.Status, value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	if value.Banished {
+		return types.StatusCheckResult{
+			Overall: false,
+			Criteria: []types.StatusCheckResult_Criterion{
+				{
+					Met:         false,
+					Rule:        types.RULE_PARTICIPATE_IN_REFERRAL_PROGRAM,
+					TargetValue: 1,
+					ActualValue: 0,
+				},
+			},
+		}, nil
+	}
+	return statusRequirements[status](value, bu)
+}
+
+var statusRequirements = map[types.Status]func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error){
+	types.STATUS_LUCKY: func(_ types.Info, _ *bunchUpdater) (types.StatusCheckResult, error) {
+		return types.StatusCheckResult{Overall: true}, nil
 	},
-	types.Leader: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	types.STATUS_LEADER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsXByX(value, bu, 2, 2)
 	},
-	types.Master: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	types.STATUS_MASTER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsXByX(value, bu, 3, 3)
 	},
-	types.Champion: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.Master.LinesOpened(), 0, 15)
+	types.STATUS_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_MASTER.LinesOpened(), 0, 15)
 	},
-	types.Businessman: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.Champion.LinesOpened(), 150_000_000000, 60)
+	types.STATUS_BUSINESSMAN: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_CHAMPION.LinesOpened(), 150_000, 60)
 	},
-	types.Professional: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.Businessman.LinesOpened(), 300_000_000000, 200)
+	types.STATUS_PROFESSIONAL: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_BUSINESSMAN.LinesOpened(), 300_000, 200)
 	},
-	types.TopLeader: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.Professional.LinesOpened(), 1_000_000_000000, 500)
+	types.STATUS_TOP_LEADER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_PROFESSIONAL.LinesOpened(), 1_000_000, 500)
 	},
-	types.Hero: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.TopLeader.LinesOpened(), 2_000_000_000000, 1_000)
+	types.STATUS_HERO: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_TOP_LEADER.LinesOpened(), 2_000_000, 1_000)
 	},
-	types.AbsoluteChampion: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.Hero.LinesOpened(), 5_000_000_000000, 2_000)
+	types.STATUS_ABSOLUTE_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+		return statusRequirementsCore(value, bu, types.STATUS_HERO.LinesOpened(), 5_000_000, 2_000)
 	},
 }
 
-func statusRequirementsXByX(value types.R, bu *bunchUpdater, count int, size int) (types.StatusCheckResult, error) {
+func statusRequirementsXByX(value types.Info, bu *bunchUpdater, count int, size int) (types.StatusCheckResult, error) {
 	var (
-		result    = types.NewStatusCheckResult()
-		criterion string
+		result    = types.StatusCheckResult{}
+		criterion types.StatusCheckResult_Criterion
 	)
 
-	criterion = fmt.Sprintf("%d active accounts with %d active referrals each in the 1st line", count, size)
-	if value.ActiveReferralsCount[1] < count || value.ActiveReferralsCount[2] < count*size {
-		result.Criteria[criterion] = false
-		result.Overall = false
-		return result, nil
+	criterion = types.StatusCheckResult_Criterion{
+		Rule:        types.RULE_N_REFERRALS_WITH_X_REFERRALS_EACH,
+		TargetValue: uint64(count),
+		ParameterX:  uint64(size),
 	}
+
 	found := 0
-	for _, childAcc := range value.Referrals {
+	for _, childAcc := range value.ActiveReferrals {
 		child, err := bu.get(childAcc)
 		if err != nil {
 			return result, err
 		}
-		if !child.Active {
-			continue
-		}
-		if child.ActiveReferralsCount[1] >= size {
+		if child.ActiveRefCounts[1] >= uint64(size) {
 			found++
 			if found >= count {
-				result.Criteria[criterion] = true
-				return result, nil
+				criterion.Met = true
+				break
 			}
 		}
 	}
+	criterion.ActualValue = uint64(found)
 
-	result.Criteria[criterion] = false
-	result.Overall = false
+	result.Criteria = []types.StatusCheckResult_Criterion{criterion}
+	result.Overall = criterion.Met
 	return result, nil
 }
 
-func statusRequirementsCore(value types.R, bu *bunchUpdater, linesOpen int, coins int64, leg int) (types.StatusCheckResult, error) {
+func statusRequirementsCore(value types.Info, bu *bunchUpdater, linesOpen int, coins int64, leg uint64) (types.StatusCheckResult, error) {
 	var (
-		result    = types.NewStatusCheckResult()
-		criterion string
+		result    = types.StatusCheckResult{Overall: true}
+		criterion types.StatusCheckResult_Criterion
 	)
 
 	if coins > 0 {
-		criterion = fmt.Sprintf("%d+ ARTR in the structure", coins/1_000000)
-		if value.CoinsAtLevelsUpTo(linesOpen).GTE(sdk.NewInt(coins)) {
-			result.Criteria[criterion] = true
-		} else {
-			result.Criteria[criterion] = false
-			result.Overall = false
+		criterion = types.StatusCheckResult_Criterion{
+			Rule:        types.RULE_N_COINS_IN_STRUCTURE,
+			TargetValue: uint64(coins),
+			ActualValue: value.CoinsAtLevelsUpTo(linesOpen).Uint64() / 1_000_000,
 		}
+		if criterion.ActualValue >= criterion.TargetValue {
+			criterion.Met = true
+			criterion.ActualValue = criterion.TargetValue
+		}
+		result.Criteria = append(result.Criteria, criterion)
+		result.Overall = result.Overall && criterion.Met
 	}
 
-	criterion = fmt.Sprintf("3 teams of %d each", leg)
-	if value.ActiveReferralsCount[1] < 3 {
-		result.Criteria[criterion] = false
-		result.Overall = false
-		return result, nil
+	criterion = types.StatusCheckResult_Criterion{
+		Rule:        types.RULE_N_TEAMS_OF_X_PEOPLE_EACH,
+		TargetValue: 3,
+		ParameterX:  leg,
 	}
-	legs := 0
-	for _, childAcc := range value.Referrals {
+	xByX := types.StatusCheckResult_Criterion{
+		Rule:        types.RULE_N_REFERRALS_WITH_X_REFERRALS_EACH,
+		TargetValue: 3,
+		ParameterX:  3,
+	}
+	for _, childAcc := range value.ActiveReferrals {
 		child, err := bu.get(childAcc)
 		if err != nil {
-			return result, err
+			result.Overall = false
+			return result, errors.Wrapf(err, `cannot obtain data for referral "%s"`, childAcc)
 		}
-		if !child.Active {
-			continue
-		}
-		s := 0
-		for _, x := range child.ActiveReferralsCount[1:] {
-			s += x
-		}
-		if s >= leg {
-			legs++
-			if legs >= 3 {
-				result.Criteria[criterion] = true
-				return result, nil
+		var s uint64
+		if !criterion.Met {
+			for _, x := range child.ActiveRefCounts[1:] {
+				s += x
+				if s >= leg {
+					criterion.ActualValue++
+					if criterion.ActualValue >= criterion.TargetValue {
+						criterion.Met = true
+					}
+					break
+				}
 			}
 		}
+		if !xByX.Met {
+			if child.ActiveRefCounts[1] >= xByX.ParameterX {
+				xByX.ActualValue++
+				if xByX.ActualValue >= xByX.TargetValue {
+					xByX.Met = true
+				}
+			}
+		}
+		if criterion.Met && xByX.Met {
+			break
+		}
 	}
-	result.Criteria[criterion] = false
-	result.Overall = false
+	result.Criteria = append(result.Criteria, criterion, xByX)
+	result.Overall = result.Overall && criterion.Met && xByX.Met
+
 	return result, nil
 }

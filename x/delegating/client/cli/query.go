@@ -1,22 +1,20 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/delegating/types"
 )
 
-// GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+// NewQueryCmd returns the cli query commands for this module
+func NewQueryCmd() *cobra.Command {
 	// Group delegating queries under a subcommand
 	delegatingQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
@@ -28,99 +26,140 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	delegatingQueryCmd.AddCommand(
-		flags.GetCommands(
-			GetCmdRevoking(queryRoute, cdc),
-			GetCmdAccumulation(queryRoute, cdc),
-			util.LineBreak(),
-			getCmdParams(queryRoute, cdc),
-		)...,
+		getRevokingCmd(),
+		getAccumulationCmd(),
+		util.LineBreak(),
+		cmdGet(),
+		util.LineBreak(),
+		getParamsCmd(),
 	)
 
 	return delegatingQueryCmd
 }
 
-func GetCmdRevoking(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "revoking <address>",
-		Short: "how many coins are being revoked from delegating",
-		Args:  cobra.ExactArgs(1),
+func getRevokingCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "revoking <address>",
+		Aliases: []string{"r"},
+		Short:   "how many coins are being revoked from delegating",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
 			accAddress := args[0]
 
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryRevoking,
-					accAddress,
-				}, "/",
-			))
+			res, err := queryClient.Revoking(
+				context.Background(),
+				&types.RevokingRequest{
+					AccAddress: accAddress,
+				},
+			)
 			if err != nil {
-				fmt.Printf("could not get revoke requests for address %s\n:%s\n", accAddress, err.Error())
-				return nil
+				return err
 			}
 
-			var out types.QueryResRevoking
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Revoking)
 		},
 	}
+
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdAccumulation(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "accum <address>",
-		Short: "Info about next payment accumulation progress",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
+func getAccumulationCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "accum <address>",
+		Aliases: []string{"a"},
+		Short:   "Info about next payment accumulation progress",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
 			accAddress := args[0]
 
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryAccumulation,
-					accAddress,
-				}, "/",
-			))
+			res, err := queryClient.Accumulation(
+				context.Background(),
+				&types.AccumulationRequest{
+					AccAddress: accAddress,
+				},
+			)
 			if err != nil {
-				fmt.Printf("could not get accumulation progress for address %s:\n%s\n", accAddress, err.Error())
-				return nil
+				return err
 			}
 
-			var out types.QueryResAccumulation
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
+
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func getParamsCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "params",
 		Aliases: []string{"p"},
 		Short:   "Get the module params",
 		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryParams,
-				}, "/",
-			))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get module params:", err)
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			res, err := queryClient.Params(
+				context.Background(),
+				&types.ParamsRequest{},
+			)
+			if err != nil {
 				return err
 			}
 
-			var out types.Params
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
+
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdGet() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get <address>",
+		Short: "get all the module info for a specified account",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			accAddress := args[0]
+
+			res, err := queryClient.Get(
+				context.Background(),
+				&types.GetRequest{
+					AccAddress: accAddress,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res)
+		},
+	}
+
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }

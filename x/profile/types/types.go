@@ -1,37 +1,26 @@
 package types
 
 import (
-	"fmt"
-	"strings"
+	"time"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-type Profile struct {
-	AutoPay     bool   `json:"autopay" yaml:"autopay"`
-	ActiveUntil uint64 `json:"active_until" yaml:"active_until"`
-	Noding      bool   `json:"noding" yaml:"noding"`
-	Storage     bool   `json:"storage" yaml:"storage"`
-	Validator   bool   `json:"validator" yaml:"validator"`
-	VPN         bool   `json:"VPN" yaml:"VPN"`
-	Nickname    string `json:"nickname" yaml:"nickname"`
-	CardNumber  uint64 `json:"card_number,omitempty" yaml:"card_number"`
+func (p Profile) IsActive(ctx sdk.Context) bool {
+	return p.ActiveUntil != nil && p.ActiveUntil.After(ctx.BlockTime())
 }
 
-func (p Profile) String() string {
-	return strings.TrimSpace(fmt.Sprintf(
-		"AutoPayment: %t\n"+
-			"ActiveUntil: %d\n"+
-			"Noding: %t\n"+
-			"Storage: %t\n"+
-			"VPN: %t\n"+
-			"Validator: %t\n"+
-			"Nilname: %s\n"+
-			"CardNumber: %012d",
-		p.AutoPay,
-		p.ActiveUntil,
-		p.Noding,
-		p.Storage,
-		p.VPN,
-		p.Validator,
-		p.Nickname,
-		p.CardNumber))
+func NewProfile(activeUntil time.Time, autoPay, noding, storage, validator, vpn bool, nickname string, cardNo uint64) Profile {
+	profile := Profile{
+		AutoPay:     autoPay,
+		ActiveUntil: &time.Time{},
+		Noding:      noding,
+		Storage:     storage,
+		Validator:   validator,
+		Vpn:         vpn,
+		Nickname:    nickname,
+		CardNumber:  cardNo,
+	}
+	*profile.ActiveUntil = activeUntil
+	return profile
 }

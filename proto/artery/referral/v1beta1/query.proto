@@ -1,0 +1,180 @@
+syntax = "proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "artery/referral/v1beta1/params.proto";
+import "artery/referral/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Get queries all the data for account. If `light=true`, `Referrals` and `ActiveReferrals` fields will be omitted.
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http) = {
+      get: "/artery/referral/v1beta1/get/{acc_address}"
+    };
+  }
+
+  // Coins queries coins total in the accounts' referral structure.
+  rpc Coins(CoinsRequest) returns (CoinsResponse) {
+    option (google.api.http).get = "/artery/referral/v1beta1/coins/{acc_address}/{max_depth}";
+  }
+
+  rpc CheckStatus(CheckStatusRequest) returns (CheckStatusResponse) {
+    option (google.api.http).get = "/artery/referral/v1beta1/check-status/{acc_address}/{status}";
+  }
+
+  rpc ValidateTransition(ValidateTransitionRequest) returns (ValidateTransitionResponse) {
+    option (google.api.http).get = "/artery/referral/v1beta1/validate-transition/{subject}/{target}";
+  }
+
+  rpc Params(ParamsRequest) returns (ParamsResponse) {
+    option (google.api.http).get = "/artery/referral/v1beta1/params";
+  }
+
+  rpc AllWithStatus(AllWithStatusRequest) returns (AllWithStatusResponse) {
+    option (google.api.http).get = "/artery/referral/v1beta1/all_with/{status}";
+  }
+}
+
+// GetRequest defines the request type for x/referral data.
+message GetRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+  bool   light       = 2;
+}
+
+// GetResponse defines the response type for x/referral data.
+message GetResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  Info info = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "info",
+    (gogoproto.moretags) = "yaml:\"info\""
+  ];
+}
+
+// CoinsRequest defines the request type for coins total in the accounts' referral structure.
+message CoinsRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+  uint32 max_depth   = 2;
+}
+
+// CoinsResponse defines the response type for coins total in the accounts' referral structure.
+message CoinsResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string total = 1 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false
+  ];
+  string delegated = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false
+  ];
+}
+
+message CheckStatusRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+  Status status      = 2;
+}
+
+message CheckStatusResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  StatusCheckResult result = 1 [(gogoproto.nullable) = false];
+}
+
+message ValidateTransitionRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string subject = 1;
+  string target  = 2;
+}
+
+message ValidateTransitionResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  bool   ok    = 1;
+  string error = 2;
+}
+
+message ParamsRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+}
+
+message ParamsResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  Params params = 1 [(gogoproto.nullable) = false];
+}
+
+message AllWithStatusRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  Status status = 1;
+}
+
+// CoinsResponse defines the response type for coins total in the accounts' referral structure.
+message AllWithStatusResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  repeated string accounts = 1;
+}

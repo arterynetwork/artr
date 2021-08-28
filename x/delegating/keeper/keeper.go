@@ -1,30 +1,30 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/x/bank"
-	"github.com/arterynetwork/artr/x/referral"
-	"encoding/binary"
 	"fmt"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"sort"
+	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
+	"github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the delegating store
 type Keeper struct {
 	mainStoreKey    sdk.StoreKey
 	clusterStoreKey sdk.StoreKey
-	cdc             *codec.Codec
+	cdc             codec.BinaryMarshaler
 	paramspace      types.ParamSubspace
 	accKeeper       types.AccountKeeper
 	bankKeeper      types.BankKeeper
-	supplyKeeper    types.SupplyKeeper
 	scheduleKeeper  types.ScheduleKeeper
 	profileKeeper   types.ProfileKeeper
 	refKeeper       types.ReferralKeeper
@@ -32,9 +32,9 @@ type Keeper struct {
 
 // NewKeeper creates a delegating keeper
 func NewKeeper(
-	cdc *codec.Codec, mainKey sdk.StoreKey, clusterKey sdk.StoreKey, paramspace types.ParamSubspace,
+	cdc codec.BinaryMarshaler, mainKey sdk.StoreKey, clusterKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accountKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, profileKeeper types.ProfileKeeper,
-	bankKeeper types.BankKeeper, supplyKeeper types.SupplyKeeper, refKeeper referral.Keeper,
+	bankKeeper types.BankKeeper, refKeeper referral.Keeper,
 ) Keeper {
 	keeper := Keeper{
 		mainStoreKey:    mainKey,
@@ -45,7 +45,6 @@ func NewKeeper(
 		scheduleKeeper:  scheduleKeeper,
 		profileKeeper:   profileKeeper,
 		bankKeeper:      bankKeeper,
-		supplyKeeper:    supplyKeeper,
 		refKeeper:       refKeeper,
 	}
 	return keeper
@@ -55,10 +54,6 @@ func NewKeeper(
 func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
-
-const never = -1 // in terms of a block height
-const oneDay = util.BlocksOneDay
-const twoWeeks = 14 * oneDay
 
 func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
 	if uartrs.IsZero() {
@@ -82,84 +77,67 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 
 	if store.Has(byteKey) {
 		byteItem = store.Get(byteKey)
-		err = k.cdc.UnmarshalBinaryLengthPrefixed(byteItem, &item)
-		if err != nil {
-			k.Logger(ctx).Error(err.Error())
-			return err
-		}
+		k.cdc.MustUnmarshalBinaryBare(byteItem, &item)
 	} else {
 		item = types.NewRecord()
 	}
 
 	revoking = revoking.Add(uartrs)
 	if revoking.GTE(sdk.NewInt(100_000_000000)) {
-		ctx.EventManager().EmitEvent(
-			sdk.NewEvent(
-				types.EventTypeMassiveRevoke,
-				sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
-				sdk.NewAttribute(types.AttributeKeyUcoins, revoking.String()),
-			),
-		)
+		if err := ctx.EventManager().EmitTypedEvent(
+			&types.EventMassiveRevoke{
+				Account: acc.String(),
+				Ucoins:  revoking.Uint64(),
+			},
+		); err != nil { panic(err) }
 	}
 
-	nextPayment := ctx.BlockHeight() + oneDay
-	if err = k.accruePart(ctx, acc, &item, nextPayment); err != nil {
-		return err
-	}
+	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
+	k.accruePart(ctx, acc, &item, nextPayment)
 	if err = k.freeze(ctx, acc, uartrs); err != nil {
 		k.Logger(ctx).Error(err.Error())
 		return err
 	}
-	if uartrs.Equal(current) {
-		item.Cluster = never
+	if current.Sub(uartrs).Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
+		item.NextAccrue = nil
 	} else {
-		err = k.addToCluster(ctx, item.Cluster, acc)
-		if err != nil {
-			return err
-		}
+		time := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
+		item.NextAccrue = &time
+		k.scheduleKeeper.ScheduleTask(ctx, time, types.AccrueHookName, acc)
 	}
 
-	height := ctx.BlockHeight() + twoWeeks
+	time := ctx.BlockTime().Add(2*k.scheduleKeeper.OneWeek(ctx))
 	item.Requests = append(item.Requests, types.RevokeRequest{
-		HeightToImplementAt: height,
-		MicroCoins:          uartrs,
+		Time:   time,
+		Amount: uartrs,
 	})
-	byteItem, err = k.cdc.MarshalBinaryLengthPrefixed(item)
-	if err != nil {
-		k.Logger(ctx).Error(err.Error())
-		return err
-	}
-	store.Set(byteKey, byteItem)
-	err = k.scheduleKeeper.ScheduleTask(ctx, uint64(height), types.RevokeHookName, &byteKey)
-	if err != nil {
-		k.Logger(ctx).Error(err.Error())
-		return err
-	}
+	store.Set(byteKey, k.cdc.MustMarshalBinaryBare(&item))
+	k.scheduleKeeper.ScheduleTask(ctx, time, types.RevokeHookName, byteKey)
 	return nil
 }
 
-func (k Keeper) MustPerformRevoking(ctx sdk.Context, payload []byte) {
-	if err := k.performRevoking(ctx, payload); err != nil {
-		panic(err)
-	}
-}
-
 func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
-	if uartrs.IsZero() {
-		return nil
+	if uartrs.LT(sdk.NewInt(k.GetParams(ctx).MinDelegate)) {
+		return types.ErrLessThanMinimum
 	}
+
+	fee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs)))
+	if err != nil {
+		return err
+	}
+	uartrs = uartrs.Sub(fee.AmountOf(util.ConfigMainDenom))
+
 	var (
 		store       = ctx.KVStore(k.mainStoreKey)
 		byteKey     = []byte(acc)
-		nextPayment = ctx.BlockHeight() + oneDay
+		nextPayment = ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 
 		fees     []referral.ReferralFee
 		byteItem []byte
 		item     types.Record
-		err      error
 	)
 
-	fees, err = k.refKeeper.GetReferralFeesForDelegating(ctx, acc)
+	fees, err = k.refKeeper.GetReferralFeesForDelegating(ctx, acc.String())
 	if err != nil {
 		return err
 	}
@@ -167,22 +145,20 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 
 	totalFee := int64(0)
 	outputs := make([]bank.Output, 0, len(fees))
-	eAttrs := make([]sdk.Attribute, 0, 2*len(fees)+2)
-	eAttrs = append(eAttrs,
-		sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
-		sdk.NewAttribute(types.AttributeKeyUcoins, "" /* will set later */),
-	)
+	event := types.EventDelegate{
+		Account:          acc.String(),
+		CommissionTo:     make([]string, 0, len(fees)),
+		CommissionAmount: make([]uint64, 0, len(fees)),
+	}
 	for _, fee := range fees {
 		x := fee.Ratio.MulInt64(uartrs.Int64()).Int64()
 		if x == 0 {
 			continue
 		}
 		totalFee += x
-		outputs = append(outputs, bank.NewOutput(fee.Beneficiary, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x)))))
-		eAttrs = append(eAttrs,
-			sdk.NewAttribute(types.AttributeKeyCommissionTo, fee.Beneficiary.String()),
-			sdk.NewAttribute(types.AttributeKeyCommissionAmount, fmt.Sprintf("%d", x)),
-		)
+		outputs = append(outputs, bank.NewOutput(fee.GetBeneficiary(), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x)))))
+		event.CommissionTo = append(event.CommissionTo, fee.Beneficiary)
+		event.CommissionAmount = append(event.CommissionAmount, uint64(x))
 	}
 	if totalFee != 0 {
 		inputs := []bank.Input{bank.NewInput(acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(totalFee))))}
@@ -195,7 +171,7 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 
 	if store.Has(byteKey) {
 		byteItem = store.Get(byteKey)
-		err = k.cdc.UnmarshalBinaryLengthPrefixed(byteItem, &item)
+		err = proto.Unmarshal(byteItem, &item)
 		if err != nil {
 			return err
 		}
@@ -203,55 +179,43 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		item = types.NewRecord()
 	}
 
-	if err = k.accruePart(ctx, acc, &item, nextPayment); err != nil {
-		return err
-	}
+
+	k.accruePart(ctx, acc, &item, nextPayment)
 	delegation := uartrs.SubRaw(totalFee)
 	if err = k.delegate(ctx, acc, delegation); err != nil {
 		return err
 	}
 
-	eAttrs[1].Value = delegation.String()
-
-	ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeDelegate, eAttrs...))
-
-	store.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
-	return k.addToCluster(ctx, item.Cluster, acc)
-}
-
-func (k Keeper) Accrue(ctx sdk.Context) error {
-	height := ctx.BlockHeight()
-	if height <= k.scheduleKeeper.GetParams(ctx).InitialHeight {
-		k.Logger(ctx).Debug("Accrue: fast-forward, doing nothing")
-		return nil
-	}
-	var (
-		store   = ctx.KVStore(k.clusterStoreKey)
-		byteKey = getCluster(height)
-
-		targets []sdk.AccAddress
-		err     error
-	)
-	if !store.Has(byteKey) {
-		k.Logger(ctx).Debug("Accrue: nothing scheduled", "cluster", fmt.Sprintf("%v", byteKey))
-		return nil
-	}
-	err = k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(byteKey), &targets)
-	if err != nil || targets == nil {
-		return err
+	if k.bankKeeper.GetBalance(ctx, acc).AmountOf(util.ConfigDelegatedDenom).Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
+		item.NextAccrue = nil
+	} else {
+		time := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
+		item.NextAccrue = &time
+		k.scheduleKeeper.ScheduleTask(ctx, time, types.AccrueHookName, acc)
 	}
 
-	store = ctx.KVStore(k.mainStoreKey)
-	for _, acc := range targets {
-		delegated, _ := k.getDelegated(ctx, acc)
-		percent := k.percent(ctx, delegated)
-		k.accrue(ctx, acc, sdk.NewInt(percent.MulInt64(delegated.Int64()).Int64()))
-	}
-	k.Logger(ctx).Debug("Accrue", "count", len(targets))
+	event.Ucoins = delegation.Uint64()
+	if err := ctx.EventManager().EmitTypedEvent(&event); err != nil { panic(err) }
+
+	bz := k.cdc.MustMarshalBinaryBare(&item)
+	store.Set(byteKey, bz)
+
 	return nil
 }
 
 func (k Keeper) GetRevoking(ctx sdk.Context, acc sdk.AccAddress) ([]types.RevokeRequest, error) {
+	data, err := k.get(ctx, acc)
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		return nil, nil
+	}
+
+	return data.Requests, nil
+}
+
+func (k Keeper) get(ctx sdk.Context, acc sdk.AccAddress) (*types.Record, error) {
 	var (
 		store   = ctx.KVStore(k.mainStoreKey)
 		byteKey = []byte(acc)
@@ -262,107 +226,59 @@ func (k Keeper) GetRevoking(ctx sdk.Context, acc sdk.AccAddress) ([]types.Revoke
 	if !store.Has(byteKey) {
 		return nil, nil
 	}
-	err = k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(byteKey), &data)
+	err = proto.Unmarshal(store.Get(byteKey), &data)
 	if err != nil {
 		return nil, err
 	}
 
-	return data.Requests, nil
+	return &data, nil
 }
 
-func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (types.QueryResAccumulation, error) {
+func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.AccumulationResponse, error) {
 	k.Logger(ctx).Debug("GetAccumulation", "acc", acc)
 	var (
 		store   = ctx.KVStore(k.mainStoreKey)
 		byteKey = []byte(acc)
 
 		item types.Record
-		err  error
 	)
 	if !store.Has(byteKey) {
-		return types.QueryResAccumulation{}, sdkerrors.Wrap(sdkerrors.ErrUnknownAddress, "nothing's delegated (A)")
+		return nil, types.ErrNothingDelegated
 	}
-	err = k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(byteKey), &item)
-	if err != nil {
-		return types.QueryResAccumulation{}, err
-	}
-	if item.Cluster == never {
-		return types.QueryResAccumulation{}, sdkerrors.Wrap(sdkerrors.ErrUnknownAddress, "nothing's delegated (B)")
+	k.cdc.MustUnmarshalBinaryBare(store.Get(byteKey), &item)
+	if item.NextAccrue == nil {
+		return nil, types.ErrNothingDelegated
 	}
 
-	periodStart := ctx.BlockHeight() - (ctx.BlockHeight()-item.Cluster)%oneDay
-	periodEnd := periodStart + oneDay
-	dayPart := util.NewFraction(ctx.BlockHeight()-periodStart, oneDay)
+	periodStart := item.NextAccrue.Add(-k.scheduleKeeper.OneDay(ctx))
+	periodEnd := *item.NextAccrue
+	dayPart := util.NewFraction(ctx.BlockTime().Sub(periodStart).Nanoseconds(), k.scheduleKeeper.OneDay(ctx).Nanoseconds()).Reduce()
 
 	delegated, _ := k.getDelegated(ctx, acc)
 	percent := k.percent(ctx, delegated)
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
 
-	result := types.QueryResAccumulation{
-		StartHeight:   periodStart,
-		EndHeight:     periodEnd,
-		Percent:       int(percent.MulInt64(100 * 30).Int64()),
+	result := types.AccumulationResponse{
+		Start:         periodStart,
+		End:           periodEnd,
+		Percent:       percent.MulInt64(100 * 30).Int64(),
 		TotalUartrs:   paymentTotal.Int64(),
 		CurrentUartrs: paymentCurrent.Int64(),
 	}
 	k.Logger(ctx).Debug("GetAccumulation", "result", result)
-	return result, nil
+	return &result, nil
 }
 
 //----------------------------------------------------------------------------------------------------------------------
 // PRIVATE FUNCTIONS
 
-func (k Keeper) performRevoking(ctx sdk.Context, payload []byte) error {
-	var (
-		acc       = sdk.AccAddress(payload)
-		mainStore = ctx.KVStore(k.mainStoreKey)
-		byteKey   = []byte(acc)
 
-		byteItem []byte
-		item     types.Record
-		err      error
-	)
-
-	if !mainStore.Has(byteKey) {
-		return nil
-	}
-	byteItem = mainStore.Get(byteKey)
-	if err = k.cdc.UnmarshalBinaryLengthPrefixed(byteItem, &item); err != nil {
-		return err
-	}
-	sort.Slice(item.Requests, func(i, j int) bool {
-		return item.Requests[i].HeightToImplementAt < item.Requests[j].HeightToImplementAt
-	})
-
-	n := 0
-	for _, req := range item.Requests {
-		if req.HeightToImplementAt > ctx.BlockHeight() {
-			break
-		}
-
-		if err = k.undelegate(ctx, acc, req.MicroCoins); err != nil {
-			return err
-		}
-		n += 1
-	}
-	if n == 0 {
-		return nil
-	}
-	item.Requests = item.Requests[n:]
-	if item.IsEmpty() {
-		mainStore.Delete(byteKey)
-	} else {
-		mainStore.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
-	}
-	return nil
-}
 
 func (k Keeper) getDelegated(ctx sdk.Context, acc sdk.AccAddress) (delegated sdk.Int, undelegating sdk.Int) {
-	coins := k.accKeeper.GetAccount(ctx, acc).GetCoins()
-
-	delegated = coins.AmountOf(util.ConfigDelegatedDenom)
-	undelegating = coins.AmountOf(util.ConfigRevokingDenom)
+	balance := k.bankKeeper.GetBalance(ctx, acc)
+	delegated = balance.AmountOf(util.ConfigDelegatedDenom)
+	undelegating = balance.AmountOf(util.ConfigRevokingDenom)
 	return
 }
 
@@ -371,22 +287,23 @@ func (k Keeper) delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		return nil
 	}
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs))
-	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
+	err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
 	if err != nil {
 		return err
 	}
 
 	plusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, uartrs))
-	_, err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
+	err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
 
 	if err != nil {
 		return err
 	}
 
-	supply := k.supplyKeeper.GetSupply(ctx)
-	supply = supply.Deflate(minusCoins).Inflate(plusCoins)
-	k.supplyKeeper.SetSupply(ctx, supply)
+	supply := k.bankKeeper.GetSupply(ctx)
+	supply.Deflate(minusCoins)
+	supply.Inflate(plusCoins)
+	k.bankKeeper.SetSupply(ctx, supply)
 
 	return nil
 }
@@ -397,22 +314,23 @@ func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) err
 	}
 
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, uartrds))
-	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
+	err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
 	if err != nil {
 		return err
 	}
 
 	plusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, uartrds))
-	_, err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
+	err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
 
 	if err != nil {
 		return err
 	}
 
-	supply := k.supplyKeeper.GetSupply(ctx)
-	supply = supply.Deflate(minusCoins).Inflate(plusCoins)
-	k.supplyKeeper.SetSupply(ctx, supply)
+	supply := k.bankKeeper.GetSupply(ctx)
+	supply.Deflate(minusCoins)
+	supply.Inflate(plusCoins)
+	k.bankKeeper.SetSupply(ctx, supply)
 
 	return nil
 }
@@ -422,28 +340,30 @@ func (k Keeper) undelegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) 
 		return nil
 	}
 	minusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, uartrs))
-	_, err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
+	err := k.bankKeeper.SubtractCoins(ctx, acc, minusCoins)
 
 	if err != nil {
 		return err
 	}
 
 	plusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs))
-	_, err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
+	err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
 
 	if err != nil {
 		return err
 	}
 
-	supply := k.supplyKeeper.GetSupply(ctx)
-	supply = supply.Deflate(minusCoins).Inflate(plusCoins)
-	k.supplyKeeper.SetSupply(ctx, supply)
+	supply := k.bankKeeper.GetSupply(ctx)
+	supply.Deflate(minusCoins)
+	supply.Inflate(plusCoins)
+	k.bankKeeper.SetSupply(ctx, supply)
 
-	ctx.EventManager().EmitEvent(sdk.NewEvent(
-		types.EventTypeUndelegate,
-		sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
-		sdk.NewAttribute(types.AttributeKeyUcoins, uartrs.String()),
-	))
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventUndelegate{
+			Account: acc.String(),
+			Ucoins:  uartrs.Uint64(),
+		},
+	); err != nil { panic(err) }
 	return nil
 }
 
@@ -459,35 +379,32 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	}
 
 	emission := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, ucoins))
-	supply := k.supplyKeeper.GetSupply(ctx)
+	supply := k.bankKeeper.GetSupply(ctx)
+	supply.Inflate(emission)
+	k.bankKeeper.SetSupply(ctx, supply)
 
-	k.supplyKeeper.SetSupply(ctx, supply.Inflate(emission))
-
-	_, err := k.bankKeeper.AddCoins(ctx, acc, emission)
-	if err != nil {
+	if err := k.bankKeeper.AddCoins(ctx, acc, emission); err != nil {
 		panic(err)
 	}
-	ctx.EventManager().EmitEvent(sdk.NewEvent(
-		types.EventTypeAccrue,
-		sdk.NewAttribute(types.AttributeKeyAccount, acc.String()),
-		sdk.NewAttribute(types.AttributeKeyUcoins, ucoins.String()),
-	))
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventAccrue{
+			Account: acc.String(),
+			Ucoins:  ucoins.Uint64(),
+		},
+	); err != nil { panic(err) }
 }
 
-func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment int64) error {
-	if item.Cluster != never {
-		dayPart := util.NewFraction((nextPayment-item.Cluster)%oneDay, oneDay)
+func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment time.Time) {
+	if item.NextAccrue != nil {
+		dayPart := k.dayPart(ctx, *item.NextAccrue)
 		delegated, _ := k.getDelegated(ctx, acc)
 		interest := k.percent(ctx, delegated).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {
 			k.accrue(ctx, acc, sdk.NewInt(interest))
 		}
-		if err := k.dropFromCluster(ctx, item.Cluster, acc); err != nil {
-			return err
-		}
+		k.scheduleKeeper.Delete(ctx, *item.NextAccrue, types.AccrueHookName, acc)
 	}
-	item.Cluster = nextPayment % oneDay
-	return nil
+	item.NextAccrue = &nextPayment
 }
 
 func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
@@ -496,6 +413,10 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
 		ladder  = params.Percentage
 		percent util.Fraction
 	)
+
+	if delegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
+		return util.FractionZero()
+	}
 
 	if delegated.LT(sdk.NewInt(1_000_000000)) {
 		percent = util.Percent(int64(ladder.Minimal))
@@ -510,77 +431,6 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
 	return percent.Reduce()
 }
 
-func getCluster(height int64) []byte {
-	if height < 0 {
-		return nil
-	}
-	res := make([]byte, 2)
-	binary.BigEndian.PutUint16(res, uint16(height%oneDay))
-	return res
-}
-
-func (k Keeper) addToCluster(ctx sdk.Context, cluster int64, acc sdk.AccAddress) error {
-	var (
-		store = ctx.KVStore(k.clusterStoreKey)
-		key   = make([]byte, 2)
-
-		err  error
-		buf  []byte
-		data []sdk.AccAddress
-	)
-	binary.BigEndian.PutUint16(key, uint16(cluster))
-	if store.Has(key) {
-		buf = store.Get(key)
-		err = k.cdc.UnmarshalBinaryLengthPrefixed(buf, &data)
-		if err != nil {
-			return err
-		}
-	} else {
-		data = nil
-	}
-	data = append(data, acc)
-	buf, err = k.cdc.MarshalBinaryLengthPrefixed(data)
-	if err != nil {
-		return err
-	}
-	store.Set(key, buf)
-	k.Logger(ctx).Debug("account added to cluster", "acc", acc, "cluster", cluster)
-	return nil
-}
-
-func (k Keeper) dropFromCluster(ctx sdk.Context, cluster int64, acc sdk.AccAddress) error {
-	var (
-		store = ctx.KVStore(k.clusterStoreKey)
-		key   = make([]byte, 2)
-
-		err  error
-		buf  []byte
-		data []sdk.AccAddress
-	)
-	binary.BigEndian.PutUint16(key, uint16(cluster))
-
-	buf = store.Get(key)
-	err = k.cdc.UnmarshalBinaryLengthPrefixed(buf, &data)
-	if err != nil {
-		return err
-	}
-
-	for i, x := range data {
-		if x.Equals(acc) {
-			data[i] = data[len(data)-1]
-			data = data[:len(data)-1]
-			break
-		}
-	}
-	if data == nil {
-		store.Delete(key)
-	} else {
-		buf, err = k.cdc.MarshalBinaryLengthPrefixed(data)
-		if err != nil {
-			return err
-		}
-		store.Set(key, buf)
-	}
-	k.Logger(ctx).Debug("account dropped from cluster", "acc", acc, "cluster", cluster)
-	return nil
+func (k Keeper) dayPart(ctx sdk.Context, end time.Time) util.Fraction {
+	return util.FractionInt(1).Sub(util.NewFraction(end.Sub(ctx.BlockTime()).Nanoseconds(), k.scheduleKeeper.OneDay(ctx).Nanoseconds()).Reduce())
 }

@@ -14,18 +14,19 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 		ctx,
 		data.TopLevelAccounts,
 		data.OtherAccounts,
-		data.Compression,
-		data.Downgrade,
+		data.Compressions,
+		data.Downgrades,
 		data.Transitions,
 	); err != nil {
 		panic(err)
 	}
+	k.Logger(ctx).Info("... all done!")
 }
 
 // ExportGenesis writes the current store values
 // to a genesis file, which can be imported again
 // with InitGenesis
-func ExportGenesis(ctx sdk.Context, k Keeper) (data GenesisState) {
+func ExportGenesis(ctx sdk.Context, k Keeper) (data *GenesisState) {
 	data, err := k.ExportToGenesis(ctx)
 	if err != nil {
 		panic(err)

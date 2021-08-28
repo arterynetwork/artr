@@ -3,19 +3,20 @@
 package delegating_test
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/suite"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/delegating"
-	"github.com/arterynetwork/artr/x/schedule"
+	delegatingK "github.com/arterynetwork/artr/x/delegating/keeper"
+	delegating "github.com/arterynetwork/artr/x/delegating/types"
+	schedule "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestDelegatingGenesis(t *testing.T) {
@@ -28,17 +29,23 @@ type Suite struct {
 	app     *app.ArteryApp
 	cleanup func()
 	ctx     sdk.Context
-	k       delegating.Keeper
+	k       delegatingK.Keeper
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetDelegatingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s Suite) TestCleanGenesis() {
@@ -59,8 +66,13 @@ func (s Suite) TestDelegateAndRevoke() {
 func (s *Suite) TestRevokeAll() {
 	user := app.DefaultGenesisUsers["user1"]
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_500000)))
-	s.True(s.app.GetAccountKeeper().GetAccount(s.ctx, user).GetCoins().AmountOf(util.ConfigDelegatedDenom).IsZero())
+	s.Equal(
+		int64(8_474500),
+		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
+	)  // -tx_fee -15%
+ 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_474500)))
+
+	s.True(s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).IsZero())
 	s.checkExportImport()
 }
 
@@ -72,7 +84,7 @@ func (s *Suite) TestParams() {
 			TenKPlus:     98,
 			HundredKPlus: 99,
 		},
-		MinDelegate: 123456,
+		MinDelegate:   123456,
 	})
 }
 
@@ -91,9 +103,15 @@ func (s Suite) checkExportImport() {
 			params.StoreKey:            app.DummyDecoder,
 		},
 		map[string]app.Decoder{
-			delegating.MainStoreKey:    app.DummyDecoder,
+			delegating.MainStoreKey: func(bz []byte) (string, error) {
+				var data delegating.Record
+				if err := proto.Unmarshal(bz, &data); err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("%+v", data), nil
+			},
 			delegating.ClusterStoreKey: app.DummyDecoder,
-			schedule.StoreKey:          app.DummyDecoder,
+			schedule.StoreKey:          app.ScheduleDecoder,
 			params.StoreKey:            app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),

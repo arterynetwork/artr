@@ -1,0 +1,72 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+enum ProposalType {
+  option (gogoproto.goproto_enum_prefix) = false;
+
+  PROPOSAL_TYPE_UNSPECIFIED = 0;
+  //1. Стоимость входа
+  PROPOSAL_TYPE_ENTER_PRICE = 1;
+  //2. Вознаграждение за делегирование
+  PROPOSAL_TYPE_DELEGATION_AWARD = 2;
+  //3. Сетевое вознаграждение с делегирования
+  PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD = 3;
+  //4. Сетевое вознаграждение с покупки продукта
+  PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD = 4;
+  //5. Состав голосующего совета (включение / исключение участника)
+  PROPOSAL_TYPE_GOVERNMENT_ADD = 5;
+  //5. Состав голосующего совета (включение / исключение участника)
+  PROPOSAL_TYPE_GOVERNMENT_REMOVE = 6;
+  //6. Стоимость VPN / гб сверх тарифа
+  PROPOSAL_TYPE_PRODUCT_VPN_BASE_PRICE = 7;
+  //7. Стоимость storage / гб сверх тарифа
+  PROPOSAL_TYPE_PRODUCT_STORAGE_BASE_PRICE = 8;
+  // Аккаунт с правом бесплатного создания новых аккаунтов
+  PROPOSAL_TYPE_FREE_CREATOR_ADD = 9;
+  // Аккаунт с правом бесплатного создания новых аккаунтов
+  PROPOSAL_TYPE_FREE_CREATOR_REMOVE = 10;
+  // Обновление blockchain
+  PROPOSAL_TYPE_SOFTWARE_UPGRADE = 11;
+  // Обновление blockchain
+  PROPOSAL_TYPE_CANCEL_SOFTWARE_UPGRADE = 12;
+  // Служебные (с иммунитетом к изменению статуса и делегации) валидаторы
+  PROPOSAL_TYPE_STAFF_VALIDATOR_ADD = 13;
+  // Служебные (с иммунитетом к изменению статуса и делегации) валидаторы
+  PROPOSAL_TYPE_STAFF_VALIDATOR_REMOVE = 14;
+  // Кто может подписывать транзакции на выплату вознаграждений за хранилище/VPN
+  PROPOSAL_TYPE_EARNING_SIGNER_ADD = 15;
+  // Кто может подписывать транзакции на выплату вознаграждений за хранилище/VPN
+  PROPOSAL_TYPE_EARNING_SIGNER_REMOVE = 16;
+  // Кто может менять курс монетки
+  PROPOSAL_TYPE_TOKEN_RATE_SIGNER_ADD = 17;
+  // Кто может менять курс монетки
+  PROPOSAL_TYPE_TOKEN_RATE_SIGNER_REMOVE = 18;
+  // Кто считает трафик VPN и актуализирует данные по нему
+  PROPOSAL_TYPE_VPN_SIGNER_ADD = 19;
+  // Кто считает трафик VPN и актуализирует данные по нему
+  PROPOSAL_TYPE_VPN_SIGNER_REMOVE = 20;
+  // Кто считает занятое место и актуализирует данные по нему
+  PROPOSAL_TYPE_STORAGE_SIGNER_ADD = 21;
+  // Кто считает занятое место и актуализирует данные по нему
+  PROPOSAL_TYPE_STORAGE_SIGNER_REMOVE = 22;
+  // Стоимость переноса аккаунта к другому пригласившему
+  PROPOSAL_TYPE_TRANSITION_PRICE = 23;
+  // Минимальная сумма перевода
+  PROPOSAL_TYPE_MIN_SEND = 24;
+  // Минимальная сумма делегирования
+  PROPOSAL_TYPE_MIN_DELEGATE = 25;
+  // Максимальное количество валидаторов
+  PROPOSAL_TYPE_MAX_VALIDATORS = 26;
+  // "Счастливые" валидаторы
+  PROPOSAL_TYPE_LUCKY_VALIDATORS = 27;
+  // Амнистия
+  PROPOSAL_TYPE_GENERAL_AMNESTY = 28;
+  // Статус, начиная с которого доступна валидация
+  PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS = 29;
+  // Количество блоков, которое надо пропустить чтобы заработать jail
+  PROPOSAL_TYPE_JAIL_AFTER = 30;
+}

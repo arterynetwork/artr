@@ -1,0 +1,44 @@
+swagger: "2.0"
+info:
+  title: Artery Blockchain - gRPC Gateway docs
+  description: A REST interface for state queries
+  version: "2.0.0-a.8"
+apis:
+  - url: ./tmp-swagger-gen/artery/bank/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: BankParams
+  - url: ./tmp-swagger-gen/artery/delegating/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: DelegatingParams
+        Get: DelegatingGet
+  - url: ./tmp-swagger-gen/artery/earning/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: EarningParams
+        State: EarningState
+  - url: ./tmp-swagger-gen/artery/noding/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: NodingParams
+        Get: NodingGet
+        State: NodingState
+  - url: ./tmp-swagger-gen/artery/profile/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: ProfileParams
+  - url: ./tmp-swagger-gen/artery/referral/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: ReferralParams
+        Get: ReferralGet
+  - url: ./tmp-swagger-gen/artery/schedule/v1beta1/query.swagger.json
+  - url: ./tmp-swagger-gen/artery/voting/v1beta1/query.swagger.json
+    operationIds:
+      rename:
+        Params: VotingParams
+  - url: ./client/docs/tm.swagger.yaml
+  - url: ./client/docs/cosmos.swagger.yaml
+    dereference:
+      circular: ignore

@@ -1,13 +1,18 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/referral/types"
 	"bytes"
-	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/pkg/errors"
+
+	store "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"sort"
+
+	"github.com/arterynetwork/artr/x/referral/types"
 )
 
 type kvRecord struct {
@@ -17,11 +22,11 @@ type kvRecord struct {
 
 type callback struct {
 	event string
-	acc   sdk.AccAddress
+	acc   string
 }
 
 func (x callback) Eq(y callback) bool {
-	return x.event == y.event && x.acc.Equals(y.acc)
+	return x.event == y.event && x.acc == y.acc
 }
 
 type callbacks []callback
@@ -33,7 +38,7 @@ func (cbz *callbacks) Less(i, j int) bool {
 	x := (*cbz)[i]
 	y := (*cbz)[j]
 
-	res := bytes.Compare(x.acc, y.acc)
+	res := strings.Compare(x.acc, y.acc)
 	if res < 0 {
 		return true
 	} else if res > 0 {
@@ -64,11 +69,17 @@ func newBunchUpdater(k Keeper, ctx sdk.Context) *bunchUpdater {
 	}
 }
 
-func (bu *bunchUpdater) set(acc sdk.AccAddress, value types.R) error {
+func (bu *bunchUpdater) set(acc string, value types.Info) error {
 	keyBytes := []byte(acc)
-	valueBytes, err := bu.k.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err := bu.k.cdc.MarshalBinaryBare(&value)
 	if err != nil {
 		return err
+	}
+	for i, record := range bu.data {
+		if bytes.Equal(record.key, keyBytes) {
+			bu.data[i].value = valueBytes
+			return nil
+		}
 	}
 	bu.data = append(bu.data, kvRecord{
 		key:   keyBytes,
@@ -77,12 +88,13 @@ func (bu *bunchUpdater) set(acc sdk.AccAddress, value types.R) error {
 	return nil
 }
 
-func (bu *bunchUpdater) get(acc sdk.AccAddress) (types.R, error) {
+//TODO: Refactor to mitigate string <-> AccAddress casting
+func (bu *bunchUpdater) get(acc string) (types.Info, error) {
 	var (
 		keyBytes   = []byte(acc)
 		valueBytes = []byte(nil)
 
-		value types.R
+		value types.Info
 	)
 	for _, record := range bu.data {
 		if bytes.Equal(record.key, keyBytes) {
@@ -94,50 +106,61 @@ func (bu *bunchUpdater) get(acc sdk.AccAddress) (types.R, error) {
 		store := bu.ctx.KVStore(bu.k.storeKey)
 		valueBytes = store.Get(keyBytes)
 	}
-	err := bu.k.cdc.UnmarshalBinaryLengthPrefixed(valueBytes, &value)
+	err := bu.k.cdc.UnmarshalBinaryBare(valueBytes, &value)
 	return value, err
 }
 
-const StatusDowngradeAfter = util.BlocksOneMonth
+func (bu bunchUpdater) StatusDowngradeAfter() time.Duration {
+	return bu.k.scheduleKeeper.OneMonth(bu.ctx)
+}
 
-func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, callback func(value *types.R)) error {
+func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback func(value *types.Info) error) (err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			if _, ok := e.(store.ErrorOutOfGas); ok {
+				panic(e)
+			} else if er, ok := e.(error); ok {
+				err = errors.Wrap(er, "update paniced")
+			} else {
+				err = errors.Errorf("update paniced: %s", e)
+			}
+		}
+	}()
 	value, err := bu.get(acc)
 	if err != nil {
 		bu.k.Logger(bu.ctx).Info("Cannot update, no such account", "addr", acc)
 		return nil
 	}
-	callback(&value)
+	value.Normalize()
+	err = callback(&value)
+	if err != nil {
+		return errors.Wrap(err, "callback failed")
+	}
 	if checkForStatusUpdate {
-		checkResult, err := statusRequirements[value.Status](value, bu)
+		checkResult, err := checkStatusRequirements(value.Status, value, bu)
 		if err != nil {
 			return err
 		}
 		if !checkResult.Overall {
-			if value.StatusDowngradeAt == -1 {
-				downgradeAt := bu.ctx.BlockHeight() + StatusDowngradeAfter
-				value.StatusDowngradeAt = downgradeAt
-				payload := []byte(acc)
-				err = bu.k.scheduleKeeper.ScheduleTask(bu.ctx, uint64(downgradeAt), StatusDowngradeHookName, &payload)
-				if err != nil {
-					return err
-				}
-				bu.ctx.EventManager().EmitEvent(
-					sdk.NewEvent(
-						types.EventTypeStatusWillBeDowngraded,
-						sdk.NewAttribute(types.AttributeKeyAddress, acc.String()),
-						sdk.NewAttribute(types.AttributeKeyBlockHeight, fmt.Sprintf("%d", downgradeAt)),
-					),
-				)
+			if value.StatusDowngradeAt == nil {
+				downgradeAt := bu.ctx.BlockTime().Add(bu.StatusDowngradeAfter())
+				value.StatusDowngradeAt = &downgradeAt
+				bu.k.scheduleKeeper.ScheduleTask(bu.ctx, downgradeAt, StatusDowngradeHookName, []byte(acc))
+				if err := bu.ctx.EventManager().EmitTypedEvent(
+					&types.EventStatusWillBeDowngraded{
+						Address: acc,
+						Time:    downgradeAt,
+					},
+				); err != nil { panic(err) }
 			}
 		} else {
-			if value.StatusDowngradeAt != -1 {
-				value.StatusDowngradeAt = -1
-				bu.ctx.EventManager().EmitEvent(
-					sdk.NewEvent(
-						types.EventTypeStatusDowngradeCanceled,
-						sdk.NewAttribute(types.AttributeKeyAddress, acc.String()),
-					),
-				)
+			if value.StatusDowngradeAt != nil {
+				value.StatusDowngradeAt = nil
+				if err := bu.ctx.EventManager().EmitTypedEvent(
+					&types.EventStatusDowngradeCanceled{
+						Address: acc,
+					},
+				); err != nil { panic(err) }
 			}
 			var nextStatus = value.Status
 			for {
@@ -145,7 +168,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 					break
 				}
 				nextStatus++
-				checkResult, err = statusRequirements[nextStatus](value, bu)
+				checkResult, err = checkStatusRequirements(nextStatus, value, bu)
 				if err != nil {
 					return err
 				}
@@ -155,20 +178,19 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 				}
 			}
 			if nextStatus > value.Status {
-				bu.ctx.EventManager().EmitEvent(
-					sdk.NewEvent(
-						types.EventTypeStatusUpdated,
-						sdk.NewAttribute(types.AttributeKeyAddress, acc.String()),
-						sdk.NewAttribute(types.AttributeKeyStatusBefore, value.Status.String()),
-						sdk.NewAttribute(types.AttributeKeyStatusAfter, nextStatus.String()),
-					),
-				)
+				if err := bu.ctx.EventManager().EmitTypedEvent(
+					&types.EventStatusUpdated{
+						Address: acc,
+						Before:  value.Status,
+						After:   nextStatus,
+					},
+				); err != nil { panic(err) }
 				bu.k.setStatus(bu.ctx, &value, nextStatus, acc)
 				bu.addCallback(StatusUpdatedCallback, acc)
 			}
 		}
 	}
-	valueBytes, err := bu.k.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err := bu.k.cdc.MarshalBinaryBare(&value)
 	if err != nil {
 		bu.k.Logger(bu.ctx).Error("Cannot marshal", "value", value)
 		return err
@@ -180,7 +202,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 	return nil
 }
 
-func (bu *bunchUpdater) addCallback(eventName string, acc sdk.AccAddress) {
+func (bu *bunchUpdater) addCallback(eventName string, acc string) {
 	bu.callbacks = append(bu.callbacks, callback{event: eventName, acc: acc})
 }
 
@@ -195,7 +217,7 @@ func (bu *bunchUpdater) commit() error {
 			continue
 		}
 		if err := bu.k.callback(cb.event, bu.ctx, cb.acc); err != nil {
-			return sdkerrors.Wrap(err, cb.event+" callback failed for "+cb.acc.String())
+			return sdkerrors.Wrap(err, cb.event+" callback failed for "+cb.acc)
 		}
 	}
 	return nil

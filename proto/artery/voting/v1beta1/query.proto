@@ -1,0 +1,76 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "artery/voting/v1beta1/types.proto";
+import "artery/voting/v1beta1/params.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+service Query {
+  rpc History(HistoryRequest) returns (HistoryResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/history";
+  }
+  rpc Government(GovernmentRequest) returns (GovernmentResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/government";
+  }
+  rpc Current(CurrentRequest) returns (CurrentResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/current";
+  }
+  rpc Params(ParamsRequest) returns (ParamsResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/params";
+  }
+}
+
+message HistoryRequest {
+  int32 limit = 1 [(gogoproto.moretags) = "yaml:\"limit,omitempty\""];
+  int32 page  = 2 [(gogoproto.moretags) = "yaml:\"page,omitempty\""];
+}
+
+message HistoryResponse {
+  repeated ProposalHistoryRecord history = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "history",
+    (gogoproto.moretags) = "yaml:history"
+  ];
+}
+
+message GovernmentRequest {}
+
+message GovernmentResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  repeated string members = 1 [
+    (gogoproto.jsontag)  = "members",
+    (gogoproto.moretags) = "yaml:\"members\""
+  ];
+}
+
+message CurrentRequest {}
+
+message CurrentResponse {
+  Proposal proposal = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"proposal,omitempty\""
+  ];
+  repeated string government = 2 [
+    (gogoproto.moretags) = "yaml:\"government,omitempty\""
+  ];
+  repeated string agreed = 3 [
+    (gogoproto.moretags) = "yaml:\"agreed,omitempty\""
+  ];
+  repeated string disagreed = 4 [
+    (gogoproto.moretags) = "yaml:\"disagreed,omitempty\""
+  ];
+}
+
+message ParamsRequest {}
+
+message ParamsResponse {
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+}

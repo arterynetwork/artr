@@ -1,30 +1,38 @@
 package main
 
 import (
-	"encoding/json"
-	"github.com/cosmos/cosmos-sdk/store/types"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tm-db"
 
-	"github.com/arterynetwork/artr/app"
-
 	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/client/config"
 	"github.com/cosmos/cosmos-sdk/client/debug"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/cosmos/cosmos-sdk/client/rpc"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	cryptoTypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/server"
+	serverCmd "github.com/cosmos/cosmos-sdk/server/cmd"
+	serverTypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/cosmos/cosmos-sdk/store"
+	"github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
+	"github.com/cosmos/cosmos-sdk/types/tx"
+	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
-	"github.com/cosmos/cosmos-sdk/x/staking"
+
+	"github.com/arterynetwork/artr/app"
+	"github.com/arterynetwork/artr/x/bank"
+	bankcmd "github.com/arterynetwork/artr/x/bank/client/cli"
 )
 
 const flagInvCheckPeriod = "inv-check-period"
@@ -32,81 +40,158 @@ const flagInvCheckPeriod = "inv-check-period"
 var invCheckPeriod uint
 
 func main() {
-	cdc := app.MakeCodec()
-
-	//config := sdk.GetConfig()
-	//
-	//config.SetBech32PrefixForAccount(sdk.Bech32PrefixAccAddr, sdk.Bech32PrefixAccPub)
-	//config.SetBech32PrefixForValidator(sdk.Bech32PrefixValAddr, sdk.Bech32PrefixValPub)
-	//config.SetBech32PrefixForConsensusNode(sdk.Bech32PrefixConsAddr, sdk.Bech32PrefixConsPub)
-	//config.Seal()
 	app.InitConfig()
+	ec := app.NewEncodingConfig()
 
-	ctx := server.NewDefaultContext()
+	app.ModuleBasics.RegisterInterfaces(ec.InterfaceRegistry)
+	ec.InterfaceRegistry.RegisterInterface("tendermint.crypto.PubKey", (*cryptoTypes.PubKey)(nil), &secp256k1.PubKey{})
+	ec.InterfaceRegistry.RegisterInterface("cosmos.tx.v1beta1.Tx", (*sdk.Tx)(nil), &tx.Tx{})
+
+	clientCtx := ec.BuildClientContext().
+		WithInput(os.Stdin).
+		WithViper("")
+
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
 		Use:               "artrd",
-		Short:             "Artery Daemon (server)",
-		PersistentPreRunE: server.PersistentPreRunEFn(ctx),
+		Short:             "Artery Blockchain node (server + client)",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx = client.ReadHomeFlag(clientCtx, cmd)
+
+			clientCtx, err := config.ReadFromClientConfig(clientCtx)
+			if err != nil {
+				return err
+			}
+
+			if err := client.SetCmdClientContextHandler(clientCtx, cmd); err != nil {
+				return err
+			}
+
+			return server.InterceptConfigsPreRunHandler(cmd)
+		},
 	}
 
-	rootCmd.AddCommand(genutilcli.InitCmd(ctx, cdc, app.ModuleBasics, app.DefaultNodeHome))
-	rootCmd.AddCommand(genutilcli.CollectGenTxsCmd(ctx, cdc, auth.GenesisAccountIterator{}, app.DefaultNodeHome))
-	rootCmd.AddCommand(genutilcli.MigrateGenesisCmd(ctx, cdc))
 	rootCmd.AddCommand(
-		genutilcli.GenTxCmd(
-			ctx, cdc, app.ModuleBasics, staking.AppModuleBasic{},
-			auth.GenesisAccountIterator{}, app.DefaultNodeHome, app.DefaultCLIHome,
-		),
+		genutilcli.InitCmd(app.ModuleBasics, app.DefaultNodeHome),
+		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
+		debug.Cmd(),
 	)
-	rootCmd.AddCommand(genutilcli.ValidateGenesisCmd(ctx, cdc, app.ModuleBasics))
-	rootCmd.AddCommand(AddGenesisAccountCmd(ctx, cdc, app.DefaultNodeHome, app.DefaultCLIHome))
-	rootCmd.AddCommand(flags.NewCompletionCmd(rootCmd, true))
-	rootCmd.AddCommand(debug.Cmd(cdc))
-
-	server.AddCommands(ctx, cdc, rootCmd, newApp, exportAppStateAndTMValidators)
-
-	// prepare and add flags
-	executor := cli.PrepareBaseCmd(rootCmd, "AU", app.DefaultNodeHome)
-	rootCmd.PersistentFlags().UintVar(&invCheckPeriod, flagInvCheckPeriod,
-		0, "Assert registered invariants every N blocks")
-	err := executor.Execute()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func newApp(logger log.Logger, db dbm.DB, traceStore io.Writer) abci.Application {
-	var cache sdk.MultiStorePersistentCache
-
-	if viper.GetBool(server.FlagInterBlockCache) {
-		cache = store.NewCommitKVStoreCacheManager()
-	}
-
-	return app.NewArteryApp(
-		logger, db, traceStore, true, invCheckPeriod,
-		baseapp.SetPruning(types.NewPruningOptionsFromString(viper.GetString("pruning"))),
-		baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
-		baseapp.SetHaltHeight(viper.GetUint64(server.FlagHaltHeight)),
-		baseapp.SetHaltTime(viper.GetUint64(server.FlagHaltTime)),
-		baseapp.SetInterBlockCache(cache),
+	server.AddCommands(rootCmd, app.DefaultNodeHome, newApp(ec), exportAppState(ec), addModuleInitFlags)
+	rootCmd.AddCommand(
+		rpc.StatusCommand(),
+		queryCmd(),
+		txCmd(),
+		keys.Commands(app.DefaultCLIHome),
+		config.Cmd(),
 	)
-}
 
-func exportAppStateAndTMValidators(
-	logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string,
-) (json.RawMessage, []tmtypes.GenesisValidator, error) {
+	if err := serverCmd.Execute(rootCmd, app.DefaultNodeHome); err != nil {
+		switch e := err.(type) {
+		case server.ErrorCode:
+			os.Exit(e.Code)
 
-	if height != -1 {
-		aApp := app.NewArteryApp(logger, db, traceStore, false, uint(1))
-		err := aApp.LoadHeight(height)
-		if err != nil {
-			return nil, nil, err
+		default:
+			os.Exit(1)
 		}
+	}
+}
+
+func newApp(ec app.EncodingConfig) serverTypes.AppCreator {
+	return func	(logger	log.Logger, db	dbm.DB, traceStore	io.Writer, appOpts	serverTypes.AppOptions) serverTypes.Application{
+		var cache sdk.MultiStorePersistentCache
+
+		if viper.GetBool(server.FlagInterBlockCache){
+			cache = store.NewCommitKVStoreCacheManager()
+		}
+
+		return app.NewArteryApp(
+			logger, db, traceStore, true, invCheckPeriod, ec,
+			baseapp.SetPruning(types.NewPruningOptionsFromString(viper.GetString("pruning"))),
+			baseapp.SetMinGasPrices(viper.GetString(server.FlagMinGasPrices)),
+			baseapp.SetHaltHeight(viper.GetUint64(server.FlagHaltHeight)),
+			baseapp.SetHaltTime(viper.GetUint64(server.FlagHaltTime)),
+			baseapp.SetInterBlockCache(cache),
+		)
+	}
+}
+
+func exportAppState(ec app.EncodingConfig) serverTypes.AppExporter{
+	return func (
+		logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string,
+		_ serverTypes.AppOptions,
+	) (serverTypes.ExportedApp, error) {
+
+		if height != -1 {
+			aApp := app.NewArteryApp(logger, db, traceStore, false, uint(1), ec)
+			err := aApp.LoadHeight(height)
+			if err != nil {
+				return serverTypes.ExportedApp{}, err
+			}
+			return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
+		}
+
+		aApp := app.NewArteryApp(logger, db, traceStore, true, uint(1), ec)
+
 		return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
 	}
+}
 
-	aApp := app.NewArteryApp(logger, db, traceStore, true, uint(1))
+func addModuleInitFlags(_ *cobra.Command) { }
 
-	return aApp.ExportAppStateAndValidators(forZeroHeight, jailWhiteList)
+func queryCmd() *cobra.Command {
+	queryCmd := &cobra.Command{
+		Use:     "query",
+		Aliases: []string{"q"},
+		Short:   "Querying subcommands",
+	}
+
+	queryCmd.AddCommand(
+		authcmd.GetAccountCmd(),
+		flags.LineBreak,
+		rpc.ValidatorCommand(),
+		rpc.BlockCommand(),
+		authcmd.QueryTxsByEventsCmd(),
+		authcmd.QueryTxCmd(),
+		flags.LineBreak,
+	)
+
+	// add modules' query commands
+	app.ModuleBasics.AddQueryCommands(queryCmd)
+
+	return queryCmd
+}
+
+func txCmd() *cobra.Command {
+	txCmd := &cobra.Command{
+		Use:   "tx",
+		Short: "Transactions subcommands",
+	}
+
+	txCmd.AddCommand(
+		bankcmd.NewSendTxCmd(),
+		flags.LineBreak,
+		authcmd.GetSignCommand(),
+		authcmd.GetMultiSignCommand(),
+		flags.LineBreak,
+		authcmd.GetBroadcastCommand(),
+		authcmd.GetEncodeCommand(),
+		authcmd.GetDecodeCommand(),
+		flags.LineBreak,
+	)
+
+	// add modules' tx commands
+	app.ModuleBasics.AddTxCommands(txCmd)
+
+	// remove auth and bank commands as they're mounted under the root tx command
+	var cmdsToRemove []*cobra.Command
+
+	for _, cmd := range txCmd.Commands() {
+		if cmd.Use == authtypes.ModuleName || cmd.Use == bank.ModuleName {
+			cmdsToRemove = append(cmdsToRemove, cmd)
+		}
+	}
+
+	txCmd.RemoveCommand(cmdsToRemove...)
+
+	return txCmd
 }

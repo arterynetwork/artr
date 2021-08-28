@@ -1,0 +1,130 @@
+syntax = "proto3";
+package artery.delegating.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "artery/delegating/v1beta1/genesis.proto";
+import "artery/delegating/v1beta1/params.proto";
+import "artery/delegating/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/delegating/types";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Params queries the parameters of x/delegating module.
+  rpc Params(ParamsRequest) returns (ParamsResponse) {
+    option (google.api.http).get = "/artery/delegating/v1beta1/params";
+  }
+
+  // Revoking queries how many coins are being revoked from delegating.
+  rpc Revoking(RevokingRequest) returns (RevokingResponse) {
+    option (google.api.http).get = "/artery/delegating/v1beta1/revoking/{acc_address}";
+  }
+
+  // Accumulation queries next payment accumulation progress.
+  rpc Accumulation(AccumulationRequest) returns (AccumulationResponse) {
+    option (google.api.http).get = "/artery/delegating/v1beta1/accum/{acc_address}";
+  }
+
+  // Get queries all the x/delegating info for a specified account.
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http).get = "/artery/delegating/v1beta1/get/{acc_address}";
+  }
+}
+
+// ParamsRequest defines the request type for querying x/delegating parameters.
+message ParamsRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+}
+
+// ParamsResponse defines the response type for querying x/delegating parameters.
+message ParamsResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  Params params = 1 [(gogoproto.jsontag) = "params", (gogoproto.moretags) = "yaml:\"params\""];
+}
+
+// RevokingRequest defines the request type for querying how many coins are being revoked from delegating.
+message RevokingRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+}
+
+// RevokingResponse defines the response type for querying how many coins are being revoked from delegating.
+message RevokingResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  repeated RevokeRequest revoking = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "revoking",
+    (gogoproto.moretags) = "yaml:\"revoking\""
+  ];
+}
+
+// AccumulationRequest defines the request type for querying next payment accumulation progress.
+message AccumulationRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+}
+
+// AccumulationRequest defines the request type for querying next payment accumulation progress.
+message AccumulationResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  google.protobuf.Timestamp start          = 1 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  google.protobuf.Timestamp end            = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
+  int64                     percent        = 3;
+  int64                     total_uartrs   = 4;
+  int64                     current_uartrs = 5;
+}
+
+message GetRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  string acc_address = 1;
+}
+
+message GetResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  Record data = 1 [
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "data",
+    (gogoproto.moretags) = "yaml:\"data\""
+  ];
+}

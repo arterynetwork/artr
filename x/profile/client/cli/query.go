@@ -1,28 +1,26 @@
 package cli
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"strconv"
-	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/types"
 )
 
-// GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+// NewQueryCmd returns the cli query commands for this module
+func NewQueryCmd() *cobra.Command {
 	// Group profile queries under a subcommand
 	profileQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
+		Aliases:                    []string{"p"},
 		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
@@ -30,163 +28,143 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	profileQueryCmd.AddCommand(
-		//flags.GetCommands(
-		GetProfileCmd(queryRoute, cdc),
-		GetAccountByNicknameCmd(queryRoute, cdc),
-		GetAccountByCardNumberCmd(queryRoute, cdc),
-		GetCreatorsCmd(queryRoute, cdc),
+		getProfileCmd(),
+		getAccountByNicknameCmd(),
+		getAccountByCardNumberCmd(),
 		util.LineBreak(),
-		getCmdParams(queryRoute, cdc),
-		//)...,
+		getCmdParams(),
 	)
 
 	return profileQueryCmd
 }
 
-// GetCreatorsCmd returns accounts who can create another accounts for free
-func GetCreatorsCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "creators",
-		Short: "Query for free accounts creators",
-		Args:  cobra.ExactArgs(0),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			params := types.QueryCreatorsParams{}
-			bz, err := cliCtx.Codec.MarshalJSON(params)
-
-			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/%s", queryRoute, types.QueryCreators), bz)
-			if err != nil {
-				return err
-			}
-
-			var out types.QueryCreatorsRes
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
-		},
-	}
-
-	return flags.GetCommands(cmd)[0]
-}
-
-// GetProfileCmd returns a query profile that will display the state of the
+// getProfileCmd returns a query profile that will display the state of the
 // profile at a given address.
-func GetProfileCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func getProfileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info <address>",
 		Short: "Query profile info for address",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
 
-			addr, err := sdk.AccAddressFromBech32(args[0])
+			addr := args[0]
+
+			res, err := queryClient.GetByAddress(
+				context.Background(),
+				&types.GetByAddressRequest{
+					Address: addr,
+				},
+			)
 			if err != nil {
 				return err
 			}
 
-			params := types.NewQueryProfileParams(addr)
-			bz, err := cliCtx.Codec.MarshalJSON(params)
-
-			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/profile", queryRoute), bz)
-			if err != nil {
-				fmt.Printf("could not find profile for address- %s \n", addr)
-				return nil
-			}
-
-			var out types.QueryResProfile
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Profile)
 		},
 	}
 
-	return flags.GetCommands(cmd)[0]
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetAccountByNicknameCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func getAccountByNicknameCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "account-by-nickname <nickname>",
 		Aliases: []string{"account_by_nickname"},
 		Short:   "Query account address by profile nickname",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			params := types.NewQueryAccountByNicknameParams(args[0])
-			bz, err := cliCtx.Codec.MarshalJSON(params)
-
-			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/%s", queryRoute, types.QueryAccountAddressByNickname), bz)
-
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				return errors.New("could not find address for nickname: " + err.Error())
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			nick := args[0]
+
+			res, err := queryClient.GetByNickname(
+				context.Background(),
+				&types.GetByNicknameRequest{
+					Nickname: nick,
+				},
+			)
+			if err != nil {
+				return err
 			}
 
-			var out types.QueryResAccountBy
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
 
-	return flags.GetCommands(cmd)[0]
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetAccountByCardNumberCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func getAccountByCardNumberCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "account-by-card-number <card number>",
 		Aliases: []string{"account_by_card_number"},
 		Short:   "Query account address by profile card number",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			cardNumber, err := strconv.ParseUint(args[0], 10, 64)
-
-			if err != nil {
-				return errors.New("invalid card number format: only decimal digits accepted")
-			}
-
-			params := types.NewQueryAccountByCardNumberParams(cardNumber)
-			bz, err := cliCtx.Codec.MarshalJSON(params)
-
-			res, _, err := cliCtx.QueryWithData(fmt.Sprintf("custom/%s/%s", queryRoute, types.QueryAccountAddressByCardNumber), bz)
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
-				//fmt.Printf("could not find address for card number- %s \n", args[1])
-				//return nil
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			cardNo, err := strconv.ParseUint(args[0], 0, 64)
+			if err != nil {
+				return errors.Wrap(err, "cannot parse card number")
 			}
 
-			var out types.QueryResAccountBy
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.GetByCardNumber(
+				context.Background(),
+				&types.GetByCardNumberRequest{
+					CardNumber: cardNo,
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
 
-	return flags.GetCommands(cmd)[0]
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func getCmdParams() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "params",
 		Aliases: []string{"p"},
 		Short:   "Get the module params",
 		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryParams,
-				}, "/",
-			))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get module params")
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			res, err := queryClient.Params(
+				context.Background(),
+				&types.ParamsRequest{},
+			)
+			if err != nil {
 				return err
 			}
 
-			var out types.Params
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
 }

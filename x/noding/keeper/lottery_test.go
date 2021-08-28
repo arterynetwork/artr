@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -29,7 +29,7 @@ type LotterySuite struct {
 func (s *LotterySuite) SetupTest() {
 	defer func() {
 		if err := recover(); err != nil {
-			s.FailNow("panic on setup", "err", err)
+			s.FailNow("panic on setup", "%s", err)
 		}
 	}()
 
@@ -40,13 +40,13 @@ func (s *LotterySuite) SetupTest() {
 	s.setupTest(data)
 
 	for _, addr := range []string{
-		"artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-		"artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-		"artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-		"artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
-		"artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-		"artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
-		"artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
+		"artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+		"artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+		"artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+		"artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu",
+		"artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+		"artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+		"artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
 	} {
 		addr, err := sdk.AccAddressFromBech32(addr)
 		if err != nil {
@@ -56,13 +56,13 @@ func (s *LotterySuite) SetupTest() {
 	}
 
 	for _, key := range []string{
-		"artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e",
-		"artrvalconspub1zcjduepq6ju0rje9444gqkt63k5n2l9ua72545p8c5eqy0d7uhvtxf53c3xq52ydjy",
-		"artrvalconspub1zcjduepqh4yvd86v0ej8zu890zlxxypgqjulf6ca3a9szyfpkpjxxw74kz3s7yf9qt",
-		"artrvalconspub1zcjduepqka83z5c8huh88w9d2llf3asrth6gt8x5cjqk4gz7xfpk0nshfzeqlcpg6p",
-		"artrvalconspub1zcjduepqtczsyayrexuaxg294al04qrvqzg738s9e5jfx82sm87w87w3hq6sc3xq82",
-		"artrvalconspub1zcjduepq753pcpuhu2kyugz9z4lyvye222rtjxraazxffqw9yz0rv7m270jqurvy6q",
-		"artrvalconspub1zcjduepqucxw7h4cz59c3hdnqucu702fcw556l9c5dyewkjzkjjxgvklxnzqfufx5s",
+		"artrtvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qv3rnr2",
+		"artrtvalconspub1zcjduepq6ju0rje9444gqkt63k5n2l9ua72545p8c5eqy0d7uhvtxf53c3xq78k3kh",
+		"artrtvalconspub1zcjduepqh4yvd86v0ej8zu890zlxxypgqjulf6ca3a9szyfpkpjxxw74kz3s5fmeyc",
+		"artrtvalconspub1zcjduepqka83z5c8huh88w9d2llf3asrth6gt8x5cjqk4gz7xfpk0nshfzeq44n57j",
+		"artrtvalconspub1zcjduepqtczsyayrexuaxg294al04qrvqzg738s9e5jfx82sm87w87w3hq6sju5ure",
+		"artrtvalconspub1zcjduepq753pcpuhu2kyugz9z4lyvye222rtjxraazxffqw9yz0rv7m270jqkw7c7n",
+		"artrtvalconspub1zcjduepqucxw7h4cz59c3hdnqucu702fcw556l9c5dyewkjzkjjxgvklxnzqr3m6sr",
 	} {
 		s.pubKeys = append(s.pubKeys, sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, key))
 	}
@@ -93,6 +93,10 @@ func (s *LotterySuite) TestMissedBlock() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Jailed)
+	s.Equal(uint64(2), info.LotteryNo)
 
 	// Expel a lucky if they misses a block
 	resp, _ = s.nextBlock(
@@ -107,6 +111,61 @@ func (s *LotterySuite) TestMissedBlock() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+	info, err = s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Jailed)
+	s.Equal(uint64(5), info.LotteryNo)
+}
+
+func (s *LotterySuite) TestJail() {
+	resp, _ := s.nextBlock(
+		s.pubKeys[0],
+		s.votes(map[int]bool{0: true, 1: true, 2: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+
+	// Expel a lucky if they misses a couple of block
+	resp, _ = s.nextBlock(
+		s.pubKeys[1],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: false, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{}, resp.ValidatorUpdates)
+	resp, _ = s.nextBlock(
+		s.pubKeys[2],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: false, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.True(info.Jailed)
+	s.Zero(info.LotteryNo)
+}
+
+func (s *LotterySuite) TestSwitchOff() {
+	resp, _ := s.nextBlock(
+		s.pubKeys[0],
+		s.votes(map[int]bool{0: true, 1: true, 2: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+
+	s.NoError(s.k.SwitchOff(s.ctx, s.accAddrs[5]))
+	resp, _ = s.nextBlock(
+		s.pubKeys[1],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: true, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Status)
+	s.False(info.Jailed)
+	s.Zero(info.LotteryNo)
 }
 
 func (s *LotterySuite) TestProposedBlock() {
@@ -148,6 +207,10 @@ func (s *LotterySuite) TestBecomingTop() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{0: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[6])
+	s.NoError(err)
+	s.Zero(info.LotteryNo)
 }
 
 func (s *LotterySuite) TestLotteryNoSeq() {
@@ -178,7 +241,7 @@ func (s *LotterySuite) checkUpdates(expected map[int]int64, actual []abci.Valida
 	extra := len(expected) != len(actual)
 	for n, power := range expected {
 		ok := false
-		key := tmtypes.TM2PB.PubKey(s.pubKeys[n])
+		key, _ := cryptocodec.ToTmProtoPublicKey(s.pubKeys[n])
 		for _, upd := range actual {
 			if key.Equal(upd.PubKey) {
 				s.Equal(power, upd.Power, "wrong power for validator #%d", n)
@@ -196,7 +259,7 @@ func (s *LotterySuite) checkUpdates(expected map[int]int64, actual []abci.Valida
 			if _, ok := expected[n]; ok {
 				continue
 			}
-			key := tmtypes.TM2PB.PubKey(s.pubKeys[n])
+			key, _ := cryptocodec.ToTmProtoPublicKey(s.pubKeys[n])
 			for _, upd := range actual {
 				if key.Equal(upd.PubKey) {
 					s.Failf("Not equal:", "unexpected power %d for validator #%d", upd.Power, n)

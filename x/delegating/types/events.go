@@ -1,16 +1,9 @@
 package types
 
-// delegating module event types
-const (
-	EventTypeDelegate      = "delegate"
-	EventTypeUndelegate    = "undelegate"
-	EventTypeAccrue        = "accrue"
-	EventTypeMassiveRevoke = "massive_revoke"
+func (EventDelegate) XXX_MessageName() string { return "delegate" }
 
-	AttributeKeyAccount          = "account"
-	AttributeKeyUcoins           = "ucoins"
-	AttributeKeyCommissionTo     = "commission_to"
-	AttributeKeyCommissionAmount = "commission_amount"
+func (EventUndelegate) XXX_MessageName() string { return "undelegate" }
 
-	AttributeValueCategory = ModuleName
-)
+func (EventAccrue) XXX_MessageName() string { return "accrue" }
+
+func (EventMassiveRevoke) XXX_MessageName() string { return "massive_revoke" }

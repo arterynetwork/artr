@@ -1,12 +1,14 @@
 package types
 
 import (
-	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
+
+	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/util"
 )
@@ -29,27 +31,44 @@ var (
 )
 
 // ParamKeyTable for earning module
-func ParamKeyTable() params.KeyTable {
-	return params.NewKeyTable().
+func ParamKeyTable() paramtypes.KeyTable {
+	return paramtypes.NewKeyTable().
 		RegisterParamSet(&Params{}).
 		RegisterParamSet(&StateParams{})
 }
 
-// Params - used for initializing default parameter for earning at genesis
-type Params struct {
-	Signers []sdk.AccAddress `json:"signers" yaml:"signers"`
+func NewParams(signers []sdk.AccAddress) *Params {
+	res := &Params{
+		Signers: make([]string, len(signers)),
+	}
+	for i, acc := range signers {
+		res.Signers[i] = acc.String()
+	}
+	return res
 }
 
-// StateParams - used for storing keeper inner state and exporting it to genesis if needed
-type StateParams struct {
-	Locked           bool          `json:"locked,omitempty"`
-	VpnPointCost     util.Fraction `json:"vpn_point_cost,omitempty"`
-	StoragePointCost util.Fraction `json:"storage_point_cost,omitempty"`
-	ItemsPerBlock    uint16        `json:"items_per_block,omitempty"`
+func (p Params) GetSigners() []sdk.AccAddress {
+	res := make([]sdk.AccAddress, len(p.Signers))
+	for i, bech32 := range p.Signers {
+		addr, err := sdk.AccAddressFromBech32(bech32)
+		if err != nil {
+			panic(err)
+		}
+		res[i] = addr
+	}
+	return res
+}
+
+func (p Params) String() string {
+	str, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(str)
 }
 
 // NewParams creates a new Params object
-func NewStateLocked(vpnPointCost util.Fraction, storagePointCost util.Fraction, itemsPerBlock uint16) StateParams {
+func NewStateLocked(vpnPointCost util.Fraction, storagePointCost util.Fraction, itemsPerBlock uint32) StateParams {
 	return StateParams{
 		Locked:           true,
 		VpnPointCost:     vpnPointCost,
@@ -62,31 +81,28 @@ func NewStateUnlocked() StateParams {
 	return StateParams{}
 }
 
-func (p Params) String() string { return fmt.Sprintf("Signers: %v", p.Signers) }
-
 // String implements the stringer interface for Params
 func (p StateParams) String() string {
-	return fmt.Sprintf(`
-Locked: %t
-VpnPointCost: %v
-StoragePointCost: %v
-ItemsPerBlock: %d
-`, p.Locked, p.VpnPointCost, p.StoragePointCost, p.ItemsPerBlock)
+	str, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(str)
 }
 
-func (p *Params) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
-		params.NewParamSetPair(KeySigners, &p.Signers, validateSigners),
+func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(KeySigners, &p.Signers, validateSigners),
 	}
 }
 
 // ParamSetPairs - Implements params.ParamSet
-func (p *StateParams) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
-		params.NewParamSetPair(KeyLocked, &p.Locked, validateLocked),
-		params.NewParamSetPair(KeyVpnPointCost, &p.VpnPointCost, validatePointCost),
-		params.NewParamSetPair(KeyStoragePointCost, &p.StoragePointCost, validatePointCost),
-		params.NewParamSetPair(KeyItemsPerBlock, &p.ItemsPerBlock, validateItemsPerBlock),
+func (p *StateParams) ParamSetPairs() paramtypes.ParamSetPairs {
+	return paramtypes.ParamSetPairs{
+		paramtypes.NewParamSetPair(KeyLocked, &p.Locked, validateLocked),
+		paramtypes.NewParamSetPair(KeyVpnPointCost, &p.VpnPointCost, validatePointCost),
+		paramtypes.NewParamSetPair(KeyStoragePointCost, &p.StoragePointCost, validatePointCost),
+		paramtypes.NewParamSetPair(KeyItemsPerBlock, &p.ItemsPerBlock, validateItemsPerBlock),
 	}
 }
 
@@ -104,7 +120,7 @@ func (p Params) Validate() error {
 }
 
 func validateSigners(value interface{}) error {
-	accz, ok := value.([]sdk.AccAddress)
+	accz, ok := value.([]string)
 	if !ok {
 		return fmt.Errorf("unexpected Signers type: %T", value)
 	}
@@ -112,8 +128,8 @@ func validateSigners(value interface{}) error {
 		return fmt.Errorf("signers list is empty")
 	}
 	for i, acc := range accz {
-		if acc.Empty() {
-			return fmt.Errorf("signer address is empty (#%d)", i)
+		if _, err := sdk.AccAddressFromBech32(acc); err != nil {
+			return errors.Wrapf(err, "invalid signer address (#%d)", i)
 		}
 	}
 	return nil
@@ -163,7 +179,7 @@ func validatePointCost(value interface{}) error {
 }
 
 func validateItemsPerBlock(value interface{}) error {
-	_, ok := value.(uint16)
+	_, ok := value.(uint32)
 	if !ok {
 		return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, fmt.Sprintf("unexpected item count type: %T", value))
 	}

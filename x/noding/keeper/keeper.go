@@ -4,43 +4,43 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/golang/protobuf/proto"
 	"sort"
 
 	"github.com/pkg/errors"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/log"
-	tmtypes "github.com/tendermint/tendermint/types"
-
 	"github.com/cosmos/cosmos-sdk/codec"
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
 
 	"github.com/arterynetwork/artr/x/noding/types"
-	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the noding store
 type Keeper struct {
 	dataStoreKey     sdk.StoreKey
 	indexStoreKey    sdk.StoreKey
-	cdc              *codec.Codec
+	cdc              codec.BinaryMarshaler
 	referralKeeper   types.ReferralKeeper
-	scheduleKeeper   types.ScheduleKeeper
-	supplyKeeper     types.SupplyKeeper
+	accountKeeper    types.AccountKeeper
+	bankKeeper       types.BankKeeper
 	paramspace       types.ParamSubspace
 	feeCollectorName string
 }
 
 // NewKeeper creates a noding keeper
 func NewKeeper(
-	cdc *codec.Codec,
+	cdc codec.BinaryMarshaler,
 	dataKey sdk.StoreKey,
 	indexKey sdk.StoreKey,
 	referralKeeper types.ReferralKeeper,
-	scheduleKeeper types.ScheduleKeeper,
-	supplyKeeper types.SupplyKeeper,
+	accountKeeper types.AccountKeeper,
+	bankKeeper types.BankKeeper,
 	paramspace types.ParamSubspace,
 	feeCollectorName string,
 ) Keeper {
@@ -49,8 +49,8 @@ func NewKeeper(
 		indexStoreKey:    indexKey,
 		cdc:              cdc,
 		referralKeeper:   referralKeeper,
-		scheduleKeeper:   scheduleKeeper,
-		supplyKeeper:     supplyKeeper,
+		accountKeeper:    accountKeeper,
+		bankKeeper:       bankKeeper,
 		paramspace:       paramspace.WithKeyTable(types.ParamKeyTable()),
 		feeCollectorName: feeCollectorName,
 	}
@@ -66,10 +66,10 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
-func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result bool, delegation sdk.Int, reason string, err error) {
+func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result bool, delegation sdk.Int, reason types.Reason, err error) {
 	// Check if it's staff
 	if k.has(ctx, accAddr) {
-		var d types.D
+		var d types.Info
 		d, err = k.Get(ctx, accAddr)
 		if err != nil {
 			return
@@ -80,22 +80,22 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 	}
 
 	// Check minimal status
-	status, err := k.referralKeeper.GetStatus(ctx, accAddr)
+	status, err := k.referralKeeper.GetStatus(ctx, accAddr.String())
 	if err != nil {
 		return
 	}
-	if !result && status < referral.Status(k.GetParams(ctx).MinStatus) {
-		reason = types.AttributeValueNotEnoughStatus
+	if !result && status < k.GetParams(ctx).MinStatus {
+		reason = types.REASON_NOT_ENOUGH_STATUS
 		return
 	}
 
 	// 10k ARTR delegated
-	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr, 10)
+	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr.String(), 10)
 	if err != nil {
 		return
 	}
 	if !result && delegation.Int64() < 10_000_000000 {
-		reason = types.AttributeValueNotEnoughDelegation
+		reason = types.REASON_NOT_ENOUGH_STAKE
 		return
 	}
 
@@ -130,7 +130,7 @@ func (k Keeper) IsBanned(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) 
 func (k Keeper) GetValidatorByConsAddr(ctx sdk.Context, consAddr sdk.ConsAddress) (result sdk.AccAddress, found bool, active bool, err error) {
 	result, found = k.getNodeOperatorFromIndex(ctx, consAddr)
 	if found {
-		var data types.D
+		var data types.Info
 		data, err = k.Get(ctx, result)
 		if err == nil && data.IsActive() {
 			active = consAddr.Equals(consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(data.PubKey)))
@@ -181,14 +181,14 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 
 	power := k.power(ctx, delegation.Int64())
 	if k.has(ctx, accAddr) {
-		err = k.update(ctx, accAddr, func(d *types.D) (save bool) {
+		err = k.update(ctx, accAddr, func(d *types.Info) (save bool) {
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
 			d.Power = power
 			return true
 		})
 	} else {
-		err = k.set(ctx, accAddr, types.NewD(power, bech32FromCryptoPubKey(key)))
+		err = k.set(ctx, accAddr, *types.NewInfo(power, bech32FromCryptoPubKey(key)))
 	}
 	if err != nil {
 		return err
@@ -199,13 +199,19 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 }
 
 func (k Keeper) SwitchOff(ctx sdk.Context, accAddr sdk.AccAddress) error {
-	err := k.update(ctx, accAddr, func(d *types.D) (save bool) {
+	err := k.update(ctx, accAddr, func(d *types.Info) (save bool) {
 		if d.Power == 0 && !d.Status {
 			return false
 		}
 
 		d.Power = 0
 		d.Status = false
+		if d.LotteryNo != 0 {
+			if err := k.lotteryExclude(ctx, d); err != nil {
+				// should never happen
+				panic(err)
+			}
+		}
 		return true
 	})
 	if err != nil {
@@ -224,7 +230,7 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 		return nil
 	}
 
-	var reason string
+	var reason types.Reason
 	is, _, reason, err = k.IsQualified(ctx, acc)
 	if err != nil {
 		return err
@@ -239,11 +245,12 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 		return err
 	}
 
-	ctx.EventManager().EmitEvent(sdk.NewEvent(
-		types.EventTypeValidatorBanished,
-		sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
-		sdk.NewAttribute(types.AttributeKeyReason, reason),
-	))
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventValidatorBanished{
+			Address: acc.String(),
+			Reason:  reason,
+		},
+	); err != nil { panic(err) }
 	return nil
 }
 
@@ -272,11 +279,12 @@ func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 			return err
 		}
 
-		ctx.EventManager().EmitEvent(sdk.NewEvent(
-			types.EventTypeValidatorBanished,
-			sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
-			sdk.NewAttribute(types.AttributeKeyReason, reason),
-		))
+		if err := ctx.EventManager().EmitTypedEvent(
+			&types.EventValidatorBanished{
+				Address: acc.String(),
+				Reason:  reason,
+			},
+		); err != nil { panic(err) }
 		return nil
 	}
 
@@ -295,19 +303,21 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		store = ctx.KVStore(k.dataStoreKey)
 
 		result []abci.ValidatorUpdate
-		active []types.KeyedD
+		active []types.InfoWithAccount
 	)
 
 	it := store.Iterator(nil, nil)
 	for ; it.Valid(); it.Next() {
 		var (
 			addr sdk.AccAddress
-			data types.D
+			data types.Info
 		)
 		addr = sdk.AccAddress(it.Key())
-		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &data)
+		if err := proto.Unmarshal(it.Value(), &data); err != nil {
+			panic(errors.Wrap(err, "cannot unmarshal info"))
+		}
 		if data.IsActive() {
-			active = append(active, types.NewKeyedD(addr, data))
+			active = append(active, types.NewInfoWithAccount(addr, data))
 			consAddress := consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(data.PubKey))
 			k.addNodeOperatorToIndex(ctx, consAddress, addr)
 		} else {
@@ -320,7 +330,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 					PubKey: abciPubKeyFromBech32(data.LastPubKey),
 					Power:  0,
 				})
-				if err := k.update(ctx, addr, func(d *types.D) (save bool) {
+				if err := k.update(ctx, addr, func(d *types.Info) (save bool) {
 					d.LastPower = 0
 					d.LastPubKey = ""
 					return true
@@ -399,14 +409,14 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			})
 		}
 		if data.LotteryNo != 0 {
-			if err := k.lotteryExclude(ctx, &data.D); err != nil {
+			if err := k.lotteryExclude(ctx, &data.Info); err != nil {
 				// Should never happen, we've just checked they has been participating
 				panic(err)
 			}
 			updated = true
 		}
 		if updated {
-			if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+			if err := k.update(ctx, data.Account, func(d *types.Info) (save bool) {
 				d.LastPower = d.Power
 				d.LastPubKey = d.PubKey
 				d.LotteryNo = data.LotteryNo
@@ -435,7 +445,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 				PubKey: abciPubKeyFromBech32(data.PubKey),
 				Power:  data.Power,
 			})
-			if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+			if err := k.update(ctx, data.Account, func(d *types.Info) (save bool) {
 				d.LastPower = d.Power
 				d.LastPubKey = d.PubKey
 				return true
@@ -452,14 +462,14 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 				updated = true
 			}
 			if data.LotteryNo == 0 {
-				if err := k.lotteryAddNew(ctx, data.Account, &data.D); err != nil {
+				if err := k.lotteryAddNew(ctx, data.Account, &data.Info); err != nil {
 					// Should never happen, we've just checked that the account hasn't been participating yet.
 					panic(err)
 				}
 				updated = true
 			}
 			if updated {
-				if err := k.update(ctx, data.Account, func(d *types.D) (save bool) {
+				if err := k.update(ctx, data.Account, func(d *types.Info) (save bool) {
 					d.LastPower = 0
 					d.LastPubKey = ""
 					d.LotteryNo = data.LotteryNo
@@ -476,7 +486,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 	for _, x := range result {
 		found := false
 		for j, y := range unique {
-			if bytes.Equal(x.PubKey.Data, y.PubKey.Data) {
+			if x.PubKey == y.PubKey {
 				unique[j] = x
 				found = true
 				break
@@ -500,9 +510,9 @@ func (k Keeper) GetActiveValidators(ctx sdk.Context) ([]types.Validator, error) 
 	it := store.Iterator(nil, nil)
 	defer it.Close()
 	for ; it.Valid(); it.Next() {
-		var value types.D
-		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
-			return nil, err
+		var value types.Info
+		if err := proto.Unmarshal(it.Value(), &value); err != nil {
+			panic(errors.Wrap(err, "cannot unmarshal info"))
 		}
 		if !value.IsActive() {
 			continue
@@ -521,9 +531,9 @@ func (k Keeper) GetActiveValidatorList(ctx sdk.Context) ([]sdk.AccAddress, error
 	it := store.Iterator(nil, nil)
 	defer it.Close()
 	for ; it.Valid(); it.Next() {
-		var value types.D
-		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
-			return nil, err
+		var value types.Info
+		if err := proto.Unmarshal(it.Value(), &value); err != nil {
+			panic(errors.Wrap(err, "cannot unmarshal info"))
 		}
 		if !value.IsActive() {
 			continue
@@ -543,9 +553,9 @@ func (k Keeper) GetNonActiveValidators(ctx sdk.Context) ([]types.Validator, erro
 	it := store.Iterator(nil, nil)
 	defer it.Close()
 	for ; it.Valid(); it.Next() {
-		var value types.D
-		if err := k.cdc.UnmarshalBinaryLengthPrefixed(it.Value(), &value); err != nil {
-			return nil, err
+		var value types.Info
+		if err := proto.Unmarshal(it.Value(), &value); err != nil {
+			panic(errors.Wrap(err, "cannot unmarshal info"))
 		}
 		if value.IsActive() {
 			continue
@@ -559,15 +569,16 @@ func (k Keeper) GetNonActiveValidators(ctx sdk.Context) ([]types.Validator, erro
 
 func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validator) error {
 	for _, v := range validators {
-		pubkey := cryptoPubKeyFromBech32(v.Pubkey)
+		pubkey := cryptoPubKeyFromBech32(v.PubKey)
 
-		if err := k.set(ctx, v.Account, v.ToD()); err != nil {
+		acc := v.GetAccount()
+		if err := k.set(ctx, acc, v.ToInfo()); err != nil {
 			return errors.Wrap(err, "cannot set data")
 		}
 		for _, h := range v.ProposedBlocks {
-			k.addProposerToIndex(ctx, int64(h), v.Account)
+			k.addProposerToIndex(ctx, int64(h), acc)
 		}
-		if err := k.SwitchOn(ctx, v.Account, pubkey); err != nil {
+		if err := k.SwitchOn(ctx, acc, pubkey); err != nil {
 			return errors.Wrap(err, "cannot switch on")
 		}
 	}
@@ -576,11 +587,12 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 
 func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Validator) error {
 	for _, v := range validators {
-		if err := k.set(ctx, v.Account, v.ToD()); err != nil {
+		acc := v.GetAccount()
+		if err := k.set(ctx, acc, v.ToInfo()); err != nil {
 			return err
 		}
 		for _, h := range v.ProposedBlocks {
-			k.addProposerToIndex(ctx, int64(h), v.Account)
+			k.addProposerToIndex(ctx, int64(h), acc)
 		}
 	}
 	return nil
@@ -590,7 +602,7 @@ func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Valid
 func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 	p := k.GetParams(ctx)
 
-	return k.update(ctx, acc, func(d *types.D) (save bool) {
+	return k.update(ctx, acc, func(d *types.Info) (save bool) {
 		if d.Jailed {
 			return false
 		}
@@ -598,22 +610,30 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
-		if d.LotteryNo != 0 {
-			if err := k.lotteryDownshift(ctx, acc, d); err != nil {
-				// Should never happen
-				panic(err)
-			}
-		}
 		if d.MissedBlocksInRow >= int64(p.JailAfter) {
 			d.Power = 0
 			d.Jailed = true
-			d.UnjailAt = ctx.BlockHeight() + p.UnjailAfter
+			d.UnjailAt = ctx.BlockHeight() + int64(p.UnjailAfter)
 			d.JailCount++
 			d.MissedBlocksInRow = 0
-			ctx.EventManager().EmitEvent(sdk.NewEvent(
-				types.EventTypeValidatorJailed,
-				sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
-			))
+			if d.LotteryNo != 0 {
+				if err := k.lotteryExclude(ctx, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
+			if err := ctx.EventManager().EmitTypedEvent(
+				&types.EventValidatorJailed{
+					Address: acc.String(),
+				},
+			); err != nil { panic(err) }
+		} else {
+			if d.LotteryNo != 0 {
+				if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
 		}
 		return true
 	})
@@ -621,7 +641,7 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 
 // MarkTick - to be called every time the validator signs a block successfully.
 func (k Keeper) MarkTick(ctx sdk.Context, acc sdk.AccAddress) error {
-	return k.update(ctx, acc, func(d *types.D) (save bool) {
+	return k.update(ctx, acc, func(d *types.Info) (save bool) {
 		d.MissedBlocksInRow = 0
 		d.OkBlocksInRow++
 		return true
@@ -629,21 +649,33 @@ func (k Keeper) MarkTick(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci.Evidence) error {
-	return k.update(ctx, acc, func(d *types.D) (save bool) {
-		var eventType string
+	return k.update(ctx, acc, func(d *types.Info) (save bool) {
 		d.Infractions = append(d.Infractions, evidence)
+		event := types.EventByzantine{
+			Address:   acc.String(),
+			Evidences: d.Infractions,
+		}
 		if len(d.Infractions) > 1 {
 			d.BannedForLife = true
 			d.Status = false
 			d.Power = 0
-			eventType = types.EventTypeValidatorBanned
+			if d.LotteryNo != 0 {
+				if err := k.lotteryExclude(ctx, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
+			event.Banned = true
 		} else {
-			eventType = types.EventTypeValidatorWarning
+			if d.LotteryNo != 0 {
+				if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
+			event.Banned = false
 		}
-		ctx.EventManager().EmitEvent(sdk.NewEvent(eventType,
-			sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
-			sdk.NewAttribute(types.AttributeKeyEvidences, fmt.Sprintf("%+v", d.Infractions)),
-		))
+		if err := ctx.EventManager().EmitTypedEvent(&event); err != nil { panic(err) }
 		return true
 	})
 }
@@ -669,11 +701,12 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 	} else {
 		k.Logger(ctx).Info("banishing from validators", "acc", acc, "reason", reason)
 		data.Status = false
-		ctx.EventManager().EmitEvent(sdk.NewEvent(
-			types.EventTypeValidatorBanished,
-			sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
-			sdk.NewAttribute(types.AttributeKeyReason, reason),
-		))
+		if err := ctx.EventManager().EmitTypedEvent(
+			&types.EventValidatorBanished{
+				Address: acc.String(),
+				Reason:  reason,
+			},
+		); err != nil { panic(err) }
 	}
 	err = k.set(ctx, acc, data)
 	if err != nil {
@@ -684,7 +717,7 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 
 func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 	k.addProposerToIndex(ctx, ctx.BlockHeight()-1, acc)
-	if err := k.update(ctx, acc, func(d *types.D) (save bool) {
+	if err := k.update(ctx, acc, func(d *types.Info) (save bool) {
 		d.ProposedCount++
 		if d.LotteryNo != 0 {
 			if err := k.lotteryDownshift(ctx, acc, d); err != nil {
@@ -697,12 +730,11 @@ func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err erro
 		return err
 	}
 
-	all := k.supplyKeeper.GetModuleAccount(ctx, k.feeCollectorName).GetCoins()
-	amount := all
+	amount := k.bankKeeper.GetBalance(ctx, k.accountKeeper.GetModuleAddress(k.feeCollectorName))
 	if amount.IsZero() {
 		return nil
 	}
-	if err = k.supplyKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil {
+	if err = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil {
 		return err
 	}
 	return nil
@@ -718,7 +750,7 @@ func (k Keeper) GetBlockProposer(ctx sdk.Context, height int64) (sdk.AccAddress,
 
 func (k Keeper) AddToStaff(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 	if k.has(ctx, acc) {
-		err = k.update(ctx, acc, func(d *types.D) (save bool) {
+		err = k.update(ctx, acc, func(d *types.Info) (save bool) {
 			if d.Staff {
 				return false
 			}
@@ -727,7 +759,7 @@ func (k Keeper) AddToStaff(ctx sdk.Context, acc sdk.AccAddress) (err error) {
 			return true
 		})
 	} else {
-		err = k.set(ctx, acc, types.D{Staff: true})
+		err = k.set(ctx, acc, types.Info{Staff: true})
 	}
 	return err
 }
@@ -738,7 +770,7 @@ func (k Keeper) RemoveFromStaff(ctx sdk.Context, acc sdk.AccAddress) (err error)
 	}
 
 	var isActive bool
-	err = k.update(ctx, acc, func(d *types.D) (save bool) {
+	err = k.update(ctx, acc, func(d *types.Info) (save bool) {
 		isActive = d.Staff && d.IsActive()
 
 		if !d.Staff {
@@ -792,38 +824,44 @@ func (k Keeper) GeneralAmnesty(ctx sdk.Context) {
 	it := store.Iterator(nil, nil)
 	defer it.Close()
 	for ; it.Valid(); it.Next() {
-		var item types.D
-		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &item)
+		var item types.Info
+		if err := proto.Unmarshal(it.Value(), &item); err != nil {
+			panic(errors.Wrap(err, "cannot unmarshal info"))
+		}
 		if item.Strokes == 0 && item.JailCount == 0 {
 			continue
 		}
 		item.Strokes = 0
 		item.JailCount = 0
-		store.Set(it.Key(), k.cdc.MustMarshalBinaryLengthPrefixed(item))
+		if bz, err := proto.Marshal(&item); err != nil {
+			panic(errors.Wrap(err, "cannot marshal info"))
+		} else {
+			store.Set(it.Key(), bz)
+		}
 	}
 }
 
 func (k Keeper) GetValidatorState(ctx sdk.Context, acc sdk.AccAddress) types.ValidatorState {
 	data, err := k.Get(ctx, acc)
 	if err != nil {
-		return types.ValidatorStateOff
+		return types.VALIDATOR_STATE_OFF
 	}
 	if data.BannedForLife {
-		return types.ValidatorStateBan
+		return types.VALIDATOR_STATE_BAN
 	}
 	if data.Jailed {
-		return types.ValidatorStateJail
+		return types.VALIDATOR_STATE_JAIL
 	}
 	if !data.Status {
-		return types.ValidatorStateOff
+		return types.VALIDATOR_STATE_OFF
 	}
 	if data.LastPower == 0 {
-		return types.ValidatorStateSpare
+		return types.VALIDATOR_STATE_SPARE
 	}
 	if data.LotteryNo == 0 {
-		return types.ValidatorStateTop
+		return types.VALIDATOR_STATE_TOP
 	}
-	return types.ValidatorStateLucky
+	return types.VALIDATOR_STATE_LUCKY
 }
 
 //----------------------------------------------------------------------------------
@@ -832,21 +870,21 @@ func (k Keeper) has(ctx sdk.Context, acc sdk.AccAddress) bool {
 	return ctx.KVStore(k.dataStoreKey).Has(acc)
 }
 
-func (k Keeper) Get(ctx sdk.Context, acc sdk.AccAddress) (types.D, error) {
+func (k Keeper) Get(ctx sdk.Context, acc sdk.AccAddress) (types.Info, error) {
 	store := ctx.KVStore(k.dataStoreKey)
 	key := []byte(acc)
 	if !store.Has(key) {
-		return types.D{}, types.ErrNotFound
+		return types.Info{}, types.ErrNotFound
 	}
-	var item types.D
-	err := k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(key), &item)
+	var item types.Info
+	err := proto.Unmarshal(store.Get(key), &item)
 	return item, err
 }
 
-func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.D) error {
+func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.Info) error {
 	store := ctx.KVStore(k.dataStoreKey)
 	keyBytes := []byte(acc)
-	valueBytes, err := k.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err := proto.Marshal(&value)
 	if err != nil {
 		return err
 	}
@@ -855,28 +893,28 @@ func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.D) error {
 	return nil
 }
 
-func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.D) (save bool)) error {
+func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.Info) (save bool)) error {
 	var (
 		store      = ctx.KVStore(k.dataStoreKey)
 		keyBytes   = []byte(acc)
-		value      types.D
+		value      types.Info
 		valueBytes []byte
 		err        error
 	)
 	if !store.Has(keyBytes) {
 		return types.ErrNotFound
 	}
-	err = k.cdc.UnmarshalBinaryLengthPrefixed(store.Get(keyBytes), &value)
+	err = proto.Unmarshal(store.Get(keyBytes), &value)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot unmarshal info")
 	}
 
 	if !callback(&value) {
 		return nil
 	}
-	valueBytes, err = k.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err = proto.Marshal(&value)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot marshal info")
 	}
 
 	store.Set(keyBytes, valueBytes)
@@ -891,8 +929,12 @@ func (k Keeper) power(_ sdk.Context, delegated int64) int64 {
 	}
 }
 
-func abciPubKeyFromBech32(bech32 string) abci.PubKey {
-	return tmtypes.TM2PB.PubKey(cryptoPubKeyFromBech32(bech32))
+func abciPubKeyFromBech32(bech32 string) tmcrypto.PublicKey {
+	key, err := cryptocodec.ToTmProtoPublicKey(cryptoPubKeyFromBech32(bech32))
+	if err != nil {
+		panic(err)
+	}
+	return key
 }
 
 func cryptoPubKeyFromBech32(bech32 string) crypto.PubKey {
@@ -932,9 +974,7 @@ func (k Keeper) getNodeOperatorFromIndex(ctx sdk.Context, consAddr sdk.ConsAddre
 }
 
 func (k Keeper) addProposerToIndex(ctx sdk.Context, height int64, proposer sdk.AccAddress) {
-	if height > k.scheduleKeeper.GetParams(ctx).InitialHeight {
-		k.addToIndex(ctx, proposerIdxKey(height), proposer.Bytes())
-	}
+	k.addToIndex(ctx, proposerIdxKey(height), proposer.Bytes())
 }
 
 func (k Keeper) getProposerFromIndex(ctx sdk.Context, height int64) (sdk.AccAddress, bool) {

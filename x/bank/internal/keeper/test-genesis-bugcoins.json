@@ -1,0 +1,143 @@
+{
+  "app_state": {
+    "artrbank": {
+      "params": {
+        "min_send": "0"
+      },
+      "balances": [
+        {
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "coins": [
+            {
+              "amount": "1000000000000",
+              "denom": "uartrb"
+            }
+          ]
+        },
+        {
+          "address": "artrt1u574gq6xcplupp7jy65fkzcfmayr24wm8k2zgg",
+          "coins": [
+            {
+              "amount": "12345678",
+              "denom": "uartr"
+            },
+            {
+              "amount": "23456789",
+              "denom": "uartrd"
+            }
+          ]
+        }
+      ]
+    },
+    "auth": {
+      "params": {
+        "max_memo_characters": "256",
+        "sig_verify_cost_ed25519": "590",
+        "sig_verify_cost_secp256k1": "1000",
+        "tx_sig_limit": "7",
+        "tx_size_cost_per_byte": "10"
+      },
+      "accounts": [
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "1",
+          "address": "artrt1u574gq6xcplupp7jy65fkzcfmayr24wm8k2zgg",
+          "sequence": "0"
+        }
+      ]
+    },
+    "profile": {
+      "params": {
+        "base_storage_gb": 5,
+        "base_vpn_gb": 7,
+        "card_magic": "112233592347",
+        "creators": [
+          "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+        ],
+        "rename_price": "0",
+        "storage_gb_price": 10,
+        "subscription_price": 1990,
+        "token_rate": "100000",
+        "token_rate_signers": [
+          "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+        ],
+        "vpn_gb_price": 10,
+        "storage_signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ],
+        "vpn_signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ]
+      },
+      "profiles": [
+        {
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "profile": {
+            "nickname": "Bugcoins_Pool"
+          }
+        },
+        {
+          "address": "artrt1u574gq6xcplupp7jy65fkzcfmayr24wm8k2zgg",
+          "profile": {
+            "nickname": "user1",
+            "active_until": "2022-11-09T12:00:00Z"
+          }
+        }
+      ]
+    },
+    "referral": {
+      "params": {
+        "company_accounts": {
+          "for_delegating": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "for_subscription": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "leader_bonuses": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "promo_bonuses": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "status_bonuses": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "top_referrer": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+        },
+        "delegating_award": {
+          "company": "5/1000",
+          "network": [
+            "5%",
+            "1%",
+            "1%",
+            "2%",
+            "1%",
+            "1%",
+            "1%",
+            "1%",
+            "1%",
+            "5/1000"
+          ]
+        },
+        "subscription_award": {
+          "company": "10%",
+          "network": [
+            "15%",
+            "10%",
+            "7%",
+            "7%",
+            "7%",
+            "7%",
+            "7%",
+            "5%",
+            "2%",
+            "2%"
+          ]
+        }
+      },
+      "top_level_accounts": [
+        "artrt1u574gq6xcplupp7jy65fkzcfmayr24wm8k2zgg"
+      ]
+    }
+  },
+  "chain_id": "4utests",
+  "genesis_time": "2022-01-01T00:00:00.000000Z",
+  "initial_height": "1"
+}

@@ -1,0 +1,26 @@
+version: v1beta1
+build:
+  roots:
+    - proto
+    - third_party/proto
+lint:
+  use:
+    - DEFAULT
+  except:
+    - SERVICE_SUFFIX
+    - RPC_REQUEST_STANDARD_NAME
+  ignore_only:
+    PACKAGE_VERSION_SUFFIX:
+      - gogoproto/gogo.proto
+      - google/api
+      - tendermint
+    ENUM_VALUE_PREFIX:
+      - tendermint/abci
+    ENUM_ZERO_VALUE_SUFFIX:
+      - tendermint
+    RPC_RESPONSE_STANDARD_NAME:
+      - tendermint/abci/types.proto
+breaking:
+  use:
+    - PACKAGE 
+

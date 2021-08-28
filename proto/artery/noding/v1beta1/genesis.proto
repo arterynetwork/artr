@@ -1,0 +1,93 @@
+syntax = "proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "tendermint/abci/types.proto";
+import "artery/noding/v1beta1/params.proto";
+import "artery/noding/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+// GenesisState - all noding state that must be provided at genesis
+message GenesisState {
+  option (gogoproto.goproto_getters) = false;
+
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+  repeated Validator active = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "active",
+    (gogoproto.moretags) = "yaml:\"active\""
+  ];
+  repeated Validator non_active = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "non_active",
+    (gogoproto.moretags) = "yaml:\"non_active\""
+  ];
+}
+
+message Validator {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  string pub_key = 2 [
+    (gogoproto.jsontag)  = "pub_key,omitempty",
+    (gogoproto.moretags) = "yaml:\"pub_key,omitempty\""
+  ];
+  int64 strokes = 3 [
+    (gogoproto.jsontag)  = "strokes,omitempty",
+    (gogoproto.moretags) = "yaml:\"strokes,omitempty\""
+  ];
+  int64 ok_blocks_in_row = 4 [
+    (gogoproto.jsontag)  = "ok_blocks_in_row,omitempty",
+    (gogoproto.moretags) = "yaml:\"ok_blocks_in_row,omitempty\""
+  ];
+  int64 missed_blocks_in_row = 5 [
+    (gogoproto.jsontag)  = "missed_blocks_in_row,omitempty",
+    (gogoproto.moretags) = "yaml:\"missed_blocks_in_row,omitempty\""
+  ];
+  bool jailed = 6 [
+    (gogoproto.jsontag)  = "jailed,omitempty",
+    (gogoproto.moretags) = "yaml:\"jailed,omitempty\""
+  ];
+  int64 unjail_at = 7 [
+    (gogoproto.jsontag)  = "unjail_at,omitempty",
+    (gogoproto.moretags) = "yaml:\"unjail_at,omitempty\""
+  ];
+  int64 proposed_count = 8 [
+    (gogoproto.jsontag)  = "proposed_count,omitempty",
+    (gogoproto.moretags) = "yaml:\"proposed_count,omitempty\""
+  ];
+  int64 jail_count = 9 [
+    (gogoproto.jsontag)  = "jail_count,omitempty",
+    (gogoproto.moretags) = "yaml:\"jail_count,omitempty\""
+  ];
+  bool switched_on = 10 [
+    (gogoproto.jsontag)  = "switched_on,omitempty",
+    (gogoproto.moretags) = "yaml:\"switched_on,omitempty\""
+  ];
+  repeated uint64 proposed_blocks = 11 [
+    (gogoproto.jsontag)  = "proposed_blocks,omitempty",
+    (gogoproto.moretags) = "yaml:\"proposed_blocks,omitempty\""
+  ];
+
+  repeated tendermint.abci.Evidence infractions = 16 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "infractions,omitempty",
+    (gogoproto.moretags) = "yaml:\"infractions,omitempty\""
+  ];
+  bool banned = 17 [
+    (gogoproto.jsontag)  = "banned,omitempty",
+    (gogoproto.moretags) = "yaml:\"banned,omitempty\""
+  ];
+  bool staff = 18 [
+    (gogoproto.jsontag)  = "staff,omitempty",
+    (gogoproto.moretags) = "yaml:\"staff,omitempty\""
+  ];
+}

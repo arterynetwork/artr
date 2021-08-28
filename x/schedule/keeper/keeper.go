@@ -1,33 +1,38 @@
 package keeper
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
-	//authexported "github.com/cosmos/cosmos-sdk/x/auth/exported"
+	"time"
 
-	//"github.com/tendermint/tendermint/crypto"
+	"github.com/pkg/errors"
+
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/arterynetwork/artr/x/schedule/types"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	"github.com/arterynetwork/artr/x/schedule/types"
 )
 
 // Keeper of the schedule store
 type Keeper struct {
 	storeKey   sdk.StoreKey
-	cdc        *codec.Codec
-	paramspace types.ParamSubspace
-	eventHooks map[string]func(ctx sdk.Context, data []byte)
+	cdc        codec.BinaryMarshaler
+	eventHooks map[string]func(ctx sdk.Context, data []byte, time time.Time)
+	paramspace paramtypes.Subspace
 }
 
 // NewKeeper creates a schedule keeper
-func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, paramspace types.ParamSubspace) Keeper {
+func NewKeeper(cdc codec.BinaryMarshaler, key sdk.StoreKey, paramspace paramtypes.Subspace) Keeper {
 	keeper := Keeper{
 		storeKey:   key,
 		cdc:        cdc,
+		eventHooks: make(map[string]func(ctx sdk.Context, data []byte, time time.Time)),
 		paramspace: paramspace.WithKeyTable(types.ParamKeyTable()),
-		eventHooks: make(map[string]func(ctx sdk.Context, data []byte)),
 	}
 	return keeper
 }
@@ -38,141 +43,110 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 }
 
 // Add event hook
-func (k Keeper) AddHook(event string, hook func(ctx sdk.Context, data []byte)) {
+func (k Keeper) AddHook(event string, hook func(ctx sdk.Context, data []byte, time time.Time)) {
 	k.eventHooks[event] = hook
 }
 
-func (k Keeper) GetTasks(ctx sdk.Context, block uint64) types.Schedule {
-	store := ctx.KVStore(k.storeKey)
+func (k Keeper) GetTasks(ctx sdk.Context, since, to time.Time) []types.Task {
+	var (
+		store   = ctx.KVStore(k.storeKey)
+		items   []types.Task
+		sinceBz = key(since)
+		toBz    = key(to)
+		it      = store.Iterator(sinceBz, toBz)
+	)
+	defer it.Close()
 
-	blockBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(blockBuf, block)
-
-	var items types.Schedule
-
-	bz := store.Get(blockBuf)
-
-	if bz == nil {
-		items = make(types.Schedule, 0)
-	} else {
-		err := k.cdc.UnmarshalBinaryBare(bz, &items)
-
-		if err != nil {
-			panic(err)
-		}
+	for ; it.Valid(); it.Next() {
+		var sch types.Schedule
+		k.cdc.MustUnmarshalBinaryBare(it.Value(), &sch)
+		items = append(items, sch.Tasks...)
 	}
-
 	return items
 }
 
 // Schedule an event on block block height
-func (k Keeper) ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error {
-	store := ctx.KVStore(k.storeKey)
-
-	blockBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(blockBuf, block)
-
-	var items types.Schedule
-
-	bz := store.Get(blockBuf)
-
-	if bz == nil {
-		items = make(types.Schedule, 0)
-	} else {
-		err := k.cdc.UnmarshalBinaryBare(bz, &items)
-
-		if err != nil {
-			return err
-		}
+func (k Keeper) ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte) {
+	k.scheduleTask(ctx, types.Task{Time: time, HandlerName: event, Data: data})
+}
+func (k Keeper) scheduleTask(ctx sdk.Context, task types.Task) {
+	var (
+		store = ctx.KVStore(k.storeKey)
+		key   = key(task.Time)
+		sch   types.Schedule
+	)
+	if bz := store.Get(key); bz != nil {
+		k.cdc.MustUnmarshalBinaryBare(bz, &sch)
 	}
 
-	items = append(items, types.Task{
-		HandlerName: event,
-		Data:        *data,
+	sch.Tasks = append(sch.Tasks, task)
+
+	store.Set(key, k.cdc.MustMarshalBinaryBare(&sch))
+}
+
+func (k Keeper) DeleteAll(ctx sdk.Context, time time.Time, event string) {
+	k.delete(ctx, time, func(task types.Task) bool {
+		return task.HandlerName == event
 	})
-
-	bz = k.cdc.MustMarshalBinaryBare(items)
-	store.Set(blockBuf, bz)
-
-	return nil
 }
-
-func (k Keeper) filterTasks(vs types.Schedule, excludeEvent string) types.Schedule {
-	vsf := make(types.Schedule, 0)
-	for _, v := range vs {
-		if v.HandlerName != excludeEvent {
-			vsf = append(vsf, v)
-		}
-	}
-	return vsf
+func (k Keeper) Delete(ctx sdk.Context, time time.Time, event string, payload []byte) {
+	k.delete(ctx, time, func(task types.Task) bool {
+		return task.HandlerName == event && bytes.Equal(task.Data, payload)
+	})
 }
-
-func (k Keeper) DeleteAllTasksOnBlock(ctx sdk.Context, block uint64, event string) {
+func (k Keeper) delete(ctx sdk.Context, time time.Time, predicate func(types.Task)bool) {
 	store := ctx.KVStore(k.storeKey)
-
-	blockBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(blockBuf, block)
-
-	bz := store.Get(blockBuf)
+	key := key(time)
+	bz := store.Get(key)
 
 	if bz == nil {
 		return
 	}
 
 	var items types.Schedule
+	k.cdc.MustUnmarshalBinaryBare(bz, &items)
 
-	err := k.cdc.UnmarshalBinaryBare(bz, &items)
-
-	if err != nil {
-		return
+	filtered := make([]types.Task, 0, len(items.Tasks))
+	for _, item := range items.Tasks {
+		if !predicate(item) {
+			filtered = append(filtered, item)
+		}
 	}
 
-	items = k.filterTasks(items, event)
-
-	bz = k.cdc.MustMarshalBinaryBare(items)
-
-	if len(bz) == 0 {
-		store.Delete(blockBuf)
+	if len(filtered) == 0 {
+		store.Delete(key)
 	} else {
-		store.Set(blockBuf, bz)
+		store.Set(key, k.cdc.MustMarshalBinaryBare(&types.Schedule{Tasks: filtered}))
 	}
 }
 
-// Perfoms a sheduled tasks for block height. Tasks removed from store after completion
-func (k Keeper) PerfomSchedule(ctx sdk.Context, block uint64) {
-	// We can ignore InitialHeight here, because all performed tasks are removed from KVStore
+// PerformSchedule performs scheduled tasks for the block height. Tasks will be removed from the store when they are
+// complete.
+func (k Keeper) PerformSchedule(ctx sdk.Context) {
+	store := cachekv.NewStore(ctx.KVStore(k.storeKey))
+	terminator := key(ctx.BlockTime().Add(time.Nanosecond))
+	it := store.Iterator(nil, terminator)
 
-	store := ctx.KVStore(k.storeKey)
-
-	blockBuf := make([]byte, 8)
-	binary.BigEndian.PutUint64(blockBuf, block)
-
-	bz := store.Get(blockBuf)
-
-	if bz == nil {
-		return
-	}
-
-	var items types.Schedule
-
-	err := k.cdc.UnmarshalBinaryBare(bz, &items)
-
-	if err != nil {
-		return
-	}
-
-	for _, task := range items {
-		hook := k.eventHooks[task.HandlerName]
-		if hook != nil {
-			performSchedule(ctx, task, hook, k.Logger(ctx))
+	for ; it.Valid(); it.Next() {
+		var sch types.Schedule
+		k.cdc.MustUnmarshalBinaryBare(it.Value(), &sch)
+		for _, task := range sch.Tasks {
+			hook := k.eventHooks[task.HandlerName]
+			if hook != nil {
+				performSchedule(ctx, task, hook, k.Logger(ctx))
+			} else {
+				k.Logger(ctx).Error("callback is not registered", "hook", task.HandlerName)
+			}
 		}
+		store.Delete(it.Key())
 	}
 
-	store.Delete(blockBuf)
+	it.Close()
+	store.Write()
 }
 
-func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context, data []byte), logger log.Logger) {
-	logger.Debug("perform schedule", "task", task.HandlerName)
+func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context, data []byte, time time.Time), logger log.Logger) {
+	logger.Debug("perform schedule", "task", task.HandlerName, "time", task.Time)
 	defer func(task string) {
 		if err := recover(); err != nil {
 			logger.Error("recovered from panic",
@@ -181,5 +155,14 @@ func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context
 			)
 		}
 	}(task.HandlerName)
-	hook(ctx, task.Data)
+	hook(ctx, task.Data, task.Time)
+}
+
+func key(t time.Time) []byte {
+	if t.Year() < 1970 || t.Year() > 2262 {
+		panic(errors.Errorf("time is out of range: %s", t.String()))
+	}
+	bz := make([]byte, 8)
+	binary.BigEndian.PutUint64(bz, uint64(t.UnixNano()))
+	return bz
 }

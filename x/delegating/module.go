@@ -1,20 +1,25 @@
 package delegating
 
 import (
-	"github.com/arterynetwork/artr/x/delegating/types"
+	"context"
 	"encoding/json"
 
 	"github.com/gorilla/mux"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/arterynetwork/artr/x/delegating/client/cli"
-	"github.com/arterynetwork/artr/x/delegating/client/rest"
-	"github.com/cosmos/cosmos-sdk/client/context"
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
+	codecTypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+
+	"github.com/arterynetwork/artr/x/delegating/client/cli"
+	"github.com/arterynetwork/artr/x/delegating/keeper"
+	"github.com/arterynetwork/artr/x/delegating/types"
 )
 
 // TypeCode check to ensure the interface is properly implemented
@@ -32,39 +37,47 @@ func (AppModuleBasic) Name() string {
 }
 
 // RegisterCodec registers the delegating module's types for the given codec.
-func (AppModuleBasic) RegisterCodec(cdc *codec.Codec) {
-	RegisterCodec(cdc)
+func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
+	types.RegisterLegacyAminoCodec(cdc)
+}
+
+// RegisterInterfaces registers interfaces and implementations of the delegating module.
+func (AppModuleBasic) RegisterInterfaces(registry codecTypes.InterfaceRegistry) {
+	types.RegisterInterfaces(registry)
 }
 
 // DefaultGenesis returns default genesis state as raw bytes for the delegating
 // module.
-func (AppModuleBasic) DefaultGenesis() json.RawMessage {
-	return ModuleCdc.MustMarshalJSON(DefaultGenesisState())
+func (AppModuleBasic) DefaultGenesis(cdc codec.JSONMarshaler) json.RawMessage {
+	return cdc.MustMarshalJSON(DefaultGenesisState())
 }
 
 // ValidateGenesis performs genesis state validation for the delegating module.
-func (AppModuleBasic) ValidateGenesis(bz json.RawMessage) error {
+func (AppModuleBasic) ValidateGenesis(cdc codec.JSONMarshaler, _ client.TxEncodingConfig, bz json.RawMessage) error {
 	var data GenesisState
-	err := ModuleCdc.UnmarshalJSON(bz, &data)
+	err := cdc.UnmarshalJSON(bz, &data)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to unmarshal x/delegating genesis state")
 	}
 	return ValidateGenesis(data)
 }
 
 // RegisterRESTRoutes registers the REST routes for the delegating module.
-func (AppModuleBasic) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Router) {
-	rest.RegisterRoutes(ctx, rtr)
-}
+func (AppModuleBasic) RegisterRESTRoutes(ctx client.Context, rtr *mux.Router) {}
 
 // GetTxCmd returns the root tx command for the delegating module.
-func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetTxCmd(cdc)
+func (AppModuleBasic) GetTxCmd() *cobra.Command {
+	return cli.NewTxCmd()
 }
 
 // GetQueryCmd returns no root query command for the delegating module.
-func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetQueryCmd(MainStoreKey, cdc)
+func (AppModuleBasic) GetQueryCmd() *cobra.Command {
+	return cli.NewQueryCmd()
+}
+
+// RegisterGRPCGatewayRoutes registers the gRPC Gateway routes for the delegating module.
+func (AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux *runtime.ServeMux) {
+	types.RegisterQueryHandlerClient(context.Background(), mux, types.NewQueryClient(clientCtx))
 }
 
 //____________________________________________________________________________
@@ -77,20 +90,18 @@ type AppModule struct {
 	accKeeper      types.AccountKeeper
 	scheduleKeeper types.ScheduleKeeper
 	bankKeeper     types.BankKeeper
-	supplyKeeper   types.SupplyKeeper
 	profileKeeper  types.ProfileKeeper
 	refKeeper      types.ReferralKeeper
 }
 
 // NewAppModule creates a new AppModule object
-func NewAppModule(k Keeper, accKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, bankKeeper types.BankKeeper, supplyKeeper types.SupplyKeeper, profileKeeper types.ProfileKeeper, refKeeper types.ReferralKeeper) AppModule {
+func NewAppModule(k Keeper, accKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, bankKeeper types.BankKeeper, profileKeeper types.ProfileKeeper, refKeeper types.ReferralKeeper) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
 		keeper:         k,
 		accKeeper:      accKeeper,
 		scheduleKeeper: scheduleKeeper,
 		bankKeeper:     bankKeeper,
-		supplyKeeper:   supplyKeeper,
 		profileKeeper:  profileKeeper,
 		refKeeper:      refKeeper,
 	}
@@ -101,17 +112,18 @@ func (AppModule) Name() string {
 	return ModuleName
 }
 
+// RegisterServices registers module services.
+func (am AppModule) RegisterServices(cfg module.Configurator) {
+	types.RegisterMsgServer(cfg.MsgServer(), keeper.NewMsgServer(am.keeper))
+	types.RegisterQueryServer(cfg.QueryServer(), keeper.NewQueryServer(am.keeper))
+}
+
 // RegisterInvariants registers the delegating module invariants.
 func (am AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 
 // Route returns the message routing key for the delegating module.
-func (AppModule) Route() string {
-	return RouterKey
-}
-
-// NewHandler returns an sdk.Handler for the delegating module.
-func (am AppModule) NewHandler() sdk.Handler {
-	return NewHandler(am.keeper, am.supplyKeeper)
+func (am AppModule) Route() sdk.Route {
+	return sdk.NewRoute(types.RouterKey, NewHandler(am.keeper))
 }
 
 // QuerierRoute returns the delegating module's querier route name.
@@ -119,31 +131,29 @@ func (AppModule) QuerierRoute() string {
 	return QuerierRoute
 }
 
-// NewQuerierHandler returns the delegating module sdk.Querier.
-func (am AppModule) NewQuerierHandler() sdk.Querier {
-	return NewQuerier(am.keeper)
+// LegacyQuerierHandler returns the delegating module sdk.Querier.
+func (am AppModule) LegacyQuerierHandler(legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
+	return NewQuerier(am.keeper, legacyQuerierCdc)
 }
 
 // InitGenesis performs genesis initialization for the delegating module. It returns
 // no validator updates.
-func (am AppModule) InitGenesis(ctx sdk.Context, data json.RawMessage) []abci.ValidatorUpdate {
+func (am AppModule) InitGenesis(ctx sdk.Context, mrshl codec.JSONMarshaler, data json.RawMessage) []abci.ValidatorUpdate {
 	var genesisState GenesisState
-	ModuleCdc.MustUnmarshalJSON(data, &genesisState)
+	mrshl.MustUnmarshalJSON(data, &genesisState)
 	InitGenesis(ctx, am.keeper, genesisState)
 	return []abci.ValidatorUpdate{}
 }
 
 // ExportGenesis returns the exported genesis state as raw bytes for the delegating
 // module.
-func (am AppModule) ExportGenesis(ctx sdk.Context) json.RawMessage {
+func (am AppModule) ExportGenesis(ctx sdk.Context, mrshl codec.JSONMarshaler) json.RawMessage {
 	gs := ExportGenesis(ctx, am.keeper)
-	return ModuleCdc.MustMarshalJSON(gs)
+	return mrshl.MustMarshalJSON(&gs)
 }
 
 // BeginBlock returns the begin blocker for the delegating module.
-func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
-	BeginBlocker(ctx, req, am.keeper)
-}
+func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {}
 
 // EndBlock returns the end blocker for the delegating module. It returns no validator
 // updates.

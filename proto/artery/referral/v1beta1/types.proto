@@ -1,0 +1,145 @@
+syntax = "proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+enum Status {
+  option (gogoproto.goproto_enum_prefix) = false;
+
+  STATUS_UNSPECIFIED = 0;
+  STATUS_LUCKY = 1;
+  STATUS_LEADER = 2;
+  STATUS_MASTER = 3;
+  STATUS_CHAMPION = 4;
+  STATUS_BUSINESSMAN = 5;
+  STATUS_PROFESSIONAL = 6;
+  STATUS_TOP_LEADER = 7;
+  STATUS_HERO = 8;
+  STATUS_ABSOLUTE_CHAMPION = 9;
+}
+
+message Info {
+  option (gogoproto.goproto_getters) = false;
+
+  // Status - account status (1 "Lucky" – 9 "Absolute Champion").
+  Status status = 1 [
+    (gogoproto.jsontag)  = "status",
+    (gogoproto.moretags) = "yaml:\"status\""
+  ];
+
+  // Referrer - parent, account just above this one.
+  string referrer = 2 [
+    (gogoproto.jsontag)  = "referrer,omitempty",
+    (gogoproto.moretags) = "yaml:\"referrer,omitempty\""
+  ];
+
+  // Referrals - children, accounts just below this one.
+  repeated string referrals = 3 [
+    (gogoproto.jsontag)  = "referrals,omitempty",
+    (gogoproto.moretags) = "yaml:\"referrals,omitempty\""
+  ];
+
+  // Active - does the account keeper have a paid subscription.
+  bool active = 4 [
+    (gogoproto.jsontag)  = "active",
+    (gogoproto.moretags) = "yaml:\"active\""
+  ];
+
+  // Coins - total amount of coins (delegated and not) per level:
+  // [0] is its own coins, [1] is its children's coins total and so on
+  repeated string coins = 5 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.jsontag)    = "coins",
+    (gogoproto.moretags)   = "yaml:\"coins,flow\""
+  ];
+
+  // Delegated - total amount of delegated coins per level:
+  // [0] - delegated by itself, [1] - delegated by children and so on
+  repeated string delegated = 6 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.jsontag)    = "delegated",
+    (gogoproto.moretags)   = "yaml:\"delegated,flow\""
+  ];
+
+  // ActiveReferrals is just Referrals filtered by Active=true
+  repeated string active_referrals = 8 [
+    (gogoproto.jsontag)  = "active_referrals,omitempty",
+    (gogoproto.moretags) = "yaml:\"active_referrals,omitempty\""
+  ];
+
+  // ActiveRefCounts - count of active referrals per level (up to 10 levels deep).
+  // ActiveRefCounts[1] is just len(ActiveReferrals).
+  // ActiveRefCounts[2] is a total count of all active referral of all account's referrals (whether active of not).
+  // And so on. ActiveReferrals[0] represents an account itself. It must be equal 1 if account is active, and 0 if it's not.
+  repeated uint64 active_ref_counts = 7 [
+    (gogoproto.jsontag)  = "active_ref_counts",
+    (gogoproto.moretags) = "yaml:\"active_ref_counts,flow\""
+  ];
+
+
+  // Block height at that the account status downgrade is scheduled.
+  google.protobuf.Timestamp status_downgrade_at = 16 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "status_downgrade_at,omitempty",
+    (gogoproto.moretags) = "yaml:\"status_downgrade_at,omitempty\""
+  ];
+
+  // CompressionAt - block height, at that compression is scheduled.
+  google.protobuf.Timestamp compression_at = 17 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "compression_at,omitempty",
+    (gogoproto.moretags) = "yaml:\"compression_at,omitempty\""
+  ];
+
+  google.protobuf.Timestamp banishment_at = 20 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "banishment_at,omitempty",
+    (gogoproto.moretags) = "yaml:\"banishment_at,omitempty\""
+  ];
+
+  // Transition - a new referrer, the user wishes to be moved under. It should be empty unless the user requested a
+  // transition and that transition's waiting for a current referrer's affirmation.
+  string transition = 18 [
+    (gogoproto.jsontag)  = "transition,omitempty",
+    (gogoproto.moretags) = "yaml:\"transition,omitempty\""
+  ];
+
+  bool banished = 19 [
+    (gogoproto.jsontag)  = "banished,omitempty",
+    (gogoproto.moretags) = "yaml:\"banished,omitempty\""
+  ];
+}
+
+message StatusCheckResult {
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  bool               overall  = 1;
+  repeated Criterion criteria = 2 [(gogoproto.nullable) = false];
+
+  message Criterion {
+    bool   met          = 1;
+    Rule   rule         = 2;
+    uint64 target_value = 3;
+    uint64 actual_value = 4;
+    uint64 parameter_x  = 5;
+
+    enum Rule {
+      option (gogoproto.goproto_enum_prefix) = false;
+
+      RULE_UNSPECIFIED                       = 0;
+      RULE_N_REFERRALS_WITH_X_REFERRALS_EACH = 1;
+      RULE_N_COINS_IN_STRUCTURE              = 2;
+      RULE_N_TEAMS_OF_X_PEOPLE_EACH          = 3;
+      RULE_PARTICIPATE_IN_REFERRAL_PROGRAM   = 4;
+    }
+  }
+}

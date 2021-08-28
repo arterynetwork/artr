@@ -2,11 +2,9 @@ package types
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
-	supply "github.com/cosmos/cosmos-sdk/x/supply/exported"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	referral "github.com/arterynetwork/artr/x/referral/types"
-	"github.com/arterynetwork/artr/x/schedule"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -18,16 +16,15 @@ type ParamSubspace interface {
 }
 
 type ReferralKeeper interface {
-	GetStatus(ctx sdk.Context, acc sdk.AccAddress) (referral.Status, error)
-	GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error)
+	GetStatus(ctx sdk.Context, acc string) (referral.Status, error)
+	GetDelegatedInNetwork(ctx sdk.Context, acc string, maxDepth int) (sdk.Int, error)
 }
 
-type ScheduleKeeper interface {
-	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
-	GetParams(ctx sdk.Context) schedule.Params
+type AccountKeeper interface {
+	GetModuleAddress(moduleName string) sdk.AccAddress
 }
 
-type SupplyKeeper interface {
-	GetModuleAccount(ctx sdk.Context, moduleName string) supply.ModuleAccountI
+type BankKeeper interface {
+	GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
 	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 }

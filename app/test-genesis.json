@@ -1,0 +1,721 @@
+{
+  "app_state": {
+    "artrbank": {
+      "balances": [
+        {
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "coins": [
+            {
+              "amount": "1000000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+          "coins": [
+            {
+              "amount": "1000000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            },
+            {
+              "amount": "10000000000",
+              "denom": "uartrd"
+            }
+          ]
+        },
+        {
+          "address": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            },
+            {
+              "amount": "10000000000",
+              "denom": "uartrd"
+            }
+          ]
+        },
+        {
+          "address": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        },
+        {
+          "address": "artrt1j29a9493fmlkjr9hmp54ltjun2meph9lst6c3j",
+          "coins": [
+            {
+              "amount": "1000000000",
+              "denom": "uartr"
+            }
+          ]
+        }
+      ],
+      "params": {}
+    },
+    "auth": {
+      "accounts": [
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt14eyw3l9pszt7efjwvy6venvnhnaenn4uq9aq6d",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt135qfyv227zu3cclmyycnc4u7f7vm86t8t0p4h2",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8xw3x8p",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+          "sequence": "0"
+        },
+        {
+          "@type": "/cosmos.auth.v1beta1.BaseAccount",
+          "accountNumber": "0",
+          "address": "artrt1j29a9493fmlkjr9hmp54ltjun2meph9lst6c3j",
+          "sequence": "0"
+        }
+      ],
+      "params": {
+        "max_memo_characters": "256",
+        "sig_verify_cost_ed25519": "590",
+        "sig_verify_cost_secp256k1": "1000",
+        "tx_sig_limit": "7",
+        "tx_size_cost_per_byte": "10"
+      }
+    },
+    "delegating": {
+      "accounts": [],
+      "params": {
+        "min_delegate": "1000",
+        "percentage": {
+          "hundred_k_plus": "30",
+          "minimal": "21",
+          "ten_k_plus": "27",
+          "thousand_plus": "24"
+        }
+      }
+    },
+    "earning": {
+      "params": {
+        "signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ]
+      }
+    },
+    "noding": {
+      "active": [
+        {
+          "account": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "pub_key": "artrtvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qv3rnr2"
+        }
+      ],
+      "params": {
+        "jail_after": 2,
+        "max_validators": 100,
+        "min_status": "STATUS_LEADER",
+        "unjail_after": "120"
+      }
+    },
+    "profile": {
+      "params": {
+        "base_storage_gb": 5,
+        "base_vpn_gb": 7,
+        "card_magic": "112233592347",
+        "creators": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf"
+        ],
+        "storage_gb_price": 10,
+        "storage_signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ],
+        "subscription_price": 1990,
+        "token_rate": "100000",
+        "token_rate_signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf"
+        ],
+        "vpn_gb_price": 10,
+        "vpn_signers": [
+          "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        ]
+      },
+      "profiles": [
+        {
+          "address": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "root"
+          }
+        },
+        {
+          "address": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user1",
+            "noding": true,
+            "validator": true
+          }
+        },
+        {
+          "address": "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user2"
+          }
+        },
+        {
+          "address": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user3"
+          }
+        },
+        {
+          "address": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user4"
+          }
+        },
+        {
+          "address": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user5"
+          }
+        },
+        {
+          "address": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user6"
+          }
+        },
+        {
+          "address": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user7"
+          }
+        },
+        {
+          "address": "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user8"
+          }
+        },
+        {
+          "address": "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user9"
+          }
+        },
+        {
+          "address": "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user10"
+          }
+        },
+        {
+          "address": "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user11"
+          }
+        },
+        {
+          "address": "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user12"
+          }
+        },
+        {
+          "address": "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user13"
+          }
+        },
+        {
+          "address": "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user14"
+          }
+        },
+        {
+          "address": "artrt1j29a9493fmlkjr9hmp54ltjun2meph9lst6c3j",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "user15"
+          }
+        }
+      ]
+    },
+    "referral": {
+      "compressions": [],
+      "downgrades": [],
+      "other_accounts": [
+        {
+          "referrals": [
+            "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf"
+          ],
+          "referrer": "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+        },
+        {
+          "referrals": [
+            "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+            "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8"
+          ],
+          "referrer": "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf"
+        },
+        {
+          "referrals": [
+            "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp",
+            "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g"
+          ],
+          "referrer": "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy"
+        },
+        {
+          "referrals": [
+            "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem",
+            "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq"
+          ],
+          "referrer": "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8"
+        },
+        {
+          "referrals": [
+            "artrt14qn52aqd5dp4eycngm9e5ryrqdaf0u2ze6vqg7",
+            "artrt1h2emj28qqj0e4k3azyzqdqznxdkf9r5529dtr5"
+          ],
+          "referrer": "artrt1hdayszxl2ahw4rm0mct72rxzukq058mac6zgjp"
+        },
+        {
+          "referrals": [
+            "artrt1fedl94g9gqnntzqtgmxyp6msztzvw435hw8v69",
+            "artrt1j9j50h6k3v2p70nar6234etd2amxdeysra0dun"
+          ],
+          "referrer": "artrt15n7wt45x4tkgunp25wylrjymjnkqug80eu2h2g"
+        },
+        {
+          "referrals": [
+            "artrt1tkl5vyca6mlfhl0zmjkl8nkcmlulpre5ravkhl",
+            "artrt1xkwt5k2pktltp0jzk6hjz9k2k89l3044rfns6m"
+          ],
+          "referrer": "artrt1sqh7ly9z3yme0k32f42qu330a663zkcumetmem"
+        },
+        {
+          "referrals": [
+            "artrt1q2w5ytm97g490lcux69n3vfprqsdv65v0r2k9g",
+            "artrt1j29a9493fmlkjr9hmp54ltjun2meph9lst6c3j"
+          ],
+          "referrer": "artrt1uaz24ndash8umld4xpfn3zpknk5ske3xghy9yq"
+        }
+      ],
+      "params": {
+        "company_accounts": {
+          "for_delegating": "artrt1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8xw3x8p",
+          "for_subscription": "artrt1h93uunesjjcn2n8j47pq43ty5m7kusu0jng78c",
+          "leader_bonuses": "artrt135qfyv227zu3cclmyycnc4u7f7vm86t8t0p4h2",
+          "promo_bonuses": "artrt1n2gkwynafyt6jqqjptyjeyzs4un6mvexdkppcn",
+          "status_bonuses": "artrt1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgx8ju0y",
+          "top_referrer": "artrt1k20rvph0j2pr4g3jwpprdaw23rathkxcwvhaqu"
+        },
+        "delegating_award": {
+          "company": "5/1000",
+          "network": [
+            "5%",
+            "1%",
+            "1%",
+            "2%",
+            "1%",
+            "1%",
+            "1%",
+            "1%",
+            "1%",
+            "5/1000"
+          ]
+        },
+        "subscription_award": {
+          "company": "10%",
+          "network": [
+            "15%",
+            "10%",
+            "7%",
+            "7%",
+            "7%",
+            "7%",
+            "7%",
+            "5%",
+            "2%",
+            "2%"
+          ]
+        },
+        "transition_price": "10000000"
+      },
+      "top_level_accounts": [
+        "artrt1yhy6d3m4utltdml7w7zte7mqx5wyuskqppw34n"
+      ],
+      "transitions": []
+    },
+    "schedule": {
+      "params": {
+        "day_nanos": "86400000000000"
+      },
+      "tasks": [
+        {
+          "data": "Jcmmx3Xi/rbv/neEvPtgNRxOQsA=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "bXIgNk+PO4vhZ7828RRfSlYmgUk=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "ueByJrGJAyxS6+sgTBRMRFlqxZs=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "xIDOHDOFEpizBKj8BxKeSpcD4vA=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "u3pICN9XbuqPb94X5QzC5YD6H30=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "pPzl1oaq7I5MKqOJ8ciblOwOIO8=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "gC/vkKKJN5faKk1UDkYv7rURWxw=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "50Sqzb2Fz839tTBTOIg2nakLZiY=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "qCdFdA2jQ1yTE0bLmgyDA3qX8UI=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "urO5KOAEn5raPREEBoBTM2ySjpQ=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "Tlvy1QVAJzWIC0bMQOtwEsTHVjQ=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "kWVH31aLFB8+fR6VGuVtV3Zm5JA=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "Xb9GEx3W/pv94tyt887Y3/nwjzQ=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "NZy6WUGy/rC+QravIRbKscv4vrU=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "Ap1CL2XyKlf/HDaLOLEhGCDWaow=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        },
+        {
+          "data": "kovS1LFO/2kMt9hpX65cmreQ3L8=",
+          "handler_name": "profile/refresh",
+          "time": "2022-01-04T03:00:00Z"
+        }
+
+      ]
+    },
+    "voting": {
+      "government": [
+        "artrt1d4ezqdj03uachct8hum0z9zlfftzdq2f7x0fwf",
+        "artrt1h8s8yf433ypjc5htavsyc9zvg3vk43vm5du8gy",
+        "artrt1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsk22na8"
+      ],
+      "params": {
+        "voting_period": 18
+      }
+    }
+  },
+  "chain_id": "4utests",
+  "consensus_params": {
+    "block": {
+      "max_bytes": "22020096",
+      "max_gas": "-1",
+      "time_iota_ms": "1000"
+    },
+    "evidence": {
+      "max_age_duration": "172800000000000",
+      "max_age_num_blocks": "100000",
+      "max_bytes": "1048576"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    },
+    "version": {
+      "app_version": "0"
+    }
+  },
+  "genesis_time": "2022-01-01T00:00:00.000000Z",
+  "initial_height": "1"
+}

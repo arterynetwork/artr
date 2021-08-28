@@ -1,31 +1,25 @@
 package cli
 
 import (
-	"github.com/arterynetwork/artr/util"
-	"bufio"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"strconv"
 
-	//"bufio"
-
+	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	//"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/codec"
-	//sdk "github.com/cosmos/cosmos-sdk/types"
-	//"github.com/cosmos/cosmos-sdk/x/auth"
-	//"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	"github.com/cosmos/cosmos-sdk/client/tx"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/earning/types"
 )
 
-// GetTxCmd returns the transaction commands for this module
-func GetTxCmd(cdc *codec.Codec) *cobra.Command {
+// NewTxCmd returns the transaction commands for this module
+func NewTxCmd() *cobra.Command {
 	earningTxCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Aliases:                    []string{"e", "earn"},
@@ -35,122 +29,148 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	earningTxCmd.AddCommand(flags.PostCommands(
-		GetCmdListEarners(cdc),
-		GetCmdRun(cdc),
-		GetCmdReset(cdc),
-	)...)
+	earningTxCmd.AddCommand(
+		getCmdListEarners(),
+		getCmdRun(),
+		getCmdReset(),
+	)
 
 	return earningTxCmd
 }
 
-func GetCmdListEarners(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "list [[address] [vpn point] [storage points]...]",
+func getCmdListEarners() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list <signer_key_or_address> [[address] [vpn point] [storage points]...]",
 		Short: "Add earners to the pending list",
-		Args:  cobra.ArbitraryArgs,
+		Args:  cobra.MinimumNArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
 
-			earners := make([]types.Earner, 0, len(args)/3)
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			earners := make([]types.Earner, len(args)/3)
 			for i := 0; i < len(args)/3; i++ {
 				var (
 					address      sdk.AccAddress
 					vpn, storage int64
 					err          error
 				)
-				if address, err = sdk.AccAddressFromBech32(args[3*i]); err != nil {
-					return err
+				if address, err = sdk.AccAddressFromBech32(args[3*i+1]); err != nil {
+					return errors.Wrapf(err, "invalid address #%d", i)
 				}
-				if vpn, err = strconv.ParseInt(args[3*i+1], 0, 64); err != nil {
-					return err
+				if vpn, err = strconv.ParseInt(args[3*i+2], 0, 64); err != nil {
+					return errors.Wrapf(err, "invalid vpn points #%d", i)
 				}
-				if storage, err = strconv.ParseInt(args[3*i+2], 0, 64); err != nil {
-					return err
+				if storage, err = strconv.ParseInt(args[3*i+3], 0, 64); err != nil {
+					return errors.Wrapf(err, "invalid storage points #%d", i)
 				}
-				earners = append(earners, types.Earner{
-					Points: types.Points{
-						Vpn:     vpn,
-						Storage: storage,
-					},
-					Account: address,
-				})
+				earners[i] = types.NewEarner(address, vpn, storage)
 			}
 
-			msg := types.NewMsgListEarners(cliCtx.GetFromAddress(), earners)
+			msg := types.NewMsgListEarners(clientCtx.GetFromAddress(), earners)
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdRun(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "run <fund_part> <accounts_per_block> <total_vpn_points> <total_storage_points> <height>",
+func getCmdRun() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "run <signer_key_or_address> <fund_part> <accounts_per_block> <total_vpn_points> <total_storage_points> <time>",
 		Short: "Lock earner list and schedule distribution for a specified block height",
-		Args:  cobra.ExactArgs(5),
+		Args:  cobra.ExactArgs(6),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-
 			var (
+				clientCtx    client.Context
+				err          error
 				fundPart     util.Fraction
-				perBlock     uint16
+				perBlock     uint32
 				totalVpn     int64
 				totalStorage int64
-				height       int64
-				err          error
+				time         *timestamp.Timestamp
 			)
-			if fundPart, err = util.ParseFraction(args[0]); err != nil {
+
+			if err = cmd.Flags().Set(flags.FlagFrom, args[0]); err != nil {
 				return err
 			}
-			if x, err := strconv.ParseInt(args[1], 0, 16); err != nil {
+			if clientCtx, err = client.GetClientTxContext(cmd); err != nil {
+				return err
+			}
+
+			if fundPart, err = util.ParseFraction(args[1]); err != nil {
+				return err
+			}
+			if x, err := strconv.ParseInt(args[2], 0, 16); err != nil {
 				return err
 			} else {
-				perBlock = uint16(x)
+				perBlock = uint32(x)
 			}
-			if totalVpn, err = strconv.ParseInt(args[2], 0, 64); err != nil {
+			if totalVpn, err = strconv.ParseInt(args[3], 0, 64); err != nil {
 				return err
 			}
-			if totalStorage, err = strconv.ParseInt(args[3], 0, 64); err != nil {
+			if totalStorage, err = strconv.ParseInt(args[4], 0, 64); err != nil {
 				return err
 			}
-			if height, err = strconv.ParseInt(args[4], 0, 64); err != nil {
-				return err
-			}
-
-			msg := types.NewMsgRun(cliCtx.GetFromAddress(), fundPart, perBlock, totalVpn, totalStorage, height)
-			if err := msg.ValidateBasic(); err != nil {
+			if time, err = runtime.Timestamp(args[5]); err != nil {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			msg := types.NewMsgRun(
+				clientCtx.GetFromAddress(),
+				fundPart,
+				perBlock,
+				totalVpn,
+				totalStorage,
+				time.AsTime(),
+			)
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdReset(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "reset",
+func getCmdReset() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "reset <signer_key_or_address>",
 		Short: "Reset all data, unlock earner list",
-		Args:  cobra.NoArgs,
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
 
-			msg := types.NewMsgReset(cliCtx.GetFromAddress())
+			msg := types.NewMsgReset(clientCtx.GetFromAddress())
 			if err := msg.ValidateBasic(); err != nil {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
+
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
 }

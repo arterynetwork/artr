@@ -1,0 +1,22 @@
+syntax="proto3";
+package artery.voting.v1beta1;
+
+import "artery/voting/v1beta1/proposals.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+message EventProposalCreated {
+  string name = 1;
+  string author = 2;
+  ProposalType type = 3;
+}
+
+message EventProposalVote {
+  string voter = 1;
+  bool agreed = 2;
+}
+
+message EventVotingFinished {
+  string name = 1;
+  bool agreed = 2;
+}

@@ -1,0 +1,68 @@
+syntax="proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+import "artery/referral/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+message EventStatusUpdated {
+  string address = 1;
+  Status before = 2;
+  Status after = 3;
+}
+
+message EventStatusWillBeDowngraded {
+  string address = 1;
+  google.protobuf.Timestamp time = 2 [
+    (gogoproto.stdtime) = true,
+    (gogoproto.nullable) = false
+  ];
+}
+
+message EventStatusDowngradeCanceled {
+  string address = 1;
+}
+
+message EventCompression {
+  string address = 1;
+  string referrer = 2;
+  repeated string referrals = 3;
+}
+
+message EventStatusBonus {
+  string address = 1;
+  uint64 amount = 2;
+}
+
+message EventTransitionRequested {
+  string address = 1;
+  string before = 2;
+  string after = 3;
+}
+
+message EventTransitionPerformed {
+  string address = 1;
+  string before = 2;
+  string after = 3;
+}
+
+message EventTransitionDeclined {
+  enum Reason {
+    option (gogoproto.goproto_enum_prefix) = false;
+
+    REASON_UNSPECIFIED = 0;
+    REASON_DECLINED = 1;
+    REASON_TIMEOUT = 2;
+  }
+
+  string address = 1;
+  string before = 2;
+  string after = 3;
+  Reason reason = 4;
+}
+
+message EventAccBanished {
+  string address = 1;
+}

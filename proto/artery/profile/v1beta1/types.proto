@@ -1,0 +1,64 @@
+syntax = "proto3";
+package artery.profile.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/profile/types";
+
+message Profile {
+  option (gogoproto.goproto_getters) = false;
+
+  bool   auto_pay     = 1  [
+    (gogoproto.jsontag)  = "auto_pay,omitempty",
+    (gogoproto.moretags) = "yaml:\"auto_pay,omitempty\""
+  ];
+  google.protobuf.Timestamp active_until = 2  [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "active_until,omitempty",
+    (gogoproto.moretags) = "yaml:\"active_until,omitempty\""
+  ];
+  bool   noding       = 3  [
+    (gogoproto.jsontag)  = "noding,omitempty",
+    (gogoproto.moretags) = "yaml:\"noding,omitempty\""
+  ];
+  bool   storage      = 4  [
+    (gogoproto.jsontag)  = "storage,omitempty",
+    (gogoproto.moretags) = "yaml:\"storage,omitempty\""
+  ];
+  bool   validator    = 5  [
+    (gogoproto.jsontag)  = "validator,omitempty",
+    (gogoproto.moretags) = "yaml:\"validator,omitempty\""
+  ];
+  bool   vpn          = 6  [
+    (gogoproto.jsontag)  = "vpn,omitempty",
+    (gogoproto.moretags) = "yaml:\"vpn,omitempty\""
+  ];
+  string nickname     = 7  [
+    (gogoproto.jsontag)  = "nickname,omitempty",
+    (gogoproto.moretags) = "yaml:\"nickname,omitempty\""
+  ];
+  uint64 card_number  = 16 [
+    (gogoproto.jsontag)  = "card_number,omitempty",
+    (gogoproto.moretags) = "yaml:\"card_number,omitempty\""
+  ];
+
+  uint64 storage_limit   = 8 [
+    (gogoproto.jsontag)  = "storage_limit,omitempty",
+    (gogoproto.moretags) = "yaml:\"storage_limit,omitempty\""
+  ];
+  uint64 storage_current = 9 [
+    (gogoproto.jsontag)  = "storage_current,omitempty",
+    (gogoproto.moretags) = "yaml:\"storage_current,omitempty\""
+  ];
+
+  uint64 vpn_limit   = 10 [
+    (gogoproto.jsontag)  = "vpn_limit,omitempty",
+    (gogoproto.moretags) = "yaml:\"vpn_limit,omitempty\""
+  ];
+  uint64 vpn_current = 11 [
+    (gogoproto.jsontag)  = "vpn_current,omitempty",
+    (gogoproto.moretags) = "yaml:\"vpn_current,omitempty\""
+  ];
+}

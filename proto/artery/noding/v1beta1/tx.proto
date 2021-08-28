@@ -1,0 +1,49 @@
+syntax = "proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+service Msg {
+  rpc On(MsgOn) returns (MsgOnResponse);
+  rpc Off(MsgOff) returns (MsgOffResponse);
+  rpc Unjail(MsgUnjail) returns (MsgUnjailResponse);
+}
+
+message MsgOn {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  string pub_key = 2 [
+    (gogoproto.jsontag)  = "pub_key",
+    (gogoproto.moretags) = "yaml:\"pub_key\""
+  ];
+}
+
+message MsgOnResponse {}
+
+message MsgOff {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message MsgOffResponse {}
+
+message MsgUnjail {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message MsgUnjailResponse {}

@@ -2,8 +2,9 @@ package types
 
 import (
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
-	"github.com/cosmos/cosmos-sdk/x/params"
+	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 // Default parameter namespace
@@ -20,59 +21,51 @@ const (
 
 // Parameter store keys
 var (
-	KeyPercentage  = []byte("Percentage")
-	KeyMinDelegate = []byte("MinDelegate")
+	KeyPercentage    = []byte("Percentage")
+	KeyMinDelegate   = []byte("MinDelegate")
 )
 
 // ParamKeyTable for delegating module
-func ParamKeyTable() params.KeyTable {
-	return params.NewKeyTable().RegisterParamSet(&Params{})
+func ParamKeyTable() paramTypes.KeyTable {
+	return paramTypes.NewKeyTable().RegisterParamSet(&Params{})
 }
 
-type Percentage struct {
-	Minimal      int `json:"minimal" yaml:"minimal"`
-	ThousandPlus int `json:"thousand_plus" yaml:"thousand_plus"`
-	TenKPlus     int `json:"ten_k_plus" yaml:"ten_k_plus"`
-	HundredKPlus int `json:"hundred_k_plus" yaml:"hundred_k_plus"`
+func (p Percentage) String() string {
+	out, _ := yaml.Marshal(p)
+	return string(out)
 }
 
-func NewPercentage(minimal int, oneK int, tenK int, hundredK int) Percentage {
-	return Percentage{
-		Minimal:      minimal,
-		ThousandPlus: oneK,
-		TenKPlus:     tenK,
-		HundredKPlus: hundredK,
+func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
+	return &Percentage{
+		Minimal:      int64(minimal),
+		ThousandPlus: int64(oneK),
+		TenKPlus:     int64(tenK),
+		HundredKPlus: int64(hundredK),
 	}
 }
 
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
-// Params - used for initializing default parameter for delegating at genesis
-type Params struct {
-	Percentage  Percentage `json:"percentage" yaml:"percentage"`
-	MinDelegate int64      `json:"min_delegate" yaml:"min_delegate"`
-}
-
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64) Params {
-	return Params{
+func NewParams(percentage Percentage, minDelegate int64) *Params {
+	return &Params{
 		Percentage:  percentage,
 		MinDelegate: minDelegate,
 	}
 }
 
 // ParamSetPairs - Implements params.ParamSet
-func (p *Params) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
-		params.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
-		params.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
+func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
+	return paramTypes.ParamSetPairs{
+		paramTypes.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
+		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 	}
 }
 
 // DefaultParams defines the parameters for this module
-func DefaultParams() Params {
+func DefaultParams() *Params {
 	return NewParams(
-		NewPercentage(
+		*NewPercentage(
 			DefaultMinimalPercent,
 			DefaultThousandPlusPercent,
 			DefaultTenKPlusPercent,
@@ -90,6 +83,14 @@ func (p Params) Validate() error {
 		return errors.Wrap(err, "invalid MinDelegate")
 	}
 	return nil
+}
+
+func (p Params) String() string {
+	bz, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(bz)
 }
 
 func validatePercentage(i interface{}) error {
