@@ -58,6 +58,7 @@ func NewTxCmd() *cobra.Command {
 		cmdGeneralAmnesty(),
 		cmdSetValidatorMinStatus(),
 		cmdSetJailAfter(),
+		cmdSetRevokePeriod(),
 		util.LineBreak(),
 		cmdVote(),
 	)
@@ -1269,6 +1270,53 @@ func cmdSetJailAfter() *cobra.Command {
 					Args: &types.Proposal_Count{
 						Count: &types.CountArgs{
 							Count: count,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetRevokePeriod() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-revoke-period <days> <proposal name> <author key or address>",
+		Aliases: []string{"set_revoke_period", "srp"},
+		Short:   `Set a number of days, coins are returned from delegation after`,
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			var days uint32
+			{
+				n, err := strconv.ParseUint(args[0], 0, 32)
+				if err != nil {
+					return err
+				}
+				days = uint32(n)
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_REVOKE_PERIOD,
+					Args: &types.Proposal_Period{
+						Period: &types.PeriodArgs{
+							Days: days,
 						},
 					},
 				},

@@ -266,6 +266,69 @@ func (s *Suite) TestLeaveDust() {
 	s.Nil(resp)
 }
 
+func (s *Suite) TestRevokePeriod() {
+	user := app.DefaultGenesisUsers["user2"]
+	genesisTime := s.ctx.BlockTime()
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(1_000000)))
+
+	rrz, err := s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(1, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			Amount: sdk.NewInt(1_000000),
+			Time: genesisTime.Add(14 * 24 * time.Hour),
+		}, rrz[0],
+	)
+
+	s.nextBlock()
+	pz := s.k.GetParams(s.ctx)
+	pz.RevokePeriod = 7
+	s.k.SetParams(s.ctx, pz)
+	s.nextBlock()
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(2_000000)))
+
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(2, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			Amount: sdk.NewInt(1_000000),
+			Time: genesisTime.Add(14 * 24 * time.Hour),
+		}, rrz[0],
+	)
+	s.Equal(
+		types.RevokeRequest{
+			Amount: sdk.NewInt(2_000000),
+			Time: genesisTime.Add(7 * 24 * time.Hour + time.Minute),
+		}, rrz[1],
+	)
+
+	s.EqualValues(3_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	s.ctx = s.ctx.WithBlockHeight(20_161).WithBlockTime(genesisTime.Add(20_161*30*time.Second))
+	s.nextBlock()
+
+	s.EqualValues(1_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(1, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			Amount: sdk.NewInt(1_000000),
+			Time: genesisTime.Add(14 * 24 * time.Hour),
+		}, rrz[0],
+	)
+
+	s.ctx = s.ctx.WithBlockHeight(40_319).WithBlockTime(genesisTime.Add(40_319*30*time.Second))
+	s.nextBlock()
+	s.EqualValues(0, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(0, len(rrz))
+}
+
 var bbHeader = abci.RequestBeginBlock{
 	Header: tmproto.Header{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),

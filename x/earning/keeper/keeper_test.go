@@ -136,9 +136,10 @@ func (s *Suite) TestFlow() {
 		s.bk.GetBalance(s.ctx, user3).AmountOf(util.ConfigMainDenom).Int64(),
 		"user3 at block height 5",
 	)
-	s.Equal(
+	s.InDelta(
 		user4amt+util.NewFraction(3, 16).MulInt64(vpnFund).Int64()+util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
 		s.bk.GetBalance(s.ctx, user4).AmountOf(util.ConfigMainDenom).Int64(),
+		1.1,
 		"user4 at block height 5",
 	)
 	s.Equal(
@@ -157,9 +158,10 @@ func (s *Suite) TestFlow() {
 		s.bk.GetBalance(s.ctx, user3).AmountOf(util.ConfigMainDenom).Int64(),
 		"user3 at block height 6",
 	)
-	s.Equal(
+	s.InDelta(
 		user4amt+util.NewFraction(3, 16).MulInt64(vpnFund).Int64()+util.NewFraction(1, 6).MulInt64(storageFund).Int64(),
 		s.bk.GetBalance(s.ctx, user4).AmountOf(util.ConfigMainDenom).Int64(),
+		1.1,
 		"user4 at block height 6",
 	)
 	s.NoError(

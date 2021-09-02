@@ -31,6 +31,7 @@ const (
 	CompressionHookName       = keeper.CompressionHookName
 	TransitionTimeoutHookName = keeper.TransitionTimeoutHookName
 	BanishHookName            = keeper.BanishHookName
+	StatusBonusHookName       = keeper.StatusBonusHookName
 )
 
 var (

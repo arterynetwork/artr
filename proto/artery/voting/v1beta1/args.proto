@@ -94,3 +94,9 @@ message StatusArgs {
     (gogoproto.moretags) = "yaml:\"status\""
   ];
 }
+
+message PeriodArgs {
+  option (gogoproto.equal) = true;
+
+  uint32 days = 1;
+}

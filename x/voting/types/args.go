@@ -32,6 +32,12 @@ func (args *StatusArgs) Validate() error {
 	}
 	return nil
 }
+func (args *PeriodArgs) Validate() error {
+	if args.Days < 1 {
+		return errors.New("period must be at least one day")
+	}
+	return nil
+}
 
 func (args *AddressArgs) GetAddress() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(args.Address)

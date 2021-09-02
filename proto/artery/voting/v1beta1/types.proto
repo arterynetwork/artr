@@ -62,6 +62,10 @@ message Proposal {
       (gogoproto.jsontag)  = "status,omitempty",
       (gogoproto.moretags) = "yaml:\"status,omitempty"
     ];
+    PeriodArgs period = 13 [
+      (gogoproto.jsontag)  = "period,omitempty",
+      (gogoproto.moretags) = "yaml:\"period,omitempty"
+    ];
   }
 }
 

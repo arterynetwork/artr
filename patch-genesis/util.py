@@ -5,7 +5,7 @@ from .config import Config
 
 def height_to_time(height: int, config: Config) -> str:
     try:
-        return (config.get_genesis_time() + timedelta(seconds=(height-config.initial_height)*30)).isoformat() + "Z"
+        return (config.get_genesis_time() + timedelta(seconds=(height-config.initial_height)*30 // config.time_quotient)).isoformat() + "Z"
     except OverflowError:
         return "9999-12-31T23:59:59.999999999Z"
 

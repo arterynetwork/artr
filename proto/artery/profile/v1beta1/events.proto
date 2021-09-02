@@ -13,6 +13,8 @@ message EventPayTariff {
     (gogoproto.nullable) = false
   ];
   uint64 total = 3;
+  repeated string commission_to = 4;
+  repeated uint64 commission_amount = 5;
 }
 
 message EventActivityChanged {

@@ -18,6 +18,7 @@ const (
 	CompressionHookName       = "referral/compression"
 	TransitionTimeoutHookName = "referral/transition-timeout"
 	BanishHookName            = "referral/banish"
+	StatusBonusHookName       = "referral/status-bonus"
 )
 
 //TODO: refactor x/noding too
@@ -57,6 +58,13 @@ func (k Keeper) PerformTransitionTimeout(ctx sdk.Context, data []byte, _ time.Ti
 func (k Keeper) PerformBanish(ctx sdk.Context, data []byte, _ time.Time) {
 	if err := k.Banish(ctx, string(data)); err != nil {
 		panic(err)
+	}
+}
+
+func (k Keeper) PerformStatusBonus(ctx sdk.Context, _ []byte, t time.Time) {
+	k.scheduleKeeper.ScheduleTask(ctx, t.Add(k.scheduleKeeper.OneWeek(ctx)), StatusBonusHookName, nil)
+	if err := k.PayStatusBonus(ctx); err != nil {
+		k.Logger(ctx).Error("couldn't pay status bonus", "err", err)
 	}
 }
 

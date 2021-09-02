@@ -6,6 +6,9 @@ from ..config import Config
 from ..util import height_to_time, modulo_to_time
 
 
+ONE_WEEK_BLOCKS = 7 * 24 * 60 * 2
+
+
 def _patch_acc_address(data: str) -> str:
     bz: bytes = base64.standard_b64decode(data)
     acc_addr: str = bech32.bech32_encode("artr", bech32.convertbits(bz, 8, 5))
@@ -37,9 +40,14 @@ def patch(state: Optional[Dict], delegating: Optional[Dict], config: Config) -> 
                 "data":         base64.standard_b64encode(bytes(bech32.convertbits(bech32.bech32_decode(acc)[1], 5, 8))).decode()
             } for acc in cluster["accounts"])
 
+    tasks.append({
+        "handler_name": "referral/status-bonus",
+        "time":         height_to_time(((config.initial_height - 1) // ONE_WEEK_BLOCKS + 1) * ONE_WEEK_BLOCKS, config)
+    })
+
     return {
         "params": {
-            "day_nanos": str(86400000000000 // config.time_quotient)
+            "day_nanos": str(24 * 60**2 * 10**9 // config.time_quotient)
         },
         "tasks": tasks
     }

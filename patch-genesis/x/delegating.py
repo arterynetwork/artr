@@ -8,6 +8,7 @@ from ..util import height_to_time, modulo_to_time
 def patch(state: Optional[Dict], config: Config) -> Dict:
     state = state or {}
     accounts: Dict = {}
+    params: Dict = {}
 
     for x in state.get("revoking", None) or []:
         account = accounts.get(x["account"])
@@ -31,7 +32,12 @@ def patch(state: Optional[Dict], config: Config) -> Dict:
                 }
             acc["next_accrue"] = t
 
+    for key, val in (state.get("params", None) or {}).items():
+        if key == "revoke_period":
+            val = int(val) // 2880
+        params[key] = val
+
     return {
-        "params":   state.get("params"),
+        "params":   params,
         "accounts": sorted(accounts.values(), key=operator.itemgetter("address"))
     }

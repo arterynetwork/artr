@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -25,12 +26,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/store"
 	"github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/rest"
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	authcmd "github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 
 	"github.com/arterynetwork/artr/app"
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	bankcmd "github.com/arterynetwork/artr/x/bank/client/cli"
 )
@@ -148,7 +151,7 @@ func queryCmd() *cobra.Command {
 	queryCmd.AddCommand(
 		authcmd.GetAccountCmd(),
 		flags.LineBreak,
-		rpc.ValidatorCommand(),
+		cmdValidatorSet(),
 		rpc.BlockCommand(),
 		authcmd.QueryTxsByEventsCmd(),
 		authcmd.QueryTxCmd(),
@@ -194,4 +197,48 @@ func txCmd() *cobra.Command {
 	txCmd.RemoveCommand(cmdsToRemove...)
 
 	return txCmd
+}
+
+func cmdValidatorSet() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "tendermint-validator-set [height]",
+		Short: "Get the full tendermint validator set at given height",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			var height *int64
+
+			// optional height
+			if len(args) > 0 {
+				h, err := strconv.Atoi(args[0])
+				if err != nil {
+					return err
+				}
+				if h > 0 {
+					tmp := int64(h)
+					height = &tmp
+				}
+			}
+
+			page, _ := cmd.Flags().GetInt(flags.FlagPage)
+			limit, _ := cmd.Flags().GetInt(flags.FlagLimit)
+
+			result, err := rpc.GetValidators(clientCtx, height, &page, &limit)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, result)
+		},
+	}
+
+	cmd.Flags().StringP(flags.FlagNode, "n", "tcp://localhost:26657", "Node to connect to")
+	cmd.Flags().String(flags.FlagKeyringBackend, flags.DefaultKeyringBackend, "Select keyring's backend (os|file|kwallet|pass|test)")
+	cmd.Flags().Int(flags.FlagPage, rest.DefaultPage, "Query a specific page of paginated results")
+	cmd.Flags().Int(flags.FlagLimit, 100, "Query number of results returned per page")
+
+	return cmd
 }

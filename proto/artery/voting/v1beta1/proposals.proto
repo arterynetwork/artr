@@ -69,4 +69,6 @@ enum ProposalType {
   PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS = 29;
   // Количество блоков, которое надо пропустить чтобы заработать jail
   PROPOSAL_TYPE_JAIL_AFTER = 30;
+  // Через сколько дней монеты вернутся с делегирования
+  PROPOSAL_TYPE_REVOKE_PERIOD = 31;
 }

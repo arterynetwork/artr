@@ -10452,7 +10452,8 @@
           "minimal": "21",
           "ten_k_plus": "27",
           "thousand_plus": "24"
-        }
+        },
+        "revoke_period": 14
       }
     },
     "earning": {
@@ -29351,7 +29352,12 @@
       "params": {
         "day_nanos": "86400000000000"
       },
-      "tasks": []
+      "tasks": [
+        {
+          "handler_name": "referral/status-bonus",
+          "time":         "2022-01-08T00:00:00.000000Z"
+        }
+      ]
     },
     "voting": {
       "government": [

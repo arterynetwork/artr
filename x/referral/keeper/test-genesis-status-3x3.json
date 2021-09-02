@@ -807,7 +807,8 @@
           "minimal": "21",
           "ten_k_plus": "27",
           "thousand_plus": "24"
-        }
+        },
+        "revoke_period": 14
       }
     },
     "earning": {

@@ -8,13 +8,17 @@ option go_package = "github.com/arterynetwork/artr/x/delegating/types";
 // Params - used for initializing default parameter for delegating at genesis
 message Params {
   option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
 
   Percentage percentage = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "percentage",
     (gogoproto.moretags) = "yaml:\"percentage\""
   ];
-  int64 min_delegate   = 2;
+  int64 min_delegate  = 2;
+
+  // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
+  uint32 revoke_period = 3;
 }
 
 // Percentage - function from delegation size to delegation award percent

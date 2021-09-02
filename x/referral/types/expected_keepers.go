@@ -27,6 +27,7 @@ type ScheduleKeeper interface {
 	Delete(ctx sdk.Context, time time.Time, event string, payload []byte)
 
 	OneDay(ctx sdk.Context) time.Duration
+	OneWeek(ctx sdk.Context) time.Duration
 	OneMonth(ctx sdk.Context) time.Duration
 }
 

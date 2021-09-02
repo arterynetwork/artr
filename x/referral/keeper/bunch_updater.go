@@ -190,15 +190,7 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 			}
 		}
 	}
-	valueBytes, err := bu.k.cdc.MarshalBinaryBare(&value)
-	if err != nil {
-		bu.k.Logger(bu.ctx).Error("Cannot marshal", "value", value)
-		return err
-	}
-	bu.data = append(bu.data, kvRecord{
-		key:   []byte(acc),
-		value: valueBytes,
-	})
+	if err := bu.set(acc, value); err != nil { return err }
 	return nil
 }
 

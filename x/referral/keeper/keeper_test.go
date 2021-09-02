@@ -32,6 +32,7 @@ import (
 
 func TestReferralKeeper(t *testing.T) {
 	suite.Run(t, new(Suite))
+	suite.Run(t, new(TransitionBorderlineSuite))
 	suite.Run(t, new(StatusUpgradeSuite))
 	suite.Run(t, new(Status3x3Suite))
 	suite.Run(t, new(StatusBonusSuite))
@@ -1502,6 +1503,69 @@ func (s Suite) TestComeBack_BubbleUp() {
 	s.Zero(len(info.Referrals))
 }
 
+type TransitionBorderlineSuite struct {
+	BaseSuite
+
+	accounts map[string]string
+}
+
+func (s *TransitionBorderlineSuite) SetupTest() {
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+
+	data, err := ioutil.ReadFile("test-genesis-transitions.json")
+	if err != nil {
+		panic(err)
+	}
+	s.setupTest(data)
+
+	s.accounts = map[string]string{
+		"1":     "artrt1qq9gvskgjkwfkqexeapwps0cnqj6pxkz335f6z",
+		"1.1":   "artrt1qqxwvzmhjsrwa9fuyafu2jcxcrv2fclw8rf5gn",
+		"1.1.1": "artrt1qqvnckqa5yqaps2v9wfeqpzkum4cmexclpuz0f",
+		"1.1.2": "artrt1pg635yjdpg62pjvsxfz5xyhxcxk2ss4ljmvy8a",
+		"2":     "artrt1sxwwflxyj2wl0l3ltl83kn7sxvrkfalyle6fs5",
+		"2.1":   "artrt1sxnhvuyuac9x52lmpduyf9uaz763nw0w2033eq",
+		"2.1.1": "artrt1sx48ywhy3yqyhf4h4yxc4n2ucz62xkzven5m5u",
+		"2.1.2": "artrt13366fwedzhlu7l66kmrq3utq9x5y0f7f3cf8t7",
+	}
+}
+
+func (s TransitionBorderlineSuite) TestAlmostUp() {
+	data, err := s.k.Get(s.ctx, s.accounts["2"])
+	s.NoError(err)
+	s.Equal(referral.StatusTopLeader, data.Status)
+
+	s.NoError(s.k.RequestTransition(s.ctx, s.accounts["2.1.1"], s.accounts["2.1.2"]))
+	s.NoError(s.k.AffirmTransition(s.ctx, s.accounts["2.1.1"]))
+
+	data, err = s.k.Get(s.ctx, s.accounts["2"])
+	s.NoError(err)
+	s.Equal(referral.StatusTopLeader, data.Status)
+	s.Nil(data.StatusDowngradeAt)
+}
+
+func (s TransitionBorderlineSuite) TestAlmostDown() {
+	data, err := s.k.Get(s.ctx, s.accounts["1"])
+	s.NoError(err)
+	s.Equal(referral.StatusHero, data.Status)
+
+	s.NoError(s.k.RequestTransition(s.ctx, s.accounts["1.1.1"], s.accounts["1.1.2"]))
+	s.NoError(s.k.AffirmTransition(s.ctx, s.accounts["1.1.1"]))
+
+	scr ,err := s.k.AreStatusRequirementsFulfilled(s.ctx, s.accounts["1"], referral.StatusHero)
+	s.NoError(err)
+	s.True(scr.Overall)
+
+	data, err = s.k.Get(s.ctx, s.accounts["1"])
+	s.NoError(err)
+	s.Equal(referral.StatusHero, data.Status)
+	s.Nil(data.StatusDowngradeAt)
+}
+
 type StatusUpgradeSuite struct {
 	BaseSuite
 	heads [3]sdk.AccAddress
@@ -1631,6 +1695,13 @@ func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
 	s.NoError(err)
 	s.Equal(referral.StatusChampion, status)
 
+	check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, root, referral.StatusMaster)
+	s.NoError(err)
+	s.True(check.Overall)
+	check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, root, referral.StatusChampion)
+	s.NoError(err)
+	s.True(check.Overall)
+
 	s.NoError(s.k.RequestTransition(s.ctx, neck00, neck02))
 	s.NoError(s.k.AffirmTransition(s.ctx, neck00))
 	check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, root, referral.StatusMaster)
@@ -1677,6 +1748,7 @@ func (s *StatusBonusSuite) SetupTest() {
 }
 
 func (s *StatusBonusSuite) TestStatusBonus() {
+	genesisTime := s.ctx.BlockTime()
 	lvl5 := app.DefaultGenesisUsers["user14"]
 	lvl7 := app.DefaultGenesisUsers["user15"]
 	topR, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.TopReferrer)
@@ -1717,7 +1789,7 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	b0topRef := s.bk.GetBalance(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
 
 	// On the week end
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1)
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(7 * 24 * time.Hour - 30 * time.Second))
 	s.nextBlock()
 
 	b1level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()

@@ -123,7 +123,7 @@ func getCmdRun() *cobra.Command {
 			if totalStorage, err = strconv.ParseInt(args[4], 0, 64); err != nil {
 				return err
 			}
-			if time, err = runtime.Timestamp(args[5]); err != nil {
+			if time, err = runtime.Timestamp(fmt.Sprintf(`"%s"`, args[5])); err != nil {
 				return err
 			}
 

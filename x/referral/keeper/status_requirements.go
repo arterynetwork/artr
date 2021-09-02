@@ -124,7 +124,7 @@ func statusRequirementsCore(value types.Info, bu *bunchUpdater, linesOpen int, c
 		}
 		var s uint64
 		if !criterion.Met {
-			for _, x := range child.ActiveRefCounts[1:] {
+			for _, x := range child.ActiveRefCounts {
 				s += x
 				if s >= leg {
 					criterion.ActualValue++

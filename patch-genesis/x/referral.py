@@ -27,8 +27,8 @@ def patch(state: Optional[Dict], config: Config) -> Dict:
     result["compressions"] = [
         {
             "account": x["account"],
-            "time":    height_to_time(x["height"], config)
-        } for x in state.get("compressions") or []
+            "time":    height_to_time(int(x["height"]), config)
+        } for x in state.get("compression") or []
     ]
 
     result["downgrades"] = [

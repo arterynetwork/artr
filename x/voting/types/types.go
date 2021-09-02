@@ -172,6 +172,17 @@ func (p Proposal) Validate() error {
 				return errors.Wrap(err, "invalid args")
 			}
 		}
+	case PROPOSAL_TYPE_REVOKE_PERIOD:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_Period expected")
+		}
+		if args, ok := p.Args.(*Proposal_Period); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Period expected", p.Args)
+		} else {
+			if err := args.Period.Validate(); err != nil {
+				return errors.Wrap(err, "invalid args")
+			}
+		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)
 	}

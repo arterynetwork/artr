@@ -156,9 +156,7 @@ func (am AppModule) ExportGenesis(ctx sdk.Context, mrshl codec.JSONMarshaler) js
 }
 
 // BeginBlock returns the begin blocker for the referral module.
-func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
-	BeginBlocker(ctx, req, am.keeper)
-}
+func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) { }
 
 // EndBlock returns the end blocker for the referral module. It returns no validator
 // updates.

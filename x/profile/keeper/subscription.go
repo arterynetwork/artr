@@ -11,6 +11,7 @@ import (
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
+	bankT "github.com/arterynetwork/artr/x/bank/types"
 	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/profile/types"
 )
@@ -55,10 +56,18 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	}
 	refTotal := int64(0)
 	outputs := make([]bank.Output, len(refFees), len(refFees)+3)
+	event := &types.EventPayTariff{
+		Address:          addr.String(),
+		CommissionTo:     make([]string, len(refFees)),
+		CommissionAmount: make([]uint64, len(refFees)),
+	}
 	for i, fee := range refFees {
 		x := fee.Ratio.MulInt64(tariffTotal.Int64()).Int64()
 		refTotal += x
 		outputs[i] = bank.NewOutput(fee.GetBeneficiary(), util.Uartrs(x))
+
+		event.CommissionTo[i] = fee.Beneficiary
+		event.CommissionAmount[i] = uint64(x)
 	}
 	tariffTotal = tariffTotal.SubRaw(refTotal)
 
@@ -100,6 +109,8 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	storageFee := sdk.NewIntFromBigInt(storageFeeFrac.BigInt())
 	total = total.Add(storageFee)
 	storageFee = storageFee.Add(tariffTotal.Sub(vpnFee))
+	event.Total = total.Uint64()
+	event.ExpireAt = *profile.ActiveUntil
 
 	if !txFee.IsZero() {
 		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(auth.FeeCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee))))
@@ -122,13 +133,14 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		return errors.Wrap(err, "cannot save profile")
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
-		&types.EventPayTariff{
-			Address:  addr.String(),
-			ExpireAt: *profile.ActiveUntil,
-			Total:    input.Coins.AmountOf(util.ConfigMainDenom).Uint64(),
+	if err := ctx.EventManager().EmitTypedEvents(
+		event,
+		&bankT.EventTransfer{
+			Sender:    addr.String(),
+			Recipient: k.accountKeeper.GetModuleAddress(auth.FeeCollectorName).String(),
+			Amount:    sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee)),
 		},
-	); err != nil { return err }
+	); err != nil { panic(err) }
 	return nil
 }
 
@@ -143,9 +155,25 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 	storageFee := p.TokenRate.MulInt64(int64(extraGb) * int64(p.StorageGbPrice)).Mul(time).Int64()
 
 	if storageFee <= 0 {
+		k.Logger(ctx).Error(
+			"free storage",
+			"extraGb", extraGb,
+			"GbPrice", p.StorageGbPrice,
+			"rate", p.TokenRate,
+			"monthPart", time.String(),
+			"activeUntil", profile.ActiveUntil.String(),
+			"now", ctx.BlockTime().String(),
+		)
 		panic("free storage")
 	}
 	total := util.Uartrs(storageFee)
+
+	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+		return errors.Wrap(err, "cannot pay up tx fee")
+	} else {
+		total = total.Sub(txFee)
+	}
+
 	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
@@ -177,6 +205,13 @@ func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error
 		panic("free VPN")
 	}
 	coins := util.Uartrs(vpnFee)
+
+	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, coins); err != nil {
+		return errors.Wrap(err, "cannot pay up tx fee")
+	} else {
+		coins = coins.Sub(txFee)
+	}
+
 	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.VpnCollectorName, coins); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
@@ -256,6 +291,10 @@ func (k Keeper) resetLimits(p types.Params, profile *types.Profile) {
 	}
 	profile.VpnCurrent = 0
 
+	if profile.VpnLimit < baseVpn {
+		profile.VpnLimit = baseVpn
+	}
+
 	if profile.StorageLimit == 0 {
 		profile.StorageLimit = uint64(p.BaseStorageGb) * util.GBSize
 	}
@@ -307,5 +346,5 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 }
 
 func (k Keeper) monthPart(ctx sdk.Context, end time.Time) util.Fraction {
-	return util.FractionInt(1).Sub(util.NewFraction(end.Sub(ctx.BlockTime()).Nanoseconds(), k.scheduleKeeper.OneMonth(ctx).Nanoseconds()).Reduce())
+	return util.NewFraction(end.Sub(ctx.BlockTime()).Nanoseconds(), k.scheduleKeeper.OneMonth(ctx).Nanoseconds()).Reduce()
 }

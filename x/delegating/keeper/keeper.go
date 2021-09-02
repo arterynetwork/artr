@@ -106,7 +106,8 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		k.scheduleKeeper.ScheduleTask(ctx, time, types.AccrueHookName, acc)
 	}
 
-	time := ctx.BlockTime().Add(2*k.scheduleKeeper.OneWeek(ctx))
+	period := k.GetParams(ctx).GetRevokePeriod(k.scheduleKeeper, ctx)
+	time := ctx.BlockTime().Add(period)
 	item.Requests = append(item.Requests, types.RevokeRequest{
 		Time:   time,
 		Amount: uartrs,

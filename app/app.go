@@ -325,6 +325,7 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
 	app.scheduleKeeper.AddHook(delegating.AccrueHookName, app.delegatingKeeper.MustPerformAccrue)
 	app.scheduleKeeper.AddHook(referral.BanishHookName, app.referralKeeper.PerformBanish)
+	app.scheduleKeeper.AddHook(referral.StatusBonusHookName, app.referralKeeper.PerformStatusBonus)
 
 	app.referralKeeper.AddHook(referral.StatusUpdatedCallback, app.nodingKeeper.OnStatusUpdate)
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
