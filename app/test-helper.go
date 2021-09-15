@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -86,7 +88,22 @@ func NewAppFromGenesis(genesis []byte) (app *ArteryApp, cleanup func()) {
 	app = NewArteryApp(logger, db, nil, true, 0, fauxMerkleModeOpt)
 
 	if genesis == nil {
-		genesis = []byte(defaultGenesis)
+		cwd, err := os.Getwd()
+		if err != nil {
+			panic(errors.Wrap(err, "cannot get current dir"))
+		}
+		dir := cwd
+		for dir != "" {
+			var tail string
+			dir, tail = path.Split(path.Clean(dir))
+			if tail == "x" || tail == "app" {
+				break
+			}
+		}
+		if dir == "" {
+			panic(errors.Errorf("path '%s' is out of project", cwd))
+		}
+		genesis, err = ioutil.ReadFile(path.Join(dir, "app", "test-genesis.json"))
 	}
 
 	var (

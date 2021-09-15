@@ -63,14 +63,28 @@ func (t Transition) Validate() error {
 	return nil
 }
 
+type GenesisBanishedOne struct {
+	Account        sdk.AccAddress `json:"acc" yaml:"acc"`
+	FormerReferrer sdk.AccAddress `json:"ref" yaml:"ref"`
+	Height         int64          `json:"h" yaml:"h"`
+}
+
+func (ba GenesisBanishedOne) Validate() error {
+	if ba.Account.Empty() {
+		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "account address is missing")
+	}
+	return nil
+}
+
 // GenesisState - all referral state that must be provided at genesis
 type GenesisState struct {
-	Params           Params                   `json:"params"`
-	TopLevelAccounts []sdk.AccAddress         `json:"top_level_accounts"`
-	OtherAccounts    []Refs                   `json:"other_accounts"`
-	Compression      []GenesisCompression     `json:"compression,omitempty"`
-	Downgrade        []GenesisStatusDowngrade `json:"downgrade,omitempty"`
-	Transitions      []Transition             `json:"transitions,omitempty"`
+	Params           Params                   `json:"params" yaml:"params"`
+	TopLevelAccounts []sdk.AccAddress         `json:"top_level_accounts" yaml:"top_level_accounts"`
+	OtherAccounts    []Refs                   `json:"other_accounts" yaml:"other_accounts"`
+	BanishedAccounts []GenesisBanishedOne     `json:"banished_accounts" yaml:"banished_accounts"`
+	Compression      []GenesisCompression     `json:"compression,omitempty" yaml:"compression,omitempty"`
+	Downgrade        []GenesisStatusDowngrade `json:"downgrade,omitempty" yaml:"downgrade,omitempty"`
+	Transitions      []Transition             `json:"transitions,omitempty" yaml:"transitions,omitempty"`
 }
 
 // NewGenesisState creates a new GenesisState object
@@ -78,6 +92,7 @@ func NewGenesisState(
 	params Params,
 	topLevelAccounts []sdk.AccAddress,
 	otherAccounts []Refs,
+	banishedAccounts []GenesisBanishedOne,
 	compressions []GenesisCompression,
 	downgrades []GenesisStatusDowngrade,
 	transitions []Transition,
@@ -86,6 +101,7 @@ func NewGenesisState(
 		Params:           params,
 		TopLevelAccounts: topLevelAccounts,
 		OtherAccounts:    otherAccounts,
+		BanishedAccounts: banishedAccounts,
 		Compression:      compressions,
 		Downgrade:        downgrades,
 		Transitions:      transitions,
@@ -106,6 +122,11 @@ func ValidateGenesis(data GenesisState) error {
 	}
 	if err := data.Params.Validate(); err != nil {
 		return err
+	}
+	for i, ba := range data.BanishedAccounts {
+		if err := ba.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid banished account #%d", i)
+		}
 	}
 	for i, t := range data.Transitions {
 		if err := t.Validate(); err != nil {

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -14,13 +16,16 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/upgrade"
 
 	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating"
 	dTypes "github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/arterynetwork/artr/x/noding"
+	nodingK "github.com/arterynetwork/artr/x/noding/keeper"
 	nodingTypes "github.com/arterynetwork/artr/x/noding/types"
 	"github.com/arterynetwork/artr/x/profile"
 	"github.com/arterynetwork/artr/x/referral"
 	refTypes "github.com/arterynetwork/artr/x/referral/types"
+	"github.com/arterynetwork/artr/x/schedule"
 	schTypes "github.com/arterynetwork/artr/x/schedule/types"
 	"github.com/arterynetwork/artr/x/storage"
 )
@@ -465,5 +470,170 @@ func ShardCompression(rk referral.Keeper, cdc *codec.Codec, rKey, schKey sdk.Sto
 		store.Write()
 
 		logger.Debug("Finished ShardCompression")
+	}
+}
+
+func RefreshStatusAll(k referral.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting RefreshStatusAll...")
+		k.Iterate(ctx, func(acc sdk.AccAddress, r *referral.DataRecord) (changed, checkForStatusUpdate bool) {
+			return false, true
+		})
+		logger.Info("... done RefreshStatusAll!")
+	}
+}
+
+func SwipeLotteryNos(cdc *codec.Codec, dataKey, idxKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting SwipeLotteryNos...")
+
+		var (
+			dataStore = ctx.KVStore(dataKey)
+			dataCache = cachekv.NewStore(dataStore)
+			dataIter  = dataStore.Iterator(nil, nil)
+			idxStore  = ctx.KVStore(idxKey)
+			idxKey    = make([]byte, len(nodingK.IdxPrefixLotteryQueue)+8)
+		)
+		copy(idxKey, nodingK.IdxPrefixLotteryQueue)
+		for ; dataIter.Valid(); dataIter.Next() {
+			var value nodingTypes.D
+			if err := cdc.UnmarshalBinaryLengthPrefixed(dataIter.Value(), &value); err != nil {
+				panic(errors.Wrap(err, "cannot unmarshal value"))
+			}
+			if value.IsActive() || value.LotteryNo == 0 {
+				continue
+			}
+
+			binary.BigEndian.PutUint64(idxKey[len(nodingK.IdxPrefixLotteryQueue):], value.LotteryNo)
+			idxStore.Delete(idxKey)
+
+			value.LotteryNo = 0
+			if bz, err := cdc.MarshalBinaryLengthPrefixed(value); err != nil {
+				panic(errors.Wrap(err, "cannot marshal value"))
+			} else {
+				dataCache.Set(dataIter.Key(), bz)
+			}
+		}
+		dataIter.Close()
+		dataCache.Write()
+		logger.Info("... done SwipeLotteryNos!")
+	}
+}
+
+func InitializeDustDelegation(k bank.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitializeDustDelegation...")
+		k.SetDustDelegation(ctx, 424999) // = 0.5 * 0.85 - o(1), where 0.5 is current delegating.min_delegate
+		logger.Info("... done InitializeDustDelegation!")
+	}
+}
+
+func InitializeRevokePeriod(k delegating.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitializeRevokePeriod...")
+		var pz delegating.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, dTypes.KeyRevokePeriod) {
+				pz.RevokePeriod = dTypes.DefaultRevokePeriod
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... done InitializeRevokePeriod!", "params", pz)
+	}
+}
+
+func ScheduleBanishment(cdc *codec.Codec, rkey sdk.StoreKey, sk schedule.Keeper, bk bank.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting ScheduleBanishment...")
+
+		store := ctx.KVStore(rkey)
+		cache := cachekv.NewStore(store)
+		it := cache.Iterator(nil, nil)
+		defer it.Close()
+		dustThreshold := bk.GetDustDelegation(ctx)
+		for ; it.Valid(); it.Next() {
+			var acc sdk.AccAddress = it.Key()
+			var value refTypes.R
+			cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &value)
+
+			if value.Active || value.CompressionAt >= ctx.BlockHeight() || bk.GetCoins(ctx, acc).AmountOf(util.ConfigDelegatedDenom).Int64() > dustThreshold {
+				continue
+			}
+
+			h := value.CompressionAt + util.BlocksOneMonth
+			if h <= ctx.BlockHeight() {
+				// Banish now
+				logger.Debug("... banishing now", "acc", acc)
+				var (
+					parent sdk.AccAddress
+					c, d   sdk.Int
+				)
+
+				parent = value.Referrer
+				c      = value.Coins[0]
+				d      = value.Delegated[0]
+
+				value.BanishmentAt = ctx.BlockHeight()
+				value.Banished = true
+				value.Status   = 0
+
+				if !parent.Empty() {
+					var (
+						pp sdk.AccAddress
+						pval refTypes.R
+					)
+
+					cdc.MustUnmarshalBinaryLengthPrefixed(cache.Get(parent), &pval)
+					pp = pval.Referrer
+
+					for i, s := range pval.Referrals {
+						if s.Equals(acc) {
+							pval.Referrals[i] = pval.Referrals[len(pval.Referrals)-1]
+							pval.Referrals = pval.Referrals[:len(pval.Referrals)-1]
+							break
+						}
+					}
+
+					pval.Coins[1] = pval.Coins[1].Sub(c)
+					pval.Delegated[1] = pval.Delegated[1].Sub(d)
+
+					cache.Set(parent, cdc.MustMarshalBinaryLengthPrefixed(pval))
+					parent = pp
+
+					if !(c.IsZero() && d.IsZero()) {
+						for lvl := 2; lvl <= 10; lvl++ {
+							if parent.Empty() { break }
+
+							cdc.MustUnmarshalBinaryLengthPrefixed(cache.Get(parent), &pval)
+							pp = pval.Referrer
+
+							pval.Coins[lvl] = pval.Coins[lvl].Sub(c)
+							pval.Delegated[lvl] = pval.Delegated[lvl].Sub(d)
+
+							cache.Set(parent, cdc.MustMarshalBinaryLengthPrefixed(pval))
+							parent = pp
+						}
+					}
+				}
+			} else {
+				value.BanishmentAt = h
+
+				buf := []byte(acc)
+				if err := sk.ScheduleTask(ctx, uint64(h), referral.BanishHookName, &buf); err != nil { panic(err) }
+			}
+			cache.Set(acc, cdc.MustMarshalBinaryLengthPrefixed(value))
+		}
+		logger.Info("... applying KVStore changes")
+		cache.Write()
+		logger.Info("... done ScheduleBanishment!")
+
+		// RefreshStatusAll must be called after
 	}
 }

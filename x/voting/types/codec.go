@@ -21,6 +21,7 @@ func RegisterCodec(cdc *codec.Codec) {
 	cdc.RegisterConcrete(MinAmountProposalParams{}, ModuleName+"/MinAmountProposalParams", nil)
 	cdc.RegisterConcrete(ShortCountProposalParams{}, ModuleName+"/ShortCountProposalParams", nil)
 	cdc.RegisterConcrete(StatusProposalParams{}, ModuleName+"/StatusProposalParams", nil)
+	cdc.RegisterConcrete(PeriodProposalParams{}, ModuleName+"/PeriodProposalParams", nil)
 }
 
 // ModuleCdc defines the module codec

@@ -295,6 +295,16 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p := k.nodingKeeper.GetParams(ctx)
 			p.MinStatus = proposal.Params.(types.StatusProposalParams).Status
 			k.nodingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeJailAfter:
+			p := k.nodingKeeper.GetParams(ctx)
+			p.JailAfter = proposal.Params.(types.ShortCountProposalParams).Count
+			k.nodingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeRevokePeriod:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.RevokePeriod = int64(proposal.Params.(types.PeriodProposalParams).Period)
+			k.delegatingKeeper.SetParams(ctx, p)
+		case types.ProposalTypeDustDelegation:
+			k.bankKeeper.SetDustDelegation(ctx, proposal.Params.(types.MinAmountProposalParams).MinAmount)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

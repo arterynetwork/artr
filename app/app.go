@@ -341,9 +341,11 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
 	app.scheduleKeeper.AddHook(earning.ContinueHookName, app.earningKeeper.MustPerformContinue)
 	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
+	app.scheduleKeeper.AddHook(referral.BanishHookName, app.referralKeeper.PerformBanish)
 
 	app.referralKeeper.AddHook(referral.StatusUpdatedCallback, app.nodingKeeper.OnStatusUpdate)
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
+	app.referralKeeper.AddHook(referral.BanishedCallback, app.delegatingKeeper.OnBanished)
 
 	app.upgradeKeeper.SetUpgradeHandler("1.1.1", NopUpgradeHandler)
 	//Cancelled: app.upgradeKeeper.SetUpgradeHandler("1.1.2", CliWarningUpgradeHandler)
@@ -372,6 +374,13 @@ func NewArteryApp(
 	))
 	app.upgradeKeeper.SetUpgradeHandler("1.3.3", NopUpgradeHandler)
 	app.upgradeKeeper.SetUpgradeHandler("1.3.4", CheckStatusIndex(app.referralKeeper, keys[referral.IndexStoreKey]))
+	app.upgradeKeeper.SetUpgradeHandler("1.3.5", Chain(
+		SwipeLotteryNos(cdc, keys[noding.StoreKey], keys[noding.IdxStoreKey]),
+		InitializeDustDelegation(app.bankKeeper),
+		InitializeRevokePeriod(app.delegatingKeeper, app.subspaces[delegating.ModuleName]),
+		ScheduleBanishment(cdc, keys[referral.StoreKey], app.scheduleKeeper, app.bankKeeper),
+		RefreshStatusAll(app.referralKeeper),
+	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

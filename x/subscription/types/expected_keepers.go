@@ -1,11 +1,12 @@
 package types
 
 import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/params"
+
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/profile/types"
 	referral "github.com/arterynetwork/artr/x/referral/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -26,6 +27,8 @@ type BankKeeper interface {
 type ReferralKeeper interface {
 	GetReferralFeesForSubscription(ctx sdk.Context, acc sdk.AccAddress) ([]referral.ReferralFee, error)
 	SetActive(ctx sdk.Context, acc sdk.AccAddress, value bool) error
+	Get(ctx sdk.Context, acc sdk.AccAddress) (referral.R, error)
+	ComeBack(ctx sdk.Context, acc sdk.AccAddress) error
 }
 
 type ScheduleKeeper interface {

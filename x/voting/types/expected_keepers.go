@@ -70,4 +70,5 @@ type VpnKeeper signersKeeper
 type BankKeeper interface {
 	GetMinSend(ctx sdk.Context) int64
 	SetMinSend(ctx sdk.Context, minSend int64)
+	SetDustDelegation(ctx sdk.Context, value int64)
 }

@@ -232,7 +232,7 @@ func queryInfo(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
 	}
-	data, err := k.get(ctx, addr)
+	data, err := k.Get(ctx, addr)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
 	}

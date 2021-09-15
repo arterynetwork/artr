@@ -60,6 +60,9 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		getCmdSetLotteryValidators(cdc),
 		getCmdGeneralAmnesty(cdc),
 		getCmdSetValidatorMinStatus(cdc),
+		getCmdJailAfter(cdc),
+		cmdSetRevokePeriod(cdc),
+		cmdSetDustDelegation(cdc),
 		util.LineBreak(),
 		GetCmdVote(cdc),
 	)...)
@@ -977,6 +980,113 @@ func getCmdSetValidatorMinStatus(cdc *codec.Codec) *cobra.Command {
 				proposalName,
 				types.ProposalTypeValidatorMinimalStatus,
 				types.StatusProposalParams{Status: status},
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func getCmdJailAfter(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use: "set-jail-after <count> <proposal name>",
+		Aliases: []string{"set_jail_after", "sja"},
+		Short: "Propose to set a number of blocks, a validator is jailed after missing which in row",
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+
+			var count uint16
+			{
+				n, err := strconv.ParseUint(args[0], 0, 16)
+				if err != nil {
+					return err
+				}
+				count = uint16(n)
+			}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeJailAfter,
+				types.ShortCountProposalParams{Count: count},
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func cmdSetRevokePeriod(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use: "set-revoke-period <block count> <proposal name>",
+		Aliases: []string{"set_revoke_period", "srp"},
+		Short: "Set a number of blocks, coins are returned from delegation after",
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+
+			var count uint64
+			{
+				n, err := strconv.ParseUint(args[0], 0, 64)
+				if err != nil {
+					return err
+				}
+				count = n
+			}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeRevokePeriod,
+				types.PeriodProposalParams{Period: count},
+			)
+
+			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+		},
+	}
+}
+
+func cmdSetDustDelegation(cdc *codec.Codec) *cobra.Command {
+	return &cobra.Command{
+		Use:     "set-dust-delegation <amount> <proposal name>",
+		Example: `artrcli tx voting set-dust-delegation 849999 "Ignore delegation lower than 0.85 ARTR" --from ivan`,
+		Aliases: []string{"set_dust_delegation", "sdd"},
+		Short:   "Propose to change dust delegation threshold (in uARTR, an exactly equal delegation counts as dust)",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx := context.NewCLIContext().WithCodec(cdc)
+			inBuf := bufio.NewReader(cmd.InOrStdin())
+			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
+
+			proposalName := args[1]
+
+			var n int64
+			{
+				var err error
+				n, err = strconv.ParseInt(args[0], 0, 64)
+				if err != nil {
+					return err
+				}
+			}
+
+			params := types.MinAmountProposalParams{MinAmount: n}
+
+			msg := types.NewMsgCreateProposal(
+				cliCtx.GetFromAddress(),
+				proposalName,
+				types.ProposalTypeDustDelegation,
+				params,
 			)
 
 			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})

@@ -15,6 +15,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		params       types.Params
 		topLevel     []sdk.AccAddress
 		other        []types.Refs
+		banished     []types.GenesisBanishedOne
 		compressions []types.GenesisCompression
 		downgrades   []types.GenesisStatusDowngrade
 		transitions  []types.Transition
@@ -24,13 +25,13 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		nextLevel []types.Refs
 	)
 	params = k.GetParams(ctx)
-	topLevel, err = k.GetTopLevelAccounts(ctx)
+	topLevel, banished, err = k.GetTopLevelAndBanishedAccounts(ctx)
 	if err != nil {
 		return types.GenesisState{}, err
 	}
 
 	for _, addr := range topLevel {
-		data, err = k.get(ctx, addr)
+		data, err = k.Get(ctx, addr)
 		if err != nil {
 			return types.GenesisState{}, err
 		}
@@ -58,7 +59,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		nextLevel = nil
 		for _, r := range thisLevel {
 			for _, addr := range r.Referrals {
-				data, err = k.get(ctx, addr)
+				data, err = k.Get(ctx, addr)
 				if err != nil {
 					return types.GenesisState{}, err
 				}
@@ -83,13 +84,14 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (types.GenesisState, error) {
 		}
 	}
 
-	return types.NewGenesisState(params, topLevel, other, compressions, downgrades, transitions), nil
+	return types.NewGenesisState(params, topLevel, other, banished, compressions, downgrades, transitions), nil
 }
 
 func (k Keeper) ImportFromGenesis(
 	ctx sdk.Context,
 	topLevel []sdk.AccAddress,
 	otherAccounts []types.Refs,
+	banishedAccounts []types.GenesisBanishedOne,
 	compressions []types.GenesisCompression,
 	downgrades []types.GenesisStatusDowngrade,
 	transitions []types.Transition,
@@ -108,6 +110,33 @@ func (k Keeper) ImportFromGenesis(
 				panic(errors.Wrapf(err, "cannot add %s", acc))
 			}
 			k.Logger(ctx).Debug("account added", "acc", acc, "parent", r.Referrer)
+		}
+	}
+
+	{
+		store := ctx.KVStore(k.storeKey)
+		for _, ba := range banishedAccounts {
+			store.Set(
+				ba.Account,
+				k.cdc.MustMarshalBinaryLengthPrefixed(types.R{
+					Banished:          true,
+					BanishmentAt:      ba.Height,
+					Referrer:          ba.FormerReferrer,
+					StatusDowngradeAt: -1,
+					CompressionAt:     -1,
+					Coins: [11]sdk.Int{
+						k.getBalance(ctx, ba.Account),
+						sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+						sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+					},
+					Delegated: [11]sdk.Int{
+						k.getDelegated(ctx, ba.Account),
+						sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+						sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(), sdk.ZeroInt(),
+					},
+				}),
+			)
+			k.Logger(ctx).Debug("dead account added", "acc", ba.Account, "former_parent", ba.FormerReferrer)
 		}
 	}
 

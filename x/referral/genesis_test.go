@@ -129,6 +129,23 @@ func (s *Suite) TestParams() {
 	s.checkExportImport()
 }
 
+func (s Suite) TestBanished() {
+	user := app.DefaultGenesisUsers["user14"]
+	s.subKeeper.SetActivityInfo(s.ctx, user, subscription.NewActivityInfo(false, 0))
+	if err := s.k.SetActive(s.ctx, user, false); err != nil {
+		panic(err)
+	}
+	s.NoError(s.k.Compress(s.ctx, user))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + util.BlocksOneMonth)
+	s.NoError(s.k.Banish(s.ctx, user))
+
+	r, err := s.k.Get(s.ctx, user)
+	s.NoError(err)
+	s.Zero(r.Status)
+
+	s.checkExportImport()
+}
+
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
 		[]string{

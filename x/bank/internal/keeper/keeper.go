@@ -149,6 +149,9 @@ type SendKeeper interface {
 	GetMinSend(ctx sdk.Context) int64
 	SetMinSend(ctx sdk.Context, minSend int64)
 
+	GetDustDelegation(ctx sdk.Context) int64
+	SetDustDelegation(ctx sdk.Context, value int64)
+
 	BlacklistedAddr(addr sdk.AccAddress) bool
 
 	AddHook(event string, name string, hook func(ctx sdk.Context, acc authexported.Account) error)
@@ -366,6 +369,16 @@ func (keeper BaseSendKeeper) GetMinSend(ctx sdk.Context) int64 {
 // SetSendEnabled sets the send enabled
 func (keeper BaseSendKeeper) SetMinSend(ctx sdk.Context, minSend int64) {
 	keeper.paramSpace.Set(ctx, types.ParamStoreKeyMinSend, &minSend)
+}
+
+func (keeper BaseSendKeeper) GetDustDelegation(ctx sdk.Context) int64 {
+	var dd int64
+	keeper.paramSpace.GetIfExists(ctx, types.ParamStoreKeyDustDelegation, &dd)
+	return dd
+}
+
+func (keeper BaseSendKeeper) SetDustDelegation(ctx sdk.Context, value int64) {
+	keeper.paramSpace.Set(ctx, types.ParamStoreKeyDustDelegation, &value)
 }
 
 // BlacklistedAddr checks if a given address is blacklisted (i.e restricted from

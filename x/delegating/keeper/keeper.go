@@ -1,19 +1,22 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/x/bank"
-	"github.com/arterynetwork/artr/x/referral"
 	"encoding/binary"
 	"fmt"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
+	"github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the delegating store
@@ -58,7 +61,6 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 
 const never = -1 // in terms of a block height
 const oneDay = util.BlocksOneDay
-const twoWeeks = 14 * oneDay
 
 func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
 	if uartrs.IsZero() {
@@ -110,7 +112,7 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		k.Logger(ctx).Error(err.Error())
 		return err
 	}
-	if uartrs.Equal(current) {
+	if dt := k.bankKeeper.GetDustDelegation(ctx); current.Sub(uartrs).Int64() <= dt {
 		item.Cluster = never
 	} else {
 		err = k.addToCluster(ctx, item.Cluster, acc)
@@ -119,7 +121,8 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		}
 	}
 
-	height := ctx.BlockHeight() + twoWeeks
+	period := k.GetParams(ctx).RevokePeriod
+	height := ctx.BlockHeight() + period
 	item.Requests = append(item.Requests, types.RevokeRequest{
 		HeightToImplementAt: height,
 		MicroCoins:          uartrs,
@@ -211,12 +214,20 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		return err
 	}
 
+	if dt := k.bankKeeper.GetDustDelegation(ctx); dt == 0 || k.bankKeeper.GetCoins(ctx, acc).AmountOf(util.ConfigDelegatedDenom).Int64() > dt {
+		if err := k.addToCluster(ctx, item.Cluster, acc); err != nil {
+			return err
+		}
+	} else {
+		item.Cluster = never
+	}
+
 	eAttrs[1].Value = delegation.String()
 
 	ctx.EventManager().EmitEvent(sdk.NewEvent(types.EventTypeDelegate, eAttrs...))
 
 	store.Set(byteKey, k.cdc.MustMarshalBinaryLengthPrefixed(item))
-	return k.addToCluster(ctx, item.Cluster, acc)
+	return nil
 }
 
 func (k Keeper) Accrue(ctx sdk.Context) error {
@@ -308,6 +319,16 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (types.Quer
 	}
 	k.Logger(ctx).Debug("GetAccumulation", "result", result)
 	return result, nil
+}
+
+func (k Keeper) OnBanished(ctx sdk.Context, acc sdk.AccAddress) error {
+	d, _ := k.getDelegated(ctx, acc)
+	if !d.IsZero() {
+		if err := k.Revoke(ctx, acc, d); err != nil {
+			return errors.Wrap(err, "cannot revoke delegation")
+		}
+	}
+	return nil
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -496,6 +517,10 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
 		ladder  = params.Percentage
 		percent util.Fraction
 	)
+
+	if dt := k.bankKeeper.GetDustDelegation(ctx); dt > 0 && delegated.Int64() < dt {
+		return util.FractionZero()
+	}
 
 	if delegated.LT(sdk.NewInt(1_000_000000)) {
 		percent = util.Percent(int64(ladder.Minimal))

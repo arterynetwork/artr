@@ -16,7 +16,7 @@ BUILD_FLAGS := -ldflags '$(ldflags)'
 all: install
 
 build-all:
-		$(DOCKER) run --rm -v $(CURDIR):/art-node -w /art-node golang:1.15-alpine sh ./scripts/build-all.sh
+		"$(DOCKER)" run --rm -v "$(CURDIR):/art-node" -w /art-node golang:1.15-alpine sh ./scripts/build-all.sh
 
 build: go.sum
 		go build $(BUILD_FLAGS) ./cmd/artrd

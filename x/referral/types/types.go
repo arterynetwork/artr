@@ -1,9 +1,11 @@
 package types
 
 import (
-	"github.com/arterynetwork/artr/util"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 type Status int
@@ -94,9 +96,13 @@ type R struct {
 	// CompressionAt - block height, at that compression is scheduled. -1 for never.
 	CompressionAt int64 `json:"compression_at"`
 
+	BanishmentAt int64 `json:"banishment_at,omitempty" yaml:"banishment_at,omitempty"`
+
 	// Transition - a new referrer, the user wishes to be moved under. It should be nil unless the user requested a
 	// transition and that transition's waiting for a current referrer's affirmation.
 	Transition sdk.AccAddress `json:"transition,omitempty"`
+
+	Banished bool `json:"banished,omitempty" yaml:"banished,omitempty"`
 }
 
 func NewR(referrer sdk.AccAddress, coins sdk.Int, delegated sdk.Int) R {
@@ -147,6 +153,6 @@ type StatusCheckResult struct {
 func NewStatusCheckResult() StatusCheckResult {
 	return StatusCheckResult{
 		Overall:  true,
-		Criteria: make(map[string]bool, 2),
+		Criteria: make(map[string]bool, 3),
 	}
 }

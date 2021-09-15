@@ -206,6 +206,12 @@ func (k Keeper) SwitchOff(ctx sdk.Context, accAddr sdk.AccAddress) error {
 
 		d.Power = 0
 		d.Status = false
+		if d.LotteryNo != 0 {
+			if err := k.lotteryExclude(ctx, d); err != nil {
+				// should never happen
+				panic(err)
+			}
+		}
 		return true
 	})
 	if err != nil {
@@ -598,22 +604,29 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
-		if d.LotteryNo != 0 {
-			if err := k.lotteryDownshift(ctx, acc, d); err != nil {
-				// Should never happen
-				panic(err)
-			}
-		}
 		if d.MissedBlocksInRow >= int64(p.JailAfter) {
 			d.Power = 0
 			d.Jailed = true
 			d.UnjailAt = ctx.BlockHeight() + p.UnjailAfter
 			d.JailCount++
 			d.MissedBlocksInRow = 0
+			if d.LotteryNo != 0 {
+				if err := k.lotteryExclude(ctx, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
 			ctx.EventManager().EmitEvent(sdk.NewEvent(
 				types.EventTypeValidatorJailed,
 				sdk.NewAttribute(types.AttributeKeyAccountAddress, acc.String()),
 			))
+		} else {
+			if d.LotteryNo != 0 {
+				if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
 		}
 		return true
 	})
@@ -636,8 +649,20 @@ func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci
 			d.BannedForLife = true
 			d.Status = false
 			d.Power = 0
+			if d.LotteryNo != 0 {
+				if err := k.lotteryExclude(ctx, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
 			eventType = types.EventTypeValidatorBanned
 		} else {
+			if d.LotteryNo != 0 {
+				if err := k.lotteryDownshift(ctx, acc, d); err != nil {
+					// Should never happen
+					panic(err)
+				}
+			}
 			eventType = types.EventTypeValidatorWarning
 		}
 		ctx.EventManager().EmitEvent(sdk.NewEvent(eventType,

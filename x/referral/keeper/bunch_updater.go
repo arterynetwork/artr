@@ -70,6 +70,12 @@ func (bu *bunchUpdater) set(acc sdk.AccAddress, value types.R) error {
 	if err != nil {
 		return err
 	}
+	for i, record := range bu.data {
+		if bytes.Equal(record.key, keyBytes) {
+			bu.data[i].value = valueBytes
+			return nil
+		}
+	}
 	bu.data = append(bu.data, kvRecord{
 		key:   keyBytes,
 		value: valueBytes,
@@ -108,7 +114,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 	}
 	callback(&value)
 	if checkForStatusUpdate {
-		checkResult, err := statusRequirements[value.Status](value, bu)
+		checkResult, err := checkStatusRequirements(value.Status, value, bu)
 		if err != nil {
 			return err
 		}
@@ -117,6 +123,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 				downgradeAt := bu.ctx.BlockHeight() + StatusDowngradeAfter
 				value.StatusDowngradeAt = downgradeAt
 				payload := []byte(acc)
+				bu.k.Logger(bu.ctx).Debug("scheduling status downgrade", "acc", acc.String(), "at", downgradeAt, "current", value.Status)
 				err = bu.k.scheduleKeeper.ScheduleTask(bu.ctx, uint64(downgradeAt), StatusDowngradeHookName, &payload)
 				if err != nil {
 					return err
@@ -145,7 +152,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 					break
 				}
 				nextStatus++
-				checkResult, err = statusRequirements[nextStatus](value, bu)
+				checkResult, err = checkStatusRequirements(nextStatus, value, bu)
 				if err != nil {
 					return err
 				}
@@ -168,15 +175,7 @@ func (bu *bunchUpdater) update(acc sdk.AccAddress, checkForStatusUpdate bool, ca
 			}
 		}
 	}
-	valueBytes, err := bu.k.cdc.MarshalBinaryLengthPrefixed(value)
-	if err != nil {
-		bu.k.Logger(bu.ctx).Error("Cannot marshal", "value", value)
-		return err
-	}
-	bu.data = append(bu.data, kvRecord{
-		key:   []byte(acc),
-		value: valueBytes,
-	})
+	if err := bu.set(acc, value); err != nil { return err }
 	return nil
 }
 

@@ -27,6 +27,8 @@ type ScheduleKeeper interface {
 }
 
 type BankKeeper interface {
+	GetDustDelegation(ctx sdk.Context) int64
+
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
 	SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
 }

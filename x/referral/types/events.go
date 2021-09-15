@@ -10,6 +10,7 @@ const (
 	EventTypeTransitionRequested     = "transition_requested"
 	EventTypeTransitionDeclined      = "transition_declined"
 	EventTypeTransitionPerformed     = "transition_performed"
+	EventTypeBanished                = "banished"
 
 	AttributeKeyAddress        = "address"
 	AttributeKeyBlockHeight    = "block_height"

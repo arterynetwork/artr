@@ -4,6 +4,7 @@ package keeper_test
 
 import (
 	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -30,6 +31,7 @@ type Suite struct {
 	ctx       sdk.Context
 	k         delegating.Keeper
 	accKeeper auth.AccountKeeper
+	bk        bank.Keeper
 }
 
 func (s *Suite) SetupTest() {
@@ -39,6 +41,7 @@ func (s *Suite) SetupTest() {
 	s.ctx = s.app.NewContext(true, abci.Header{})
 	s.k = s.app.GetDelegatingKeeper()
 	s.accKeeper = s.app.GetAccountKeeper()
+	s.bk = s.app.GetBankKeeper()
 }
 
 func (s *Suite) TearDownTest() {
@@ -208,6 +211,93 @@ func (s *Suite) TestAccrueOnRevoke() {
 		),
 		s.accKeeper.GetAccount(s.ctx, user).GetCoins(),
 	)
+}
+
+func (s *Suite) TestRevokePeriod() {
+	user := app.DefaultGenesisUsers["user2"]
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(1_000000)))
+
+	rrz, err := s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(1, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			MicroCoins: sdk.NewInt(1_000000),
+			HeightToImplementAt: 40_320,
+		}, rrz[0],
+	)
+
+	s.nextBlock()
+	pz := s.k.GetParams(s.ctx)
+	pz.RevokePeriod = 20_160
+	s.k.SetParams(s.ctx, pz)
+	s.nextBlock()
+
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(2_000000)))
+
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(2, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			MicroCoins: sdk.NewInt(1_000000),
+			HeightToImplementAt: 40_320,
+		}, rrz[0],
+	)
+	s.Equal(
+		types.RevokeRequest{
+			MicroCoins: sdk.NewInt(2_000000),
+			HeightToImplementAt: 20_162,
+		}, rrz[1],
+	)
+
+	s.EqualValues(3_000000, s.app.GetBankKeeper().GetCoins(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	s.ctx = s.ctx.WithBlockHeight(20_161)
+	s.nextBlock()
+
+	s.EqualValues(1_000000, s.app.GetBankKeeper().GetCoins(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(1, len(rrz))
+	s.Equal(
+		types.RevokeRequest{
+			MicroCoins: sdk.NewInt(1_000000),
+			HeightToImplementAt: 40_320,
+		}, rrz[0],
+	)
+
+	s.ctx = s.ctx.WithBlockHeight(40_319)
+	s.nextBlock()
+	s.EqualValues(0, s.app.GetBankKeeper().GetCoins(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	rrz, err = s.k.GetRevoking(s.ctx, user)
+	s.NoError(err)
+	s.Equal(0, len(rrz))
+}
+
+func (s *Suite) TestDelegateDustAmount() {
+	s.bk.SetDustDelegation(s.ctx, 1_000000)
+	user := app.DefaultGenesisUsers["user1"]
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000000)))
+	s.Equal(int64(850000), s.bk.GetCoins(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64())
+	resp, err := s.k.GetAccumulation(s.ctx, user)
+	s.Error(err)
+	s.Zero(resp)
+}
+
+func (s *Suite) TestLeaveDust() {
+	s.bk.SetDustDelegation(s.ctx, 1_000000)
+	user := app.DefaultGenesisUsers["user1"]
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
+	s.nextBlock()
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_000000)))
+
+	s.Equal(int64(500000), s.bk.GetCoins(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64())
+	resp, err := s.k.GetAccumulation(s.ctx, user)
+	s.Error(err)
+	s.Zero(resp)
 }
 
 var bbHeader = abci.RequestBeginBlock{

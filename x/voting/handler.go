@@ -66,7 +66,7 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 		if _, ok := msg.Params.(types.PriceProposalParams); !ok {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
 		}
-	case types.ProposalTypeMinSend, types.ProposalTypeMinDelegate:
+	case types.ProposalTypeMinSend, types.ProposalTypeMinDelegate, types.ProposalTypeDustDelegation:
 		if _, ok := msg.Params.(types.MinAmountProposalParams); !ok {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
 		}
@@ -85,6 +85,18 @@ func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreatePropo
 	case types.ProposalTypeValidatorMinimalStatus:
 		if _, ok := msg.Params.(types.StatusProposalParams); !ok {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		}
+	case types.ProposalTypeJailAfter:
+		if p, ok := msg.Params.(types.ShortCountProposalParams); !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		} else if p.Count <= 0 {
+			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "positive number expected")
+		}
+	case types.ProposalTypeRevokePeriod:
+		if p, ok := msg.Params.(types.PeriodProposalParams); !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
+		} else if p.Period <= 0 {
+			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "positive number expected")
 		}
 	}
 

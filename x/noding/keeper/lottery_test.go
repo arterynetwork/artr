@@ -93,6 +93,10 @@ func (s *LotterySuite) TestMissedBlock() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Jailed)
+	s.Equal(uint64(2), info.LotteryNo)
 
 	// Expel a lucky if they misses a block
 	resp, _ = s.nextBlock(
@@ -107,6 +111,61 @@ func (s *LotterySuite) TestMissedBlock() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+	info, err = s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Jailed)
+	s.Equal(uint64(5), info.LotteryNo)
+}
+
+func (s *LotterySuite) TestJail() {
+	resp, _ := s.nextBlock(
+		s.pubKeys[0],
+		s.votes(map[int]bool{0: true, 1: true, 2: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+
+	// Expel a lucky if they misses a couple of block
+	resp, _ = s.nextBlock(
+		s.pubKeys[1],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: false, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{}, resp.ValidatorUpdates)
+	resp, _ = s.nextBlock(
+		s.pubKeys[2],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: false, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.True(info.Jailed)
+	s.Zero(info.LotteryNo)
+}
+
+func (s *LotterySuite) TestSwitchOff() {
+	resp, _ := s.nextBlock(
+		s.pubKeys[0],
+		s.votes(map[int]bool{0: true, 1: true, 2: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 10, 6: 10}, resp.ValidatorUpdates)
+
+	s.NoError(s.k.SwitchOff(s.ctx, s.accAddrs[5]))
+	resp, _ = s.nextBlock(
+		s.pubKeys[1],
+		s.votes(map[int]bool{0: true, 1: true, 2: true, 5: true, 6: true}),
+		nil,
+	)
+	s.checkUpdates(map[int]int64{5: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[5])
+	s.NoError(err)
+	s.False(info.Status)
+	s.False(info.Jailed)
+	s.Zero(info.LotteryNo)
 }
 
 func (s *LotterySuite) TestProposedBlock() {
@@ -148,6 +207,10 @@ func (s *LotterySuite) TestBecomingTop() {
 		nil,
 	)
 	s.checkUpdates(map[int]int64{0: 0, 4: 10}, resp.ValidatorUpdates)
+
+	info, err := s.k.Get(s.ctx, s.accAddrs[6])
+	s.NoError(err)
+	s.Zero(info.LotteryNo)
 }
 
 func (s *LotterySuite) TestLotteryNoSeq() {

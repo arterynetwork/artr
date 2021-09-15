@@ -22259,7 +22259,8 @@
           "ten_k_plus": "27",
           "hundred_k_plus": "30"
         },
-        "min_delegate":  "1000"
+        "min_delegate":  "1000",
+        "revoke_period": "40320"
       },
       "clusters": null,
       "revoking": null
@@ -51482,4 +51483,3 @@
     }
   }
 }
-

@@ -66,7 +66,7 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 
 // GetStatus returns a status for an account (i.e. lvl 1 "Lucky", lvl 2 "Leader", lvl 3 "Master" or so on)
 func (k Keeper) GetStatus(ctx sdk.Context, acc sdk.AccAddress) (types.Status, error) {
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return 0, err
 	}
@@ -75,7 +75,7 @@ func (k Keeper) GetStatus(ctx sdk.Context, acc sdk.AccAddress) (types.Status, er
 
 // GetParent returns a parent for an account
 func (k Keeper) GetParent(ctx sdk.Context, acc sdk.AccAddress) (sdk.AccAddress, error) {
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (k Keeper) GetParent(ctx sdk.Context, acc sdk.AccAddress) (sdk.AccAddress, 
 
 // GetChildren returns children (1st line only) for an account
 func (k Keeper) GetChildren(ctx sdk.Context, acc sdk.AccAddress) ([]sdk.AccAddress, error) {
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return nil, err
 	}
@@ -149,11 +149,11 @@ func (k Keeper) AreStatusRequirementsFulfilled(ctx sdk.Context, acc sdk.AccAddre
 	if s < types.MinimumStatus || s > types.MaximumStatus {
 		return types.StatusCheckResult{Overall: false}, fmt.Errorf("there is no such status: %d", s)
 	}
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return types.StatusCheckResult{Overall: false}, err
 	}
-	return statusRequirements[s](data, newBunchUpdater(k, ctx))
+	return checkStatusRequirements(s, data, newBunchUpdater(k, ctx))
 }
 
 // AddTopLevelAccount adds accounts without parent and is supposed to be used during genesis
@@ -180,23 +180,29 @@ func (k Keeper) AddTopLevelAccount(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 // GetTopLevelAccounts returns all accounts without parents and is supposed to be used during genesis export
-func (k Keeper) GetTopLevelAccounts(ctx sdk.Context) ([]sdk.AccAddress, error) {
-	var res []sdk.AccAddress
+func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []sdk.AccAddress, banished []types.GenesisBanishedOne, err error) {
 	store := ctx.KVStore(k.storeKey)
 	itr := store.Iterator(nil, nil)
 	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
 		v := itr.Value()
 		var record types.R
-		err := k.cdc.UnmarshalBinaryLengthPrefixed(v, &record)
+		err = k.cdc.UnmarshalBinaryLengthPrefixed(v, &record)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		if record.Referrer == nil {
-			res = append(res, sdk.AccAddress(itr.Key()))
+		addr := sdk.AccAddress(itr.Key())
+		if record.Banished {
+			banished = append(banished, types.GenesisBanishedOne{
+				Account:        addr,
+				FormerReferrer: record.Referrer,
+				Height:         record.BanishmentAt,
+			})
+		} else if record.Referrer == nil {
+			topLevel = append(topLevel, addr)
 		}
 	}
-	return res, nil
+	return topLevel, banished, nil
 }
 
 // AppendChild adds a new account to the referral structure. The parent account should already exist and the child one
@@ -311,6 +317,10 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 		bu.addCallback(StakeChangedCallback, acc)
 		k.setStatus(ctx, value, types.Lucky, acc)
 		bu.addCallback(StatusUpdatedCallback, acc)
+
+		if delegated[0].Int64() <= k.bankKeeper.GetDustDelegation(ctx) {
+			k.scheduleBanishment(ctx, acc, value)
+		}
 	})
 	if err != nil {
 		return err
@@ -379,7 +389,7 @@ func (k Keeper) Compress(ctx sdk.Context, acc sdk.AccAddress) error {
 // (at levels that are open according the person's current status, but no deeper than `maxDepth` levels down).
 // Own coins inclusive.
 func (k Keeper) GetCoinsInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error) {
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return sdk.Int{}, err
 	}
@@ -394,7 +404,7 @@ func (k Keeper) GetCoinsInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth 
 // (at levels that are open according the person's current status, but no deeper than `maxDepth` levels down).
 // Own coins inclusive.
 func (k Keeper) GetDelegatedInNetwork(ctx sdk.Context, acc sdk.AccAddress, maxDepth int) (sdk.Int, error) {
-	data, err := k.get(ctx, acc)
+	data, err := k.Get(ctx, acc)
 	if err != nil {
 		return sdk.Int{}, err
 	}
@@ -421,6 +431,72 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 		dd = newDelegated.Sub(value.Delegated[0])
 		if !dd.IsZero() {
 			bu.addCallback(StakeChangedCallback, acc)
+
+			if !value.Active && (value.CompressionAt == -1 || ctx.BlockHeight() > value.CompressionAt) {
+				dust := newDelegated.Int64() <= k.bankKeeper.GetDustDelegation(ctx)
+				if dust && value.BanishmentAt == 0 {
+					k.scheduleBanishment(ctx, acc, value)
+				} else if !dust && value.BanishmentAt != 0 {
+					value.BanishmentAt = 0
+					if value.Banished {
+						// TODO: Refactor
+						// We cannot use ComeBack method here because of bunch updater cache. It's probably the perfect
+						// time to get rid of it.
+
+						var parent sdk.AccAddress
+						for parent = value.Referrer; !parent.Empty(); {
+							pi, err := bu.get(parent)
+							if err != nil {
+								panic(errors.Wrapf(err, "cannot obtain parent's (%s) data", parent.String()))
+							}
+							if !pi.RegistrationClosed(ctx) {
+								break
+							}
+							parent = pi.Referrer
+						}
+						value.Referrer = parent
+						c := value.Coins[0]
+						d := value.Delegated[0]
+
+						value.Banished = false
+						value.Status = types.Lucky
+
+						if !parent.Empty() {
+							var p2 sdk.AccAddress
+							if err := bu.update(parent, true, func(value *types.R) {
+								p2 = value.Referrer
+
+								value.Referrals = append(value.Referrals, acc)
+								value.Coins[1] = value.Coins[1].Add(c)
+								value.Delegated[1] = value.Delegated[1].Add(d)
+							}); err != nil {
+								panic(errors.Wrapf(err, "cannot update parent's (%s) data", parent))
+							} else {
+								parent = p2
+							}
+						}
+						if !(c.IsZero() && d.IsZero() || parent.Empty()) {
+							for lvl := 2; lvl <= 10; lvl++ {
+								if parent.Empty() {
+									break
+								}
+
+								var p2 sdk.AccAddress
+								if err := bu.update(parent, true, func(value *types.R) {
+									p2 = value.Referrer
+
+									value.Coins[lvl] = value.Coins[lvl].Add(c)
+									value.Delegated[lvl] = value.Delegated[lvl].Add(d)
+								}); err != nil {
+									panic(errors.Wrapf(err, "cannot update level %d ancestor's (%s) data", lvl, parent))
+								} else {
+									parent = p2
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		node = value.Referrer
 
@@ -610,7 +686,7 @@ func (k Keeper) Iterate(ctx sdk.Context, callback func(acc sdk.AccAddress, r *ty
 }
 
 func (k Keeper) GetCompressionBlockHeight(ctx sdk.Context, acc sdk.AccAddress) (int64, error) {
-	info, err := k.get(ctx, acc)
+	info, err := k.Get(ctx, acc)
 	if err != nil {
 		return -1, sdkerrors.Wrap(err, "account not found")
 	}
@@ -625,7 +701,7 @@ func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent sdk.AccAdd
 		err error
 	)
 
-	if r, err = k.get(ctx, subject); err != nil {
+	if r, err = k.Get(ctx, subject); err != nil {
 		return errors.Wrap(err, "subject account data missing")
 	}
 	if err = k.validateTransition(ctx, subject, newParent, true); err != nil {
@@ -639,7 +715,7 @@ func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent sdk.AccAdd
 			return errors.Wrap(err, "cannot pay commission")
 		}
 
-		if r, err = k.get(ctx, subject); err != nil {
+		if r, err = k.Get(ctx, subject); err != nil {
 			// This cannot be, because the same data was read just fine a moment ago.
 			panic(err)
 		}
@@ -672,7 +748,7 @@ func (k Keeper) CancelTransition(ctx sdk.Context, subject sdk.AccAddress, timeou
 		r   types.R
 		err error
 	)
-	if r, err = k.get(ctx, subject); err != nil {
+	if r, err = k.Get(ctx, subject); err != nil {
 		return errors.Wrap(err, "subject account data missing")
 	}
 	value := r.Transition
@@ -705,7 +781,7 @@ func (k Keeper) AffirmTransition(ctx sdk.Context, subject sdk.AccAddress) error 
 		err error
 	)
 
-	if r, err = k.get(ctx, subject); err != nil {
+	if r, err = k.Get(ctx, subject); err != nil {
 		return errors.Wrap(err, "subject account data missing")
 	}
 
@@ -806,17 +882,167 @@ func (k Keeper) GetPendingTransition(ctx sdk.Context, acc sdk.AccAddress) (sdk.A
 	if acc.Empty() {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "account address is missing")
 	}
-	r, err := k.get(ctx, acc)
+	r, err := k.Get(ctx, acc)
 	if err != nil {
 		return nil, err
 	}
 	return r.Transition, nil
 }
 
-// -------------- PRIVATE FUNCTIONS --------------------
+// Banish excludes an account from the referral due to a long inactivity
+func (k Keeper) Banish(ctx sdk.Context, acc sdk.AccAddress) error {
+	bu := newBunchUpdater(k, ctx)
+	var (
+		parent sdk.AccAddress
+		c, d   sdk.Int
+		pardon bool
+	)
+	if err := bu.update(acc, false, func(value *types.R) {
+		if value.BanishmentAt != ctx.BlockHeight() {
+			pardon = true
+			return
+		}
 
-// get returns all the data for an account (status, parent, children)
-func (k Keeper) get(ctx sdk.Context, acc sdk.AccAddress) (types.R, error) {
+		parent = value.Referrer
+		c      = value.Coins[0]
+		d      = value.Delegated[0]
+
+		value.Banished          = true
+		value.Status            = 0
+		value.StatusDowngradeAt = -1
+		value.CompressionAt     = -1
+	}); err != nil {
+		return errors.Wrap(err, "cannot update account info")
+	}
+	if pardon { return nil }
+
+	if !parent.Empty() {
+		var p2 sdk.AccAddress
+		if err := bu.update(parent, true, func(value *types.R) {
+			p2 = value.Referrer
+
+			for i, s := range value.Referrals {
+				if s.Equals(acc) {
+					value.Referrals[i] = value.Referrals[len(value.Referrals)-1]
+					value.Referrals = value.Referrals[:len(value.Referrals)-1]
+					break
+				}
+			}
+
+			value.Coins[1] = value.Coins[1].Sub(c)
+			value.Delegated[1] = value.Delegated[1].Sub(d)
+		}); err != nil {
+			return errors.Wrapf(err, "cannot update parent's (%s) info", parent)
+		} else {
+			parent = p2
+		}
+	}
+
+	if !(parent.Empty() || c.IsZero() && d.IsZero()) {
+		for lvl := 2; lvl <= 10; lvl++ {
+			if parent.Empty() {
+				break
+			}
+			var p2 sdk.AccAddress
+			if err := bu.update(parent, true, func(value *types.R) {
+				p2 = value.Referrer
+
+				value.Coins[lvl] = value.Coins[lvl].Sub(c)
+				value.Delegated[lvl] = value.Delegated[lvl].Sub(d)
+			}); err != nil {
+				return errors.Wrapf(err, "cannot update level %d parent's (%s) info", lvl, parent)
+			} else {
+				parent = p2
+			}
+		}
+	}
+
+	if err := bu.commit(); err != nil {
+		return errors.Wrap(err, "cannot commit changes")
+	}
+
+	if err := k.callback(BanishedCallback, ctx, acc); err != nil {
+		return errors.Wrap(err, "callback failed")
+	}
+
+	ctx.EventManager().EmitEvent(sdk.NewEvent(
+		types.EventTypeBanished,
+		sdk.NewAttribute(types.AttributeKeyAddress, acc.String()),
+	))
+	return nil
+}
+
+// ComeBack returns a banished account back to the referral
+func (k Keeper) ComeBack(ctx sdk.Context, acc sdk.AccAddress) error {
+	bu := newBunchUpdater(k, ctx)
+
+	var parent sdk.AccAddress
+	var c, d sdk.Int
+	if err := bu.update(acc, false, func(value *types.R) {
+		for parent = value.Referrer; !parent.Empty(); {
+			pi, err := bu.get(parent)
+			if err != nil {
+				panic(errors.Wrapf(err, "cannot obtain parent's (%s) data", parent.String()))
+			}
+			if !pi.RegistrationClosed(ctx) {
+				break
+			}
+			parent = pi.Referrer
+		}
+		value.Referrer = parent
+		c = value.Coins[0]
+		d = value.Delegated[0]
+
+		value.Banished = false
+		value.BanishmentAt = 0
+		value.Status = types.Lucky
+	}); err != nil {
+		return errors.Wrap(err, "cannot update account data")
+	}
+	if !parent.Empty() {
+		var p2 sdk.AccAddress
+		if err := bu.update(parent, true, func(value *types.R) {
+			p2 = value.Referrer
+
+			value.Referrals = append(value.Referrals, acc)
+			value.Coins[1] = value.Coins[1].Add(c)
+			value.Delegated[1] = value.Delegated[1].Add(d)
+		}); err != nil {
+			return errors.Wrapf(err, "cannot update parent's (%s) data", parent)
+		} else {
+			parent = p2
+		}
+	}
+	if !(c.IsZero() && d.IsZero() || parent.Empty()) {
+		for lvl := 2; lvl <= 10; lvl++ {
+			if parent.Empty() {
+				break
+			}
+
+			var p2 sdk.AccAddress
+			if err := bu.update(parent, true, func(value *types.R) {
+				p2 = value.Referrer
+
+				value.Coins[lvl] = value.Coins[lvl].Add(c)
+				value.Delegated[lvl] = value.Delegated[lvl].Add(d)
+			}); err != nil {
+				return errors.Wrapf(err, "cannot update level %d ancestor's (%s) data", lvl, parent)
+			} else {
+				parent = p2
+			}
+		}
+	}
+
+	if err := bu.commit(); err != nil {
+		return errors.Wrap(err, "cannot apply changes")
+	}
+
+	//TODO: Emit an event if needed
+	return nil
+}
+
+// Get returns all the data for an account (status, parent, children)
+func (k Keeper) Get(ctx sdk.Context, acc sdk.AccAddress) (types.R, error) {
 	store := ctx.KVStore(k.storeKey)
 	var item types.R
 	err := errors.Wrapf(
@@ -843,7 +1069,7 @@ func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc sdk.AccAddress, company
 			if ancestor == nil {
 				break
 			}
-			data, err = k.get(ctx, ancestor)
+			data, err = k.Get(ctx, ancestor)
 			if err != nil {
 				return nil, err
 			}
@@ -979,7 +1205,7 @@ func (k Keeper) validateTransition(ctx sdk.Context, subject, newParent sdk.AccAd
 	if subject.Equals(newParent) {
 		return errors.New("subject cannot be their own referral")
 	}
-	if r, err = k.get(ctx, subject); err != nil {
+	if r, err = k.Get(ctx, subject); err != nil {
 		return errors.Wrap(err, "subject account data missing")
 	}
 	if fresh {
@@ -994,7 +1220,7 @@ func (k Keeper) validateTransition(ctx sdk.Context, subject, newParent sdk.AccAd
 	if r.Referrer.Equals(newParent) {
 		return errors.New("destination address is already subject's referrer")
 	}
-	if p, err = k.get(ctx, newParent); err != nil {
+	if p, err = k.Get(ctx, newParent); err != nil {
 		return errors.Wrap(err, "destination account data missing")
 	}
 	if p.RegistrationClosed(ctx) {
@@ -1004,9 +1230,16 @@ func (k Keeper) validateTransition(ctx sdk.Context, subject, newParent sdk.AccAd
 		if p.Referrer.Equals(subject) {
 			return errors.New("cycles are not allowed")
 		}
-		if p, err = k.get(ctx, p.Referrer); err != nil {
+		if p, err = k.Get(ctx, p.Referrer); err != nil {
 			panic(errors.Wrap(err, "referral structure is compromised"))
 		}
 	}
 	return nil
+}
+
+func (k Keeper) scheduleBanishment(ctx sdk.Context, acc sdk.AccAddress, value *types.R) {
+	h := ctx.BlockHeight() + util.BlocksOneMonth
+	buf := []byte(acc)
+	if err := k.scheduleKeeper.ScheduleTask(ctx, uint64(h), BanishHookName, &buf); err != nil { panic(err) }
+	value.BanishmentAt = h
 }

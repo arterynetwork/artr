@@ -8,10 +8,12 @@ import (
 const (
 	StatusUpdatedCallback = "status-updated"
 	StakeChangedCallback  = "stake-changed"
+	BanishedCallback      = "banished"
 
 	StatusDowngradeHookName   = "referral/downgrade"
 	CompressionHookName       = "referral/compression"
 	TransitionTimeoutHookName = "referral/transition-timeout"
+	BanishHookName            = "referral/banish"
 )
 
 func (k *Keeper) AddHook(eventName string, callback func(ctx sdk.Context, acc sdk.AccAddress) error) {
@@ -37,6 +39,12 @@ func (k Keeper) PerformCompression(ctx sdk.Context, data []byte) {
 
 func (k Keeper) PerformTransitionTimeout(ctx sdk.Context, data []byte) {
 	if err := k.CancelTransition(ctx, data, true); err != nil {
+		panic(err)
+	}
+}
+
+func (k Keeper) PerformBanish(ctx sdk.Context, data []byte) {
+	if err := k.Banish(ctx, sdk.AccAddress(data)); err != nil {
 		panic(err)
 	}
 }
@@ -81,7 +89,7 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 func (k Keeper) performCompression(ctx sdk.Context, acc sdk.AccAddress) error {
-	record, err := k.get(ctx, acc)
+	record, err := k.Get(ctx, acc)
 	if err != nil {
 		return err
 	}

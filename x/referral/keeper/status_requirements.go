@@ -1,14 +1,31 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/x/referral/types"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/x/referral/types"
 )
+
+func checkStatusRequirements(status types.Status, value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	if status == 0 {
+		return types.StatusCheckResult{Overall: true}, nil
+	}
+	if value.Banished {
+		return types.StatusCheckResult{
+			Overall: false,
+			Criteria: map[string]bool{
+				"participate in referral program": false,
+			},
+		}, nil
+	}
+	return statusRequirements[status](value, bu)
+}
 
 var statusRequirements = map[types.Status]func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error){
 	types.Lucky: func(_ types.R, _ *bunchUpdater) (types.StatusCheckResult, error) {
-		return types.NewStatusCheckResult(), nil
+		return types.StatusCheckResult{Overall: true}, nil
 	},
 	types.Leader: func(value types.R, bu *bunchUpdater) (types.StatusCheckResult, error) {
 		return statusRequirementsXByX(value, bu, 2, 2)
@@ -88,12 +105,17 @@ func statusRequirementsCore(value types.R, bu *bunchUpdater, linesOpen int, coin
 	}
 
 	criterion = fmt.Sprintf("3 teams of %d each", leg)
+	xByX := fmt.Sprintf("%d active accounts with %d active referrals each in the 1st line", 3, 3)
+	result.Criteria[criterion] = false
+	result.Criteria[xByX] = false
+
 	if value.ActiveReferralsCount[1] < 3 {
-		result.Criteria[criterion] = false
 		result.Overall = false
 		return result, nil
 	}
+
 	legs := 0
+	foundByX := 0
 	for _, childAcc := range value.Referrals {
 		child, err := bu.get(childAcc)
 		if err != nil {
@@ -102,19 +124,30 @@ func statusRequirementsCore(value types.R, bu *bunchUpdater, linesOpen int, coin
 		if !child.Active {
 			continue
 		}
-		s := 0
-		for _, x := range child.ActiveReferralsCount[1:] {
-			s += x
-		}
-		if s >= leg {
-			legs++
-			if legs >= 3 {
-				result.Criteria[criterion] = true
-				return result, nil
+		if !result.Criteria[criterion] {
+			s := 0
+			for _, x := range child.ActiveReferralsCount {
+				s += x
+			}
+			if s >= leg {
+				legs++
+				if legs >= 3 {
+					result.Criteria[criterion] = true
+				}
 			}
 		}
+		if !result.Criteria[xByX] {
+			if child.ActiveReferralsCount[1] >= 3 {
+				foundByX++
+				if foundByX >= 3 {
+					result.Criteria[xByX] = true
+				}
+			}
+		}
+		if result.Criteria[criterion] && result.Criteria[xByX] {
+			return result, nil
+		}
 	}
-	result.Criteria[criterion] = false
 	result.Overall = false
 	return result, nil
 }

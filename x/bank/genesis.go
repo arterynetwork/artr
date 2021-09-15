@@ -9,9 +9,10 @@ func InitGenesis(ctx sdk.Context, keeper Keeper, data GenesisState) {
 	ctx.Logger().With("module", "x/"+ModuleName).Info("Starting from genesis...")
 	keeper.SetSendEnabled(ctx, data.SendEnabled)
 	keeper.SetMinSend(ctx, data.MinSend)
+	keeper.SetDustDelegation(ctx, data.DustDelegation)
 }
 
 // ExportGenesis returns a GenesisState for a given context and keeper.
 func ExportGenesis(ctx sdk.Context, keeper Keeper) GenesisState {
-	return NewGenesisState(keeper.GetSendEnabled(ctx), keeper.GetMinSend(ctx))
+	return NewGenesisState(keeper.GetSendEnabled(ctx), keeper.GetMinSend(ctx), keeper.GetDustDelegation(ctx))
 }

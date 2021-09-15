@@ -37,6 +37,9 @@ type SupplyKeeper interface {
 }
 
 type BankKeeper interface {
+	GetCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
+	GetDustDelegation(ctx sdk.Context) int64
+
 	AddCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) (sdk.Coins, error)
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
 	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) (sdk.Coins, error)

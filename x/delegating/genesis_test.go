@@ -73,6 +73,7 @@ func (s *Suite) TestParams() {
 			HundredKPlus: 99,
 		},
 		MinDelegate: 123456,
+		RevokePeriod: 80640,
 	})
 }
 

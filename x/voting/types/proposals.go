@@ -56,6 +56,12 @@ const (
 	ProposalTypeLotteryValidators = 27
 	// Статус, начиная с которого доступна валидация
 	ProposalTypeValidatorMinimalStatus = 28
+	// После какого количества пропущенных блоков валидатор получает jail
+	ProposalTypeJailAfter = 29
+	// Через сколько блоков монеты вернутся с делегирования
+	ProposalTypeRevokePeriod = 30
+	// Делегирование РАВНОЕ или меньше этой суммы считается принебрежимо малым
+	ProposalTypeDustDelegation = 31
 )
 
 // EmptyProposalParams
@@ -175,4 +181,14 @@ type StatusProposalParams struct {
 
 func (p StatusProposalParams) String() string {
 	return fmt.Sprintf("Status: %d", p.Status)
+}
+
+var _ ProposalParams = &PeriodProposalParams{}
+
+type PeriodProposalParams struct {
+	Period uint64
+}
+
+func (p PeriodProposalParams) String() string {
+	return fmt.Sprintf("Period: %d blocks", p.Period)
 }

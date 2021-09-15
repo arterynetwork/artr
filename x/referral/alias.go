@@ -28,10 +28,12 @@ const (
 
 	StatusUpdatedCallback = keeper.StatusUpdatedCallback
 	StakeChangedCallback  = keeper.StakeChangedCallback
+	BanishedCallback      = keeper.BanishedCallback
 
 	StatusDowngradeHookName   = keeper.StatusDowngradeHookName
 	CompressionHookName       = keeper.CompressionHookName
 	TransitionTimeoutHookName = keeper.TransitionTimeoutHookName
+	BanishHookName            = keeper.BanishHookName
 )
 
 var (

@@ -1,18 +1,22 @@
 package keeper
 
 import (
+	"fmt"
+
+	"github.com/pkg/errors"
+
+	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth"
+
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/storage"
-	"github.com/arterynetwork/artr/x/vpn"
-	"fmt"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/arterynetwork/artr/x/subscription/types"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/arterynetwork/artr/x/vpn"
 )
 
 const (
@@ -67,6 +71,15 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 }
 
 func (k Keeper) payUpFees(ctx sdk.Context, addr sdk.AccAddress, amount sdk.Int, event string) (int64, error) {
+	if refInfo, err := k.ReferralKeeper.Get(ctx, addr); err != nil {
+		return 0, errors.Wrap(err, "cannot obtain referral data")
+	} else if refInfo.Banished {
+		k.Logger(ctx).Info("account is banished, turning it back", "address", addr.String())
+		if err := k.ReferralKeeper.ComeBack(ctx, addr); err != nil {
+			return 0, errors.Wrap(err, "cannot return a banished account")
+		}
+	}
+
 	fees, err := k.ReferralKeeper.GetReferralFeesForSubscription(ctx, addr)
 
 	if err != nil {
