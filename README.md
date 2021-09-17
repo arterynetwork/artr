@@ -8,13 +8,13 @@ First of all, you can download the Artery Network application for Windows and ma
 what's under the hood, you can start your full node by yourself following these steps.     
 
 0. Make you sure you have [Go](https://golang.org/) 1.15+ installed.
-0. Download this repo and checkout 1.3.4 version with ```
-git clone https://github.com/arterynetwork/artr.git -b 1.3.4```
+0. Download this repo and checkout 1.3.5 version with ```
+git clone https://github.com/arterynetwork/artr.git -b 1.3.5```
 0. Build and install the daemon and the CLI client with `make all`
 0. (Optional) Look around with `artrd --help` and `artrcli --help`
-0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name your like.
+0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name you like.
 0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from 
-https://artery-network.io/.well-known/genesis1.3.4.json
+https://artery-network.io/.well-known/genesis1.3.5.json
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
             peristent_peers = ""
@@ -28,7 +28,7 @@ https://artery-network.io/.well-known/genesis1.3.4.json
             timeout_precommit_delta = "500ms"
             timeout_commit = "30s"
 
-0. (Optional) Download the latest blockchain data snapshot and place it to the `$HOME/.artrd/data` directory. An actual path can be found in https://blocks.artr-api.com/latest.json
+0. (Optional) Download the latest blockchain data snapshot and place it to the `$HOME/.artrd/data` directory. An actual path can be found in https://blocks.artery-network.io/latest.json
 0. Start your node with `artrd start`
 0. The node will download and replay blocks, it may take a while. When it reaches a moment of software upgrade, a 
 message like `UPGRADE "x.x.x" NEEDED at height yyyy` appears and the daemon stops.
