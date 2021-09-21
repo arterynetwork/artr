@@ -6,11 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
-
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank/types"
+	"github.com/cosmos/cosmos-sdk/client"
 )
 
 // GetQueryCmd returns the cli query commands for this module
@@ -56,7 +54,7 @@ func getParamsCmd() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -82,7 +80,7 @@ func cmdSupply() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -110,6 +108,6 @@ func cmdBalance() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

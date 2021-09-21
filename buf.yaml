@@ -22,5 +22,5 @@ lint:
       - tendermint/abci/types.proto
 breaking:
   use:
-    - PACKAGE 
+    - WIRE_JSON
 

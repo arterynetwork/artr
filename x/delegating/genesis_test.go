@@ -91,6 +91,7 @@ func (s *Suite) TestParams() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			delegating.MainStoreKey,
 			delegating.ClusterStoreKey,

@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
@@ -74,7 +73,7 @@ func getCmdInfo() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&light, "light", "l", false, "omit Referrals and ActiveReferrals fields")
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -116,7 +115,7 @@ func getCoinsCmd() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -158,7 +157,7 @@ func getCheckStatusCmd() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Result)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -192,7 +191,7 @@ func getValidateTransitionCmd() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -220,7 +219,7 @@ func getCmdParams() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -257,6 +256,6 @@ func cmdAllWithStatus() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Accounts)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

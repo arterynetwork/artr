@@ -14,8 +14,8 @@ func (v Validator) GetAccount() sdk.AccAddress {
 	return addr
 }
 
-func (v Validator) ToInfo() Info {
-	return Info{
+func (v Validator) ToInfo(stake int64) Info {
+	res := Info{
 		PubKey:            v.PubKey,
 		Strokes:           v.Strokes,
 		OkBlocksInRow:     v.OkBlocksInRow,
@@ -29,6 +29,8 @@ func (v Validator) ToInfo() Info {
 		ProposedCount:     v.ProposedCount,
 		JailCount:         v.JailCount,
 	}
+	res.UpdateScore(stake)
+	return res
 }
 
 func GenesisValidatorFromD(acc sdk.AccAddress, info Info, proposedBlocks []uint64) Validator {

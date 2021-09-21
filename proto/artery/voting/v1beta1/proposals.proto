@@ -71,4 +71,8 @@ enum ProposalType {
   PROPOSAL_TYPE_JAIL_AFTER = 30;
   // Через сколько дней монеты вернутся с делегирования
   PROPOSAL_TYPE_REVOKE_PERIOD = 31;
+  // Делегирование РАВНОЕ или меньше этой суммы считается принебрежимо малым
+  PROPOSAL_TYPE_DUST_DELEGATION = 32;
+  // Разбивка voting power по процентилям
+  PROPOSAL_TYPE_VOTING_POWER = 33;
 }

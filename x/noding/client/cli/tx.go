@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
@@ -58,7 +59,7 @@ func cmdOn() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -88,7 +89,7 @@ func cmdOff() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -118,6 +119,6 @@ func cmdUnjail() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }

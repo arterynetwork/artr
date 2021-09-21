@@ -18,6 +18,9 @@ protoc_gen_doc() {
 protoc_gen_gocosmos
 #protoc_gen_doc
 
+buf breaking --against proto/proto-2.0.0-b.1.bin
+buf breaking --against proto/proto-2.0.0-b.2.bin
+
 proto_dirs=$(find ./proto -path -prune -o -name '*.proto' -print0 | xargs -0 -n1 dirname | sort | uniq)
 for dir in $proto_dirs; do
   buf protoc \

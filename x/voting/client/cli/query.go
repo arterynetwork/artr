@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/voting/types"
@@ -60,7 +59,7 @@ func cmdHistory() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	cmd.Flags().Int(FlagLimit, FlagLimitDefault, "Query number of history records per page returned")
 	cmd.Flags().Int(FlagPage, FlagPageDefault, "Query a specific page of paginated results")
 
@@ -88,7 +87,7 @@ func cmdGovernment() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -113,7 +112,7 @@ func cmdCurrent() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -138,6 +137,6 @@ func cmdParams() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

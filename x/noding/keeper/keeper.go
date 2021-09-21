@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
-	"github.com/golang/protobuf/proto"
 	"sort"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 
-	"github.com/cosmos/cosmos-sdk/codec"
-	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmcrypto "github.com/tendermint/tendermint/proto/tendermint/crypto"
+
+	"github.com/cosmos/cosmos-sdk/codec"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/arterynetwork/artr/x/noding/types"
 )
@@ -67,6 +68,11 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 }
 
 func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result bool, delegation sdk.Int, reason types.Reason, err error) {
+	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr.String(), 10)
+	if err != nil {
+		return
+	}
+
 	// Check if it's staff
 	if k.has(ctx, accAddr) {
 		var d types.Info
@@ -90,10 +96,6 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 	}
 
 	// 10k ARTR delegated
-	delegation, err = k.referralKeeper.GetDelegatedInNetwork(ctx, accAddr.String(), 10)
-	if err != nil {
-		return
-	}
 	if !result && delegation.Int64() < 10_000_000000 {
 		reason = types.REASON_NOT_ENOUGH_STAKE
 		return
@@ -179,16 +181,15 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 		return types.ErrNotQualified
 	}
 
-	power := k.power(ctx, delegation.Int64())
 	if k.has(ctx, accAddr) {
 		err = k.update(ctx, accAddr, func(d *types.Info) (save bool) {
 			d.Status = true
 			d.PubKey = bech32FromCryptoPubKey(key)
-			d.Power = power
+			d.UpdateScore(delegation.Int64())
 			return true
 		})
 	} else {
-		err = k.set(ctx, accAddr, *types.NewInfo(power, bech32FromCryptoPubKey(key)))
+		err = k.set(ctx, accAddr, *types.NewInfo(bech32FromCryptoPubKey(key), delegation.Int64()))
 	}
 	if err != nil {
 		return err
@@ -200,11 +201,10 @@ func (k Keeper) SwitchOn(ctx sdk.Context, accAddr sdk.AccAddress, key crypto.Pub
 
 func (k Keeper) SwitchOff(ctx sdk.Context, accAddr sdk.AccAddress) error {
 	err := k.update(ctx, accAddr, func(d *types.Info) (save bool) {
-		if d.Power == 0 && !d.Status {
+		if !d.Status {
 			return false
 		}
 
-		d.Power = 0
 		d.Status = false
 		if d.LotteryNo != 0 {
 			if err := k.lotteryExclude(ctx, d); err != nil {
@@ -255,29 +255,28 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 }
 
 func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
-	is, err := k.IsValidator(ctx, acc)
-	if err != nil {
-		return err
-	}
-	if !is {
-		return nil
-	}
-
 	record, err := k.Get(ctx, acc)
 	if err != nil {
-		return err
+		if errors.Is(err, types.ErrNotFound) { return nil }
+		return errors.Wrap(err, "cannot obtain data")
 	}
+	isV := record.IsActive()
+	isQ, delegation, reason, err := k.IsQualified(ctx, acc)
+	if err != nil {	return errors.Wrap(err, "cannot check if validator's qualified") }
 
-	is, delegation, reason, err := k.IsQualified(ctx, acc)
-	if err != nil {
-		return err
-	}
-	if !is {
+	changed := record.UpdateScore(delegation.Int64())
+
+	if isV && !isQ {
 		k.Logger(ctx).Info("not qualified anymore, banishing from validators", "account", acc)
-		err = k.SwitchOff(ctx, acc)
-		if err != nil {
-			return err
+
+		record.Status = false
+		if record.LotteryNo != 0 {
+			if err := k.lotteryExclude(ctx, &record); err != nil {
+				// should never happen
+				panic(err)
+			}
 		}
+		changed = true
 
 		if err := ctx.EventManager().EmitTypedEvent(
 			&types.EventValidatorBanished{
@@ -288,14 +287,12 @@ func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 		return nil
 	}
 
-	newPower := k.power(ctx, delegation.Int64())
-	dPower := newPower - record.Power
-	if dPower == 0 {
-		return nil
+	if changed {
+		if err := k.set(ctx, acc, record); err != nil {
+			return errors.Wrap(err, "cannot set data")
+		}
 	}
-
-	record.Power = newPower
-	return k.set(ctx, acc, record)
+	return nil
 }
 
 func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate, error) {
@@ -313,9 +310,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			data types.Info
 		)
 		addr = sdk.AccAddress(it.Key())
-		if err := proto.Unmarshal(it.Value(), &data); err != nil {
-			panic(errors.Wrap(err, "cannot unmarshal info"))
-		}
+		k.cdc.MustUnmarshalBinaryBare(it.Value(), &data)
 		if data.IsActive() {
 			active = append(active, types.NewInfoWithAccount(addr, data))
 			consAddress := consAddressFromCryptoBubKey(cryptoPubKeyFromBech32(data.PubKey))
@@ -359,31 +354,17 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		} else {
 			n2 = len(active) - n1
 		}
-		sort.Slice(active, func(i, j int) bool {
-			xi := active[i]
-			xj := active[j]
-
-			if xi.Strokes < xj.Strokes {
-				return true
-			}
-			if xi.Strokes > xj.Strokes {
-				return false
-			}
-
-			if xi.Power > xj.Power {
-				return true
-			}
-			if xi.Power < xj.Power {
-				return false
-			}
-
-			return xi.OkBlocksInRow > xj.OkBlocksInRow
-		})
 	} else {
 		n1 = len(active)
 		n2 = 0
-		// No one will be left out, so all're equal. No need to sort items.
 	}
+	sort.Slice(active, func(i, j int) bool {
+		if active[i].Score != active[j].Score {
+			return active[i].Score > active[j].Score
+		}
+		return active[i].OkBlocksInRow > active[j].OkBlocksInRow
+	})
+	vpg := newVotingPowerGenerator(k, ctx)
 
 	for i = 0; i < n1; i++ {
 		data := active[i]
@@ -391,7 +372,8 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 			panic("validator cannot be active without PubKey")
 		}
 
-		updated := data.LastPower != data.Power
+		power := vpg.GetVotingPower(data.Score)
+		updated := data.LastPower != power
 		if data.PubKey != data.LastPubKey {
 			if len(data.LastPubKey) != 0 {
 				result = append(result, abci.ValidatorUpdate{
@@ -405,7 +387,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		if updated {
 			result = append(result, abci.ValidatorUpdate{
 				PubKey: abciPubKeyFromBech32(data.PubKey),
-				Power:  data.Power,
+				Power:  power,
 			})
 		}
 		if data.LotteryNo != 0 {
@@ -417,7 +399,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		}
 		if updated {
 			if err := k.update(ctx, data.Account, func(d *types.Info) (save bool) {
-				d.LastPower = d.Power
+				d.LastPower = power
 				d.LastPubKey = d.PubKey
 				d.LotteryNo = data.LotteryNo
 				return true
@@ -430,6 +412,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 	for ; i < len(active); i++ {
 		data := active[i]
 		if data.LotteryNo != 0 && data.LotteryNo <= maxLotNo {
+			power := vpg.GetVotingPower(data.Score)
 			if data.PubKey != data.LastPubKey {
 				if len(data.LastPubKey) != 0 {
 					result = append(result, abci.ValidatorUpdate{
@@ -437,16 +420,16 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 						Power:  0,
 					})
 				}
-			} else if data.LastPower == data.Power {
+			} else if data.LastPower == power {
 				continue
 			}
 
 			result = append(result, abci.ValidatorUpdate{
 				PubKey: abciPubKeyFromBech32(data.PubKey),
-				Power:  data.Power,
+				Power:  power,
 			})
 			if err := k.update(ctx, data.Account, func(d *types.Info) (save bool) {
-				d.LastPower = d.Power
+				d.LastPower = power
 				d.LastPubKey = d.PubKey
 				return true
 			}); err != nil {
@@ -572,7 +555,9 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 		pubkey := cryptoPubKeyFromBech32(v.PubKey)
 
 		acc := v.GetAccount()
-		if err := k.set(ctx, acc, v.ToInfo()); err != nil {
+		stake, err := k.referralKeeper.GetDelegatedInNetwork(ctx, acc.String(), 10)
+		if err != nil { return errors.Wrap(err, "cannot obtain stake") }
+		if err := k.set(ctx, acc, v.ToInfo(stake.Int64())); err != nil {
 			return errors.Wrap(err, "cannot set data")
 		}
 		for _, h := range v.ProposedBlocks {
@@ -588,7 +573,9 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Validator) error {
 	for _, v := range validators {
 		acc := v.GetAccount()
-		if err := k.set(ctx, acc, v.ToInfo()); err != nil {
+		stake, err := k.referralKeeper.GetDelegatedInNetwork(ctx, acc.String(), 10)
+		if err != nil { return errors.Wrap(err, "cannot obtain stake") }
+		if err := k.set(ctx, acc, v.ToInfo(stake.Int64())); err != nil {
 			return err
 		}
 		for _, h := range v.ProposedBlocks {
@@ -607,11 +594,11 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 			return false
 		}
 
+		d.Score = d.Score - d.OkBlocksInRow/100 - 1
 		d.Strokes++
 		d.OkBlocksInRow = 0
 		d.MissedBlocksInRow++
 		if d.MissedBlocksInRow >= int64(p.JailAfter) {
-			d.Power = 0
 			d.Jailed = true
 			d.UnjailAt = ctx.BlockHeight() + int64(p.UnjailAfter)
 			d.JailCount++
@@ -644,6 +631,9 @@ func (k Keeper) MarkTick(ctx sdk.Context, acc sdk.AccAddress) error {
 	return k.update(ctx, acc, func(d *types.Info) (save bool) {
 		d.MissedBlocksInRow = 0
 		d.OkBlocksInRow++
+		if d.OkBlocksInRow % 100 == 0 {
+			d.Score++
+		}
 		return true
 	})
 }
@@ -658,7 +648,6 @@ func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci
 		if len(d.Infractions) > 1 {
 			d.BannedForLife = true
 			d.Status = false
-			d.Power = 0
 			if d.LotteryNo != 0 {
 				if err := k.lotteryExclude(ctx, d); err != nil {
 					// Should never happen
@@ -697,7 +686,7 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 		return err
 	}
 	if q {
-		data.Power = k.power(ctx, delegation.Int64())
+		data.UpdateScore(delegation.Int64())
 	} else {
 		k.Logger(ctx).Info("banishing from validators", "acc", acc, "reason", reason)
 		data.Status = false
@@ -831,6 +820,7 @@ func (k Keeper) GeneralAmnesty(ctx sdk.Context) {
 		if item.Strokes == 0 && item.JailCount == 0 {
 			continue
 		}
+		item.Score += item.Strokes
 		item.Strokes = 0
 		item.JailCount = 0
 		if bz, err := proto.Marshal(&item); err != nil {
@@ -898,35 +888,17 @@ func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *typ
 		store      = ctx.KVStore(k.dataStoreKey)
 		keyBytes   = []byte(acc)
 		value      types.Info
-		valueBytes []byte
-		err        error
 	)
 	if !store.Has(keyBytes) {
 		return types.ErrNotFound
 	}
-	err = proto.Unmarshal(store.Get(keyBytes), &value)
-	if err != nil {
-		return errors.Wrap(err, "cannot unmarshal info")
-	}
-
+	k.cdc.MustUnmarshalBinaryBare(store.Get(keyBytes), &value)
 	if !callback(&value) {
 		return nil
 	}
-	valueBytes, err = proto.Marshal(&value)
-	if err != nil {
-		return errors.Wrap(err, "cannot marshal info")
-	}
 
-	store.Set(keyBytes, valueBytes)
+	store.Set(keyBytes, k.cdc.MustMarshalBinaryBare(&value))
 	return nil
-}
-
-func (k Keeper) power(_ sdk.Context, delegated int64) int64 {
-	if delegated >= 100_000_000000 {
-		return 15
-	} else {
-		return 10
-	}
 }
 
 func abciPubKeyFromBech32(bech32 string) tmcrypto.PublicKey {

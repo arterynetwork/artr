@@ -10,6 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/delegating/types"
 )
 
@@ -64,7 +65,7 @@ func GetCmdDelegate() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -101,6 +102,6 @@ func GetCmdRevoke() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }

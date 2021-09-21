@@ -3,30 +3,17 @@ package artery.noding.v1beta1;
 
 import "gogoproto/gogo.proto";
 import "artery/referral/v1beta1/types.proto";
+import "artery/noding/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/noding/types";
 
 message Params {
   option (gogoproto.goproto_stringer) = false;
 
-  uint32 max_validators = 1 [
-    (gogoproto.jsontag)  = "max_validators",
-    (gogoproto.moretags) = "yaml:\"max_validators\""
-  ];
-  uint32 jail_after = 2 [
-    (gogoproto.jsontag)  = "jail_after",
-    (gogoproto.moretags) = "yaml:\"jail_after\""
-  ];
-  uint32 unjail_after = 3 [
-    (gogoproto.jsontag)  = "unjail_after",
-    (gogoproto.moretags) = "yaml:\"unjail_after\""
-  ];
-  uint32 lottery_validators = 4 [
-    (gogoproto.jsontag)  = "lottery_validators",
-    (gogoproto.moretags) = "yaml:\"lottery_validators\""
-  ];
-  artery.referral.v1beta1.Status min_status = 5 [
-    (gogoproto.jsontag)  = "min_status",
-    (gogoproto.moretags) = "yaml:\"min_status\""
-  ];
+  uint32 max_validators = 1;
+  uint32 jail_after = 2;
+  uint32 unjail_after = 3;
+  uint32 lottery_validators = 4;
+  artery.referral.v1beta1.Status min_status = 5;
+  Distribution voting_power = 6 [(gogoproto.nullable) = false];
 }

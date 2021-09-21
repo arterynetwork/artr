@@ -119,7 +119,8 @@ func (p Proposal) Validate() error {
 		}
 	case
 		PROPOSAL_TYPE_MIN_SEND,
-		PROPOSAL_TYPE_MIN_DELEGATE:
+		PROPOSAL_TYPE_MIN_DELEGATE,
+		PROPOSAL_TYPE_DUST_DELEGATION:
 
 		if p.Args == nil {
 			return errors.New("invalid args: nil, *Proposal_MinAmount expected")
@@ -180,6 +181,17 @@ func (p Proposal) Validate() error {
 			return errors.Errorf("invalid args: %T, *Proposal_Period expected", p.Args)
 		} else {
 			if err := args.Period.Validate(); err != nil {
+				return errors.Wrap(err, "invalid args")
+			}
+		}
+	case PROPOSAL_TYPE_VOTING_POWER:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_VotingPower expected")
+		}
+		if args, ok := p.Args.(*Proposal_VotingPower); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_VotingPower expected", p.Args)
+		} else {
+			if err := args.VotingPower.Validate(); err != nil {
 				return errors.Wrap(err, "invalid args")
 			}
 		}

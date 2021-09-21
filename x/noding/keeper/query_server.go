@@ -149,7 +149,7 @@ func (s QueryServer) Queue(ctx context.Context, _ *types.QueueRequest) (resp *ty
 	}()
 	for ; it.Valid(); it.Next() {
 		var (
-			no  uint64         = binary.BigEndian.Uint64(it.Key())
+			no  uint64         = binary.BigEndian.Uint64(it.Key()[len(IdxPrefixLotteryQueue):])
 			acc sdk.AccAddress = it.Value()
 		)
 		resp.Queue = append(resp.Queue, types.QueueResponse_Validator{No: no, Account: acc.String()})

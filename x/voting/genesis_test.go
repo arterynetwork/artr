@@ -112,6 +112,7 @@ func (s *Suite) TestGovernment() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			types.StoreKey,
 		},

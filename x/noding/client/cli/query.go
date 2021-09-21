@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/noding/types"
@@ -66,7 +65,7 @@ func cmdInfo() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Info)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -93,7 +92,7 @@ func cmdState() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.State)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -126,7 +125,7 @@ func cmdProposer() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Account)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -153,7 +152,7 @@ func cmdIsAllowed() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -191,7 +190,7 @@ func cmdOperator() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVarP(&hex, "hex", "x", false, "consensus address in hex format instead of bech32")
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -215,7 +214,7 @@ func cmdParams() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -240,7 +239,7 @@ func cmdSwitchedOn() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Accounts)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -265,6 +264,6 @@ func cmdQueue() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Queue)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

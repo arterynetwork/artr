@@ -13,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/types"
 )
 
@@ -96,7 +97,7 @@ func cmdCreateAccount() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -184,7 +185,7 @@ func cmdUpdateProfile() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -222,7 +223,7 @@ func cmdStorageCurrent() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -259,7 +260,7 @@ func cmdVpnCurrent() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -298,7 +299,7 @@ func cmdPayTariff() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -337,7 +338,7 @@ func cmdBuyStorage() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -376,7 +377,7 @@ func cmdGiveUpStorage() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -415,7 +416,7 @@ func cmdBuyVpn() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -454,6 +455,6 @@ func cmdSetRate() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }

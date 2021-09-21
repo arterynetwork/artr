@@ -21,14 +21,14 @@ def patch(state: Optional[Dict], config: Config) -> Dict:
         {
             "subject":     x["subj"],
             "destination": x["dest"]
-        } for x in state.get("transitions") or []
+        } for x in state.get("transitions", None) or []
     ]
 
     result["compressions"] = [
         {
             "account": x["account"],
             "time":    height_to_time(int(x["height"]), config)
-        } for x in state.get("compression") or []
+        } for x in state.get("compression", None) or []
     ]
 
     result["downgrades"] = [
@@ -36,7 +36,16 @@ def patch(state: Optional[Dict], config: Config) -> Dict:
             "account": x["account"],
             "current": patch_status(x["current"]),
             "time":    height_to_time(int(x.pop("height")), config)
-        } for x in state.get("downgrade") or []
+        } for x in state.get("downgrade", None) or []
     ]
+
+    result["banished_accounts"] = [
+        {
+            "acc": x["acc"],
+            "ref": x["ref"],
+        } for x in state.get("banished_accounts", None) or []
+    ]
+
+    result["never_paid"] = state.get("never_paid", None) or []
 
     return result

@@ -22,7 +22,12 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 
 	var storageB uint64
 	if storageGb == 0 {
-		storageB = profile.StorageLimit
+		if profile.StorageLimit == 0 {
+			storageB = uint64(p.BaseStorageGb) * util.GBSize
+		} else {
+			storageB = profile.StorageLimit
+		}
+
 	} else {
 		storageB = uint64(storageGb) * util.GBSize
 		if storageGb < p.BaseStorageGb {
@@ -313,6 +318,9 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 		// The tariff is being paid in advance
 		k.scheduleRenew(ctx, addr, time.Add(k.scheduleKeeper.OneMonth(ctx)))
 		k.resetLimits(params, profile)
+		if err := k.SetProfile(ctx, addr, *profile); err != nil {
+			return errors.Wrap(err, "cannot write profile")
+		}
 	} else {
 		// It's a payday
 		if profile.AutoPay {
@@ -328,6 +336,8 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 						ActiveNow: false,
 					},
 				); err != nil { panic(err) }
+			} else {
+				k.scheduleRenew(ctx, addr, time.Add(k.scheduleKeeper.OneMonth(ctx)))
 			}
 		} else {
 			defer k.referralKeeper.MustSetActive(ctx, addr.String(), false)
@@ -339,9 +349,7 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 			); err != nil { panic(err) }
 		}
 	}
-	if err := k.SetProfile(ctx, addr, *profile); err != nil {
-		return errors.Wrap(err, "cannot write profile")
-	}
+
 	return nil
 }
 

@@ -7,6 +7,9 @@ import (
 )
 
 func checkStatusRequirements(status types.Status, value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
+	if status == types.STATUS_UNSPECIFIED {
+		return types.StatusCheckResult{Overall: true}, nil
+	}
 	if value.Banished {
 		return types.StatusCheckResult{
 			Overall: false,

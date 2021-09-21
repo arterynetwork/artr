@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/types"
@@ -68,7 +67,7 @@ func getProfileCmd() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -101,7 +100,7 @@ func getAccountByNicknameCmd() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -137,7 +136,7 @@ func getAccountByCardNumberCmd() *cobra.Command {
 		},
 	}
 
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -165,6 +164,6 @@ func getCmdParams() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

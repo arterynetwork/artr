@@ -113,6 +113,7 @@ func (s GenSuite) TestParams() {
 
 func (s GenSuite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			referral.StoreKey,
 			schedule.StoreKey,

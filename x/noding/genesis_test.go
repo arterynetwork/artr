@@ -229,6 +229,7 @@ func (s Suite) TestProposers() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			noding.StoreKey,
 			noding.IdxStoreKey,
@@ -257,7 +258,7 @@ func (s Suite) checkExportImport() {
 		map[string]app.Decoder{
 			noding.StoreKey: func(bz []byte) (string, error) {
 				var value types.Info
-				err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &value)
+				err := s.app.Codec().UnmarshalBinaryBare(bz, &value)
 				if err != nil {
 					return "", err
 				}

@@ -9,7 +9,9 @@ from .main import main
 
 if __name__ == "__main__":
     args = dict()
-    named, _ = getopt(sys.argv[1:], "hi:o:c:t:s:", ["help", "input=", "output=", "chain-id=", "time=", "speed="])
+    named, _ = getopt(sys.argv[1:],
+                      "hi:o:c:t:b:s:",
+                      ["help", "input=", "output=", "chain-id=", "time=", "block=", "speed="])
     for k, v in named:
         if k in ("-h", "--help"):
             print('''
@@ -18,7 +20,7 @@ Gets genesis exported from v1.x.x Artery blockchain and makes patches, so it mig
 Usage:
     patch-genesis -h|--help
     patch-genesis [-i|--input <filename>] [-o|--output <filename>] [-c|--chain-id <chain ID>] [-t|--time <genesis time>]
-        [-s|--speed <time quotient>]
+        [-b|--block <initial height>] [-s|--speed <time quotient>]
 
 Options:
     -i, --input <filename>
@@ -32,14 +34,17 @@ Options:
     
     -t, --time <genesis time>
         Genesis time, i.e. time when a new, post-fork, blockchain will be run. Default is current time. All scheduled 
-        operation time will be calculated assuming a genesis block is commited at that time. Value should be passed 
+        operation time will be calculated assuming a genesis block is committed at that time. Value should be passed 
         using ISO format, f.e.:
         
             2021-11-01T03:00:00.000000Z
 
+    -b, --block <initial height>
+        Height, a genesis was exported at. Default is app_state.schedule.params.initial_height from the genesis file.
+
     -s, --speed <time quotient>
         Time speed multiplier. Must be set to 1 in production, but may be greater during testing. The more the value,
-        the more often delegating accrue, referral compression and other regular operations accure. The minimal value is
+        the more often delegating accrue, referral compression and other regular operations accrue. The minimal value is
         1 (real time), the maximal one is 1440 (one day per a minute). Default is 1.
         ''')
             sys.exit(1)
@@ -55,6 +60,8 @@ Options:
             "--hash":     "app_hash",
             "-t":         "genesis_time",
             "--time":     "genesis_time",
+            "-b":         "initial_height",
+            "--block":    "initial_height",
             "-s":         "time_quotient",
             "--speed":    "time_quotient"
         }[k]

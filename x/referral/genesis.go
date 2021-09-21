@@ -14,6 +14,8 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 		ctx,
 		data.TopLevelAccounts,
 		data.OtherAccounts,
+		data.BanishedAccounts,
+		data.NeverPaid,
 		data.Compressions,
 		data.Downgrades,
 		data.Transitions,

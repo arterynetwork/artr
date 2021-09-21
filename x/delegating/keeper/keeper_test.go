@@ -329,6 +329,38 @@ func (s *Suite) TestRevokePeriod() {
 	s.Equal(0, len(rrz))
 }
 
+func (s *Suite) TestGetAccumulation() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user4"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) *30*time.Second))
+	s.nextBlock()
+
+	resp, err := s.k.GetAccumulation(s.ctx, user)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(
+		types.AccumulationResponse{
+			Start:         genesisTime,
+			End:           genesisTime.Add(24*time.Hour),
+			Percent:       21,
+			TotalUartrs:   5_932150,
+			CurrentUartrs: 2_541761,
+		},
+		*resp,
+	)
+}
+
 var bbHeader = abci.RequestBeginBlock{
 	Header: tmproto.Header{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),

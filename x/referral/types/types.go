@@ -30,6 +30,7 @@ func NewInfo(referrer string, coins sdk.Int, delegated sdk.Int) Info {
 		Coins:           []sdk.Int{coins, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero},
 		Delegated:       []sdk.Int{delegated, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero},
 		Active:          false,
+		NeverPaid:       true,
 		ActiveRefCounts: make([]uint64, 11),
 	}
 }
@@ -51,7 +52,7 @@ func (r Info) DelegatedAtLevelsUpTo(n int) sdk.Int {
 }
 
 func (r Info) RegistrationClosed(ctx sdk.Context, sk ScheduleKeeper) bool {
-	return !r.Active && (r.CompressionAt == nil || ctx.BlockTime().After(r.CompressionAt.Add(-sk.OneMonth(ctx))))
+	return r.NeverPaid || !r.Active && (r.CompressionAt == nil || ctx.BlockTime().After(r.CompressionAt.Add(-sk.OneMonth(ctx))))
 }
 
 func (r Info) GetReferrer() sdk.AccAddress {
@@ -86,6 +87,10 @@ func (r *Info) Normalize() {
 	for len(r.ActiveRefCounts) < 11 {
 		r.ActiveRefCounts = append(r.ActiveRefCounts, uint64(0))
 	}
+}
+
+func (r Info) IsEmpty() bool {
+	return r.Status == STATUS_UNSPECIFIED && !r.Banished
 }
 
 type ReferralFee struct {

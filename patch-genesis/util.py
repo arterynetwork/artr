@@ -10,6 +10,10 @@ def height_to_time(height: int, config: Config) -> str:
         return "9999-12-31T23:59:59.999999999Z"
 
 
+def blocks_to_duration(blocks: int, config: Config) -> timedelta:
+    return timedelta(microseconds=(blocks * 30 * 10**6 // config.time_quotient))
+
+
 def modulo_to_time(modulo: int, config: Config) -> str:
     return height_to_time(config.initial_height + (modulo - config.initial_height) % 2880, config)
 

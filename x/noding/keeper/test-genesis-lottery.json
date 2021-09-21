@@ -352,7 +352,20 @@
         "lottery_validators": 2,
         "max_validators": 3,
         "min_status": "STATUS_LEADER",
-        "unjail_after": "120"
+        "unjail_after": "120",
+        "voting_power": {
+          "slices": [
+            {
+              "part":         "15%",
+              "voting_power": 15
+            },
+            {
+              "part":         "85%",
+              "voting_power": 10
+            }
+          ],
+          "luckies_voting_power": 10
+        }
       }
     },
     "profile": {

@@ -25,6 +25,11 @@ message GenesisState {
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"other_accounts,omitempty\""
   ];
+  repeated Banished banished_accounts = 7 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "banished_accounts,omitempty",
+    (gogoproto.moretags) = "yaml:\"banished_accounts,omitempty\""
+  ];
   repeated Compression compressions = 4 [
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"compressions,omitempty\""
@@ -36,6 +41,10 @@ message GenesisState {
   repeated Transition transitions = 6 [
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"transitions,omitempty\""
+  ];
+  repeated string never_paid = 8 [
+    (gogoproto.jsontag)  = "never_paid,omitempty",
+    (gogoproto.moretags) = "yaml:\"never_paid,omitempty\""
   ];
 }
 
@@ -96,5 +105,16 @@ message Transition {
   string destination = 2 [
     (gogoproto.jsontag)  = "destination",
     (gogoproto.moretags) = "yaml:\"destination\""
+  ];
+}
+
+message Banished {
+  string account = 1 [
+    (gogoproto.jsontag)  = "acc",
+    (gogoproto.moretags) = "yaml:\"acc\""
+  ];
+  string former_referrer = 2 [
+    (gogoproto.jsontag)  = "ref",
+    (gogoproto.moretags) = "yaml:\"ref\""
   ];
 }

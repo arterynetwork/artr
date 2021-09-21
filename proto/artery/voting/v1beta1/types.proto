@@ -5,6 +5,7 @@ import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "artery/voting/v1beta1/proposals.proto";
 import "artery/voting/v1beta1/args.proto";
+import "artery/noding/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/voting/types";
 
@@ -65,6 +66,10 @@ message Proposal {
     PeriodArgs period = 13 [
       (gogoproto.jsontag)  = "period,omitempty",
       (gogoproto.moretags) = "yaml:\"period,omitempty"
+    ];
+    artery.noding.v1beta1.Distribution votingPower = 14 [
+      (gogoproto.jsontag)  = "voting_power,omitempty",
+      (gogoproto.moretags) = "yaml:\"voting_power,omitempty"
     ];
   }
 }

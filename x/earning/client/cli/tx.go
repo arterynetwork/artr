@@ -82,7 +82,7 @@ func getCmdListEarners() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -143,7 +143,7 @@ func getCmdRun() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -171,6 +171,6 @@ func getCmdReset() *cobra.Command {
 		},
 	}
 
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }

@@ -2,6 +2,7 @@ syntax = "proto3";
 package artery.voting.v1beta1;
 
 import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 import "artery/referral/v1beta1/params.proto";
 import "artery/referral/v1beta1/types.proto";
 import "artery/delegating/v1beta1/params.proto";
@@ -56,15 +57,23 @@ message SoftwareUpgradeArgs {
     (gogoproto.moretags) = "yaml:\"name\""
   ];
   // Height - block height to schedule the upgrade at
+  // DEPRECATED: Use Time instead
   int64 height = 2 [
-    (gogoproto.jsontag)  = "height",
-    (gogoproto.moretags) = "yaml:\"height\""
+    (gogoproto.jsontag)  = "height,omitempty",
+    (gogoproto.moretags) = "yaml:\"height,omitempty\""
   ];
   // Info - a link (with a checksum) to a JSON file containing upgrade data (binary URIs and so on)
   // Please refer to https://github.com/regen-network/cosmosd#auto-download
   string info = 3 [
     (gogoproto.jsontag)  = "info",
     (gogoproto.moretags) = "yaml:\"info\""
+  ];
+  // Time the upgrade is scheduled at
+  google.protobuf.Timestamp time = 4 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "time,omitempty",
+    (gogoproto.moretags) = "yaml:\"time,omitempty\""
   ];
 }
 

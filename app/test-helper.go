@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/pkg/errors"
@@ -165,8 +166,8 @@ func ScheduleDecoder(bz []byte) (string, error) {
 	return fmt.Sprintf("%+v", sch), nil
 }
 
-func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDecoders, valueDecoders map[string]Decoder, ignorePrefixes map[string][][]byte) {
-	ctx := app.NewContext(true, tmproto.Header{Height: app.LastBlockHeight()})
+func (app ArteryApp) CheckExportImport(t *testing.T, time time.Time, storeKeys []string, keyDecoders, valueDecoders map[string]Decoder, ignorePrefixes map[string][][]byte) {
+	ctx := app.NewContext(true, tmproto.Header{Height: app.LastBlockHeight(), Time: time})
 	app.EndBlocker(ctx, abci.RequestEndBlock{Height: ctx.BlockHeight()})
 	ctx = ctx.WithBlockHeight(ctx.BlockHeight() + 1)
 
@@ -196,7 +197,7 @@ func (app ArteryApp) CheckExportImport(t *testing.T, storeKeys []string, keyDeco
 	if err := tmjson.Unmarshal(appState.AppState, &genesisState); err != nil {
 		panic(err)
 	}
-	ctx2 := app2.NewContext(true, tmproto.Header{Height: app2.LastBlockHeight()})
+	ctx2 := app2.NewContext(true, tmproto.Header{Height: app2.LastBlockHeight(), Time: time})
 	app2.mm.InitGenesis(ctx2, app2.ec.Marshaler, genesisState)
 
 	for _, key := range storeKeys {
@@ -301,7 +302,7 @@ func decodeKVTriples(kvz []kvTriple, keyDecoder func([]byte) (string, error), va
 			valStrB = fmt.Sprintf("%v", kv.ValueB)
 		}
 
-		result[i] = fmt.Sprintf("\n{%s -> %s <<<|>>> %s}", keyStr, valStrA, valStrB)
+		result[i] = fmt.Sprintf("\n{%s -> \n\t%s <<<|>>> \n\t%s\n}", keyStr, valStrA, valStrB)
 	}
 	return result
 }

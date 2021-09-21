@@ -185,23 +185,31 @@ func (k Keeper) AddTopLevelAccount(ctx sdk.Context, acc string) (err error) {
 }
 
 // GetTopLevelAccounts returns all accounts without parents and is supposed to be used during genesis export
-func (k Keeper) GetTopLevelAccounts(ctx sdk.Context) ([]string, error) {
-	var res []string
+func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []string, banished []types.Banished, neverPaid []string, err error) {
 	store := ctx.KVStore(k.storeKey)
 	itr := store.Iterator(nil, nil)
 	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
 		v := itr.Value()
 		var record types.Info
-		err := k.cdc.UnmarshalBinaryBare(v, &record)
+		err = k.cdc.UnmarshalBinaryBare(v, &record)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
-		if record.Referrer == "" {
-			res = append(res, string(itr.Key()))
+		addr := string(itr.Key())
+		if record.NeverPaid {
+			neverPaid = append(neverPaid, addr)
+		}
+		if record.Banished {
+			banished = append(banished, types.Banished{
+				Account:        addr,
+				FormerReferrer: record.Referrer,
+			})
+		} else if record.Referrer == "" {
+			topLevel = append(topLevel, addr)
 		}
 	}
-	return res, nil
+	return topLevel, banished, neverPaid,nil
 }
 
 // AppendChild adds a new account to the referral structure. The parent account should already exist and the child one
@@ -423,11 +431,12 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 	var (
 		bu = newBunchUpdater(k, ctx)
 
-		dc, dd sdk.Int
-		node   string
+		dc, dd   sdk.Int
+		node     string
+		banished bool
 	)
 	err := bu.update(acc, true, func(value *types.Info) error {
-		if value.Status == types.STATUS_UNSPECIFIED {
+		if value.IsEmpty() {
 			return types.ErrNotFound
 		}
 		newBalance := k.getBalance(ctx, acc)
@@ -439,16 +448,81 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 			bu.addCallback(StakeChangedCallback, acc)
 
 			if !value.Active && (value.CompressionAt == nil || ctx.BlockTime().After(*value.CompressionAt)) {
-				dust := newDelegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation
-				if dust && value.BanishmentAt == nil {
-					k.scheduleBanishment(ctx, acc, value)
-				} else if !dust && value.BanishmentAt != nil {
-					k.scheduleKeeper.Delete(ctx, *value.BanishmentAt, BanishHookName, []byte(acc))
-					value.BanishmentAt = nil
+				if newDelegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
+					if !value.Banished && value.BanishmentAt == nil {
+						k.scheduleBanishment(ctx, acc, value)
+					}
+				} else {
+					if value.BanishmentAt != nil {
+						k.scheduleKeeper.Delete(ctx, *value.BanishmentAt, BanishHookName, []byte(acc))
+						value.BanishmentAt = nil
+					}
+					if value.Banished {
+						// TODO: Refactor
+						// We cannot use ComeBack method here because of bunch updater cache. It's probably the perfect
+						// time to get rid of it.
+
+						var parent string
+						for parent = value.Referrer; parent != ""; {
+							pi, err := bu.get(parent)
+							if err != nil {
+								panic(errors.Wrapf(err, "cannot obtain parent's (%s) data", parent))
+							}
+							if !pi.RegistrationClosed(ctx, k.scheduleKeeper) {
+								break
+							}
+							parent = pi.Referrer
+						}
+						value.Referrer = parent
+						c := value.Coins[0]
+						d := value.Delegated[0]
+
+						value.Banished = false
+						value.Status = types.STATUS_LUCKY
+
+						if parent != "" {
+							var p2 string
+							if err := bu.update(parent, true, func(value *types.Info) error {
+								p2 = value.Referrer
+
+								value.Referrals = append(value.Referrals, acc)
+								value.Coins[1] = value.Coins[1].Add(c)
+								value.Delegated[1] = value.Delegated[1].Add(d)
+
+								return nil
+							}); err != nil {
+								return errors.Wrapf(err, "cannot update parent's (%s) data", parent)
+							} else {
+								parent = p2
+							}
+						}
+						if !(c.IsZero() && d.IsZero() || parent == "") {
+							for lvl := 2; lvl <= 10; lvl++ {
+								if parent == "" {
+									break
+								}
+
+								var p2 string
+								if err := bu.update(parent, true, func(value *types.Info) error {
+									p2 = value.Referrer
+
+									value.Coins[lvl] = value.Coins[lvl].Add(c)
+									value.Delegated[lvl] = value.Delegated[lvl].Add(d)
+
+									return nil
+								}); err != nil {
+									return errors.Wrapf(err, "cannot update level %d ancestor's (%s) data", lvl, parent)
+								} else {
+									parent = p2
+								}
+							}
+						}
+					}
 				}
 			}
 		}
 		node = value.Referrer
+		banished = value.Banished
 
 		value.Coins[0] = newBalance
 		value.Delegated[0] = newDelegated
@@ -464,23 +538,25 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 		}
 	}
 
-	for i := 1; i <= 10; i++ {
-		if node == "" {
-			break
-		}
-
-		if err = bu.update(node, true, func(value *types.Info) error {
-			value.Coins[i] = value.Coins[i].Add(dc)
-			value.Delegated[i] = value.Delegated[i].Add(dd)
-			if !dd.IsZero() {
-				bu.addCallback(StakeChangedCallback, node)
+	if !banished {
+		for i := 1; i <= 10; i++ {
+			if node == "" {
+				break
 			}
 
-			node = value.Referrer
-			return nil
-		}); err != nil {
-			k.Logger(ctx).Error("OnBalanceChanged hook failed", "acc", acc, "step", i, "error", err)
-			return err
+			if err = bu.update(node, true, func(value *types.Info) error {
+				value.Coins[i] = value.Coins[i].Add(dc)
+				value.Delegated[i] = value.Delegated[i].Add(dd)
+				if !dd.IsZero() {
+					bu.addCallback(StakeChangedCallback, node)
+				}
+
+				node = value.Referrer
+				return nil
+			}); err != nil {
+				k.Logger(ctx).Error("OnBalanceChanged hook failed", "acc", acc, "step", i, "error", err)
+				return err
+			}
 		}
 	}
 
@@ -515,6 +591,9 @@ func (k Keeper) SetActive(ctx sdk.Context, acc string, value, checkAncestorsForS
 			valueIsAlreadySet = true
 		} else {
 			x.Active = value
+			if value {
+				x.NeverPaid = false
+			}
 			delta(&x.ActiveRefCounts[0])
 			if compressionAt.IsZero() {
 				x.CompressionAt = nil
@@ -890,20 +969,31 @@ func (k Keeper) GetPendingTransition(ctx sdk.Context, acc string) (string, error
 func (k Keeper) Banish(ctx sdk.Context, acc string) error {
 	bu := newBunchUpdater(k, ctx)
 	var (
-		parent string
-		c, d   sdk.Int
+		parent   string
+		c, d     sdk.Int
+		banished bool
 	)
 	if err := bu.update(acc, false, func(value *types.Info) error {
 		parent = value.Referrer
 		c = value.Coins[0]
 		d = value.Delegated[0]
+		banished = value.Banished
 
 		value.Banished = true
+		// Purge account data
 		value.Status = types.STATUS_UNSPECIFIED
+		value.CompressionAt = nil
+		value.StatusDowngradeAt = nil
+		value.BanishmentAt = nil
+		value.NeverPaid = false
 
 		return nil
 	}); err != nil {
 		return errors.Wrap(err, "cannot update account info")
+	}
+
+	if banished {
+		return errors.New("already banished")
 	}
 
 	if parent != "" {

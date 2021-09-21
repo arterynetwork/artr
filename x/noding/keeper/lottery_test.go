@@ -206,7 +206,7 @@ func (s *LotterySuite) TestBecomingTop() {
 		s.votes(map[int]bool{0: false, 1: true, 2: true, 5: true, 6: true}),
 		nil,
 	)
-	s.checkUpdates(map[int]int64{0: 0, 4: 10}, resp.ValidatorUpdates)
+	s.checkUpdates(map[int]int64{0: 0, 6: 15, 4: 10}, resp.ValidatorUpdates)
 
 	info, err := s.k.Get(s.ctx, s.accAddrs[6])
 	s.NoError(err)

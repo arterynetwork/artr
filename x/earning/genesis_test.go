@@ -139,6 +139,7 @@ func (s *Suite) TestParams() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			earning.StoreKey,
 			schedule.StoreKey,

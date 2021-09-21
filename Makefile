@@ -6,7 +6,7 @@ DOCKER := $(shell which docker)
 STATIK = "$(GOPATH)/bin/statik"
 
 ldflags = -X github.com/cosmos/cosmos-sdk/version.Name=Artery \
-	-X github.com/cosmos/cosmos-sdk/version.ServerName=artrd \
+	-X github.com/cosmos/cosmos-sdk/version.AppName=artrd \
 	-X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 	-X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT) 
 

@@ -2,6 +2,8 @@ package types
 
 import (
 	"fmt"
+
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -23,11 +25,25 @@ const (
 
 // Parameter store keys
 var (
+	DefaultVotingPower = Distribution{
+		Slices: []Distribution_Slice{
+			{
+				Part:        util.Percent(15),
+				VotingPower: 15,
+			}, {
+				Part:        util.Percent(85),
+				VotingPower: 10,
+			},
+		},
+		LuckiesVotingPower: 10,
+	}
+
 	KeyMaxValidators     = []byte("MaxValidators")
 	KeyJailAfter         = []byte("JailAfter")
 	KeyUnjailAfter       = []byte("UnjailAfter")
 	KeyLotteryValidators = []byte("LotteryValidators")
 	KeyMinStatus         = []byte("MinStatus")
+	KeyVotingPower       = []byte("VotingPower")
 )
 
 // ParamKeyTable for noding module
@@ -63,6 +79,7 @@ func (p *Params) ParamSetPairs() params.ParamSetPairs {
 		params.NewParamSetPair(KeyUnjailAfter, &p.UnjailAfter, validateUnjailAfter),
 		params.NewParamSetPair(KeyLotteryValidators, &p.LotteryValidators, validateAdditionalValidators),
 		params.NewParamSetPair(KeyMinStatus, &p.MinStatus, validateStatus),
+		params.NewParamSetPair(KeyVotingPower, &p.VotingPower, validateVotingPower),
 	}
 }
 
@@ -132,6 +149,14 @@ func validateStatus(i interface{}) error {
 	return nil
 }
 
+func validateVotingPower(i interface{}) error {
+	distr, ok := i.(Distribution)
+	if !ok {
+		return errors.Errorf("invalid voting_power type: %T", i)
+	}
+	return errors.Wrap(distr.Validate(), "invalid voting_power")
+}
+
 func (p *Params) Validate() error {
 	if p == nil {
 		return fmt.Errorf("params are nil")
@@ -151,5 +176,6 @@ func (p *Params) Validate() error {
 	if err := validateStatus(p.MinStatus); err != nil {
 		return sdkerrors.Wrap(err, "invalid MinStatus")
 	}
+	if err := validateVotingPower(p.VotingPower); err != nil { return err }
 	return nil
 }

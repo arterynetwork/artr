@@ -1,12 +1,12 @@
 from copy import deepcopy
 from math import ceil
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 from ..config import Config
-from ..util import patch_status, height_to_time
+from ..util import patch_status, height_to_time, blocks_to_duration
 
 
-_TYPE_MAPPING = {
+_TYPE_MAPPING: Dict[int, str] = {
     0:  "PROPOSAL_TYPE_UNSPECIFIED",
     1:  "PROPOSAL_TYPE_ENTER_PRICE",
     2:  "PROPOSAL_TYPE_DELEGATION_AWARD",
@@ -35,46 +35,59 @@ _TYPE_MAPPING = {
     26: "PROPOSAL_TYPE_GENERAL_AMNESTY",
     27: "PROPOSAL_TYPE_LUCKY_VALIDATORS",
     28: "PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS",
+    29: "PROPOSAL_TYPE_JAIL_AFTER",
+    30: "PROPOSAL_TYPE_REVOKE_PERIOD",
+    31: "PROPOSAL_TYPE_DUST_DELEGATION"
 }
-_PARAMS_MAPPING = {
+_PARAMS_MAPPING : Dict[
+    str,
+    Tuple[
+        Optional[str],
+        Optional[Callable[[dict, Config], dict]]
+    ]
+] = {
     "voting/EmptyProposalParams":           (None, None),
-    "voting/PriceProposalParams":           ("price", lambda x: x),
-    "voting/DelegationAwardProposalParams": ("delegation_award", lambda x: {"award": x}),
-    "voting/NetworkAwardProposalParams":    ("network_award", lambda x: x),
-    "voting/AddressProposalParams":         ("address", lambda x: x),
-    "voting/SoftwareUpgradeProposalParams": ("software_upgrade", lambda x: {
+    "voting/PriceProposalParams":           ("price", lambda x, _: x),
+    "voting/DelegationAwardProposalParams": ("delegation_award", lambda x, _: {"award": x}),
+    "voting/NetworkAwardProposalParams":    ("network_award", lambda x, _: x),
+    "voting/AddressProposalParams":         ("address", lambda x, _: x),
+    "voting/SoftwareUpgradeProposalParams": ("software_upgrade", lambda x, _: {
         "name":   x["name"],
         "height": x["height"],
         "info":   x["binaries"]
     }),
-    "voting/MinAmountProposalParams":       ("min_amount", lambda x: x),
-    "voting/ShortCountProposalParams":      ("count", lambda x: x),
-    "voting/StatusProposalParams":          ("status", lambda x: {"status": patch_status(x["status"])}),
+    "voting/MinAmountProposalParams":       ("min_amount", lambda x, _: x),
+    "voting/ShortCountProposalParams":      ("count", lambda x, _: x),
+    "voting/StatusProposalParams":          ("status", lambda x, _: {"status": patch_status(x["status"])}),
+    "voting/PeriodProposalParams":          ("period", lambda x, conf: {
+        "days": blocks_to_duration(int(x["period"]), conf).days
+    })
 }
 
 
-def _patch_proposal(proposal: Dict) -> None:
+def _patch_proposal(proposal: Dict, config: Config) -> None:
     proposal["type"] = _TYPE_MAPPING[proposal.pop("type_code")]
     params: Dict = proposal.pop("params", None)
     if params:
         key, f = _PARAMS_MAPPING[params["type"]]
         if key:
-            proposal[key] = f(params["value"])
+            proposal[key] = f(params["value"], config)
 
 
 def patch(state: Optional[Dict], config: Config) -> Dict:
     state = deepcopy(state) if state else {}
 
     # blocks to hours
-    state["params"]["voting_period"] = ceil(state["params"]["voting_period"] / 120)
+    state["params"]["voting_period"] = \
+        ceil(blocks_to_duration(state["params"]["voting_period"], config).total_seconds() / 3600)
 
     for x in state.get("history", []):
         x["finished"] = x.pop("ended")
-        _patch_proposal(x["proposal"])
+        _patch_proposal(x["proposal"], config)
 
     current_proposal = state.get("current_proposal")
     if current_proposal:
-        _patch_proposal(current_proposal)
+        _patch_proposal(current_proposal, config)
         current_proposal["end_time"] = height_to_time(int(current_proposal.pop("end_block")), config)
 
     return state

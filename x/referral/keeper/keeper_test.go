@@ -244,19 +244,27 @@ func (s *Suite) TestGetCoinsInNetwork() {
 	//  ═══ │ ═════════ │ ═════ end of open lines
 	//      5           A
 	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[1], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[2], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[3], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[3], accounts[4]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[4], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[5], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[3], accounts[6]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[6], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[7]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[7], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[7], accounts[8]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[8], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[8], accounts[9]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[9], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[9], accounts[10]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[10], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[11]))
-	for i := 1; i <= 11; i++ {
-		s.NoError(s.k.SetActive(s.ctx, accounts[i], true, true))
-	}
+	s.NoError(s.k.SetActive(s.ctx, accounts[11], true, true))
 
 	res, err := s.k.GetCoinsInNetwork(s.ctx, accounts[0], 10)
 	s.NoError(err, "GetCoinsInNetwork")
@@ -287,10 +295,8 @@ func (s *Suite) TestReferralFees() {
 		}),
 	)
 	s.NoError(s.k.SetActive(s.ctx, accounts[0], true, true))
-	for i := 0; i < 12-1; i++ {
-		s.NoError(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
-	}
-	for i := 0; i < 12; i++ {
+	for i := 1; i < 12; i++ {
+		s.NoError(s.k.AppendChild(s.ctx, accounts[i-1], accounts[i]))
 		s.NoError(s.k.SetActive(s.ctx, accounts[i], true, true))
 	}
 
@@ -595,17 +601,23 @@ func (s *Suite) TestCompression() {
 	//     ┌──┴──┐
 	//     6      7
 	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[1], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[2], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[3], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[4]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[4], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[5], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[5], accounts[6]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[6], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[5], accounts[7]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[7], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[8]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[8], true, true))
 	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[9]))
-	for i := 1; i <= 9; i++ {
-		s.NoError(s.k.SetActive(s.ctx, accounts[i], true, true))
-	}
+	s.NoError(s.k.SetActive(s.ctx, accounts[9], true, true))
 
 	s.NoError(s.k.SetActive(s.ctx, accounts[4], false, true))
 	s.NoError(s.k.Compress(s.ctx, accounts[4]))
@@ -1564,6 +1576,53 @@ func (s TransitionBorderlineSuite) TestAlmostDown() {
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
 	s.Nil(data.StatusDowngradeAt)
+}
+
+func (s Suite) TestComeBackViaDelegation() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user2"]
+	parent := app.DefaultGenesisUsers["user1"]
+
+	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(10_000_000000)))
+
+	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 2*util.BlocksOneMonth).
+		WithBlockTime(genesisTime.Add((8999 + 2*util.BlocksOneMonth) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 3*util.BlocksOneMonth).
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err := s.get(user.String())
+	s.NoError(err)
+	s.True(info.Banished)
+
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay).
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth + util.BlocksOneDay) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.NoError(s.dk.Delegate(s.ctx, user, sdk.NewInt(25_000000)))
+
+	info, err = s.get(user.String())
+	s.NoError(err)
+	s.False(info.Banished)
+	s.Nil(info.BanishmentAt)
+	s.Equal(parent.String(), info.Referrer)
+	s.False(info.Active)
+
+	info, err = s.get(parent.String())
+	s.NoError(err)
+	s.Contains(info.Referrals, user.String())
 }
 
 type StatusUpgradeSuite struct {

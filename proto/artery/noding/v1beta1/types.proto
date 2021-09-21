@@ -9,9 +9,8 @@ option go_package = "github.com/arterynetwork/artr/x/noding/types";
 message Info {
   option (gogoproto.goproto_getters) = false;
 
-
-  // Power - voting power (depends on delegated funds)
-  int64 power = 1 [(gogoproto.moretags) = "yaml:\"power,omitempty"];
+  reserved 1;
+  reserved "power";
 
   // Status - if the validator is on (true) or off (false)
   bool status = 2 [(gogoproto.moretags) = "yaml:\"status,omitempty\""];
@@ -54,6 +53,8 @@ message Info {
   // LotteryNo - account's number in the lottery validators' queue
   uint64 lottery_no = 13 [(gogoproto.moretags) = "yaml:\"lottery_no,omitempty\""];
 
+  // Score - validator's priority. It's high enough means the validator's chosen for block signing.
+  int64 score = 14;
 
   // Infractions - evidences of byzantine behavior (from Tendermint)
   repeated tendermint.abci.Evidence infractions = 16 [
@@ -96,4 +97,21 @@ enum Reason {
   REASON_UNSPECIFIED       = 0;
   REASON_NOT_ENOUGH_STATUS = 1;
   REASON_NOT_ENOUGH_STAKE  = 2;
+}
+
+message Distribution {
+  option (gogoproto.equal) = true;
+
+  message Slice {
+    option (gogoproto.equal) = true;
+
+    string part = 1 [
+      (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+      (gogoproto.nullable)   = false
+    ];
+    int64 voting_power = 2;
+  }
+
+  repeated Slice slices = 1 [(gogoproto.nullable) = false];
+  int64 luckies_voting_power = 2;
 }

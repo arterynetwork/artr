@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/delegating"
+	noding "github.com/arterynetwork/artr/x/noding/types"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/voting/types"
 )
@@ -59,6 +61,8 @@ func NewTxCmd() *cobra.Command {
 		cmdSetValidatorMinStatus(),
 		cmdSetJailAfter(),
 		cmdSetRevokePeriod(),
+		cmdSetDustDelegation(),
+		cmdSetVotingPower(),
 		util.LineBreak(),
 		cmdVote(),
 	)
@@ -108,7 +112,7 @@ func cmdEnterPrice() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -161,7 +165,7 @@ func cmdDelegationAward() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -205,7 +209,7 @@ func cmdDelegationNetworkAward() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -249,7 +253,7 @@ func cmdSubscriptionNetworkAward() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -305,7 +309,7 @@ func cmdAddGovernor() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -345,7 +349,7 @@ func cmdRemoveGovernor() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -392,7 +396,7 @@ func cmdProductVpnBasePrice() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -439,7 +443,7 @@ func cmdProductStorageBasePrice() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -478,7 +482,7 @@ func cmdAddFreeCreator() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -517,17 +521,17 @@ func cmdRemoveFreeCreator() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
 // GetCmdUpgradeSoftware is the CLI command for creating software upgrade proposal
 func cmdUpgradeSoftware() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "upgrade-software <upgrade name> <height> <JSON URI with checksum> <proposal name> <author key or address>",
+		Use:     "upgrade-software <upgrade name> <time> <JSON URI with checksum> <proposal name> <author key or address>",
 		Aliases: []string{"upgrade_software", "upgrade", "us"},
 		Short:   "Propose to upgrade the blockchain software",
-		Example: `artrcli tx voting upgrade-software 3.0.0 1000 https://example.com/updates/3.0.0/info.json?checksum=sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "update to v3 on block height 1000" ivan`,
+		Example: `artrcli tx voting upgrade-software 3.0.0 2023-01-01T03:00:00Z https://example.com/updates/3.0.0/info.json?checksum=sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "update to v3 Jan 1st at 03:00 AM GMT" ivan`,
 		Args:    cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Flags().Set(flags.FlagFrom, args[4]); err != nil { return err }
@@ -540,10 +544,14 @@ func cmdUpgradeSoftware() *cobra.Command {
 			proposalName := args[3]
 
 			upgradeName := args[0]
-			height, err := strconv.ParseInt(args[1], 0, 64)
-			if err != nil {
-				return sdkerrors.Wrap(err, "invalid height "+args[1])
+
+			var t time.Time
+			if stamp, err := runtime.Timestamp(fmt.Sprintf(`"%s"`, args[1])); err != nil {
+				return errors.Wrap(err, "cannot parse time")
+			} else {
+				t = stamp.AsTime()
 			}
+
 			info := args[2]
 
 			msg := &types.MsgPropose{
@@ -554,7 +562,7 @@ func cmdUpgradeSoftware() *cobra.Command {
 					Args: &types.Proposal_SoftwareUpgrade{
 						SoftwareUpgrade: &types.SoftwareUpgradeArgs{
 							Name:   upgradeName,
-							Height: height,
+							Time:   &t,
 							Info:   info,
 						},
 					},
@@ -566,7 +574,7 @@ func cmdUpgradeSoftware() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -601,7 +609,7 @@ func cmdCancelSoftwareUpgrade() *cobra.Command {
 
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -640,7 +648,7 @@ func cmdStaffValidatorAdd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -679,7 +687,7 @@ func cmdStaffValidatorRemove() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -718,7 +726,7 @@ func cmdEarningSignerAdd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -757,7 +765,7 @@ func cmdEarningSignerRemove() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -796,7 +804,7 @@ func cmdCourseChangeSignerAdd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -835,7 +843,7 @@ func cmdCourseChangeSignerRemove() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -874,7 +882,7 @@ func cmdVpnCurrentSignerAdd() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -913,7 +921,7 @@ func cmdVpnCurrentSignerRemove() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -961,7 +969,7 @@ func cmdAccountTransitionPrice() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1009,7 +1017,7 @@ func cmdSetMinSend() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1057,7 +1065,7 @@ func cmdSetMinDelegate() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1105,7 +1113,7 @@ func cmdSetMaxValidators() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1153,7 +1161,7 @@ func cmdSetLotteryValidators() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1186,7 +1194,7 @@ func cmdGeneralAmnesty() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1233,7 +1241,7 @@ func cmdSetValidatorMinStatus() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1280,7 +1288,55 @@ func cmdSetJailAfter() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetDustDelegation() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-dust-delegation <amount> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-dust-delegation 849999 "Ignore delegation lower than 0.85 ARTR" ivan`,
+		Aliases: []string{"set_dust_delegation", "sdd"},
+		Short:   "Propose to change dust delegation threshold (in uARTR, an exactly equal delegation counts as dust)",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			var n int64
+			{
+				var err error
+				n, err = strconv.ParseInt(args[0], 0, 64)
+				if err != nil {
+					return err
+				}
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_DUST_DELEGATION,
+					Args: &types.Proposal_MinAmount{
+						MinAmount: &types.MinAmountArgs{
+							MinAmount: n,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1327,7 +1383,68 @@ func cmdSetRevokePeriod() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetVotingPower() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     `set-voting-power <part>:<voting power> [<part>:<voting power> [...]] <"luckies" voting power> <proposal name> <author key or address>`,
+		Example: `artrd tx voting set-voting-power 15%:3 85%:2 2 "reduce voting power" ivan`,
+		Aliases: []string{"set_voting_power", "svp"},
+		Short:   "Propose to change validator voting power distribution",
+		Args:    cobra.MinimumNArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[len(args) - 1]); err != nil { return err }
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[len(args) - 2]
+
+			value := noding.Distribution{}
+
+			n, err := strconv.ParseInt(args[len(args) - 3], 0, 64)
+			if err != nil {
+				return errors.Wrap(err, `cannot parse "luckies" voting power`)
+			}
+			value.LuckiesVotingPower = n
+
+			for i := 0; i < len(args) - 3; i++ {
+				parts := strings.Split(args[i], ":")
+				if len(parts) != 2 {
+					return errors.Errorf("cannot parse the slice #%d: exactly one colon expected", i)
+				}
+				f, err := util.ParseFraction(parts[0])
+				if err != nil {
+					return errors.Wrapf(err, "cannot parse the slice #%d: invalid part", i)
+				}
+				n, err = strconv.ParseInt(parts[1], 0, 64)
+				if err != nil {
+					return errors.Wrapf(err, "cannot parse the slice #%d: invalid power", i)
+				}
+				value.Slices = append(value.Slices, noding.Distribution_Slice{Part: f, VotingPower: n})
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_VOTING_POWER,
+					Args: &types.Proposal_VotingPower{
+						VotingPower: &value,
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -1359,6 +1476,6 @@ func cmdVote() *cobra.Command {
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	flags.AddTxFlagsToCmd(cmd)
+	util.AddTxFlagsToCmd(cmd)
 	return cmd
 }

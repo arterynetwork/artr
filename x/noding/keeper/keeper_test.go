@@ -76,8 +76,8 @@ func (s *Suite) TestSwitchOn() {
 	resp := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.Equal(
 		[]abci.ValidatorUpdate{
-			{PubKey: tmPubKeys[1], Power: 10},
-			{PubKey: tmPubKeys[2], Power: 10},
+			{PubKey: tmPubKeys[1], Power: 15},
+			{PubKey: tmPubKeys[2], Power: 15},
 		},
 		resp.ValidatorUpdates,
 	)
@@ -96,7 +96,7 @@ func (s *Suite) TestAddToStaff() {
 	resp := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.Equal(
 		[]abci.ValidatorUpdate{
-			{PubKey: tmPubKey, Power: 10},
+			{PubKey: tmPubKey, Power: 15},
 		},
 		resp.ValidatorUpdates,
 	)
@@ -295,58 +295,7 @@ func (s *Suite) TestJailing() {
 		s.True(isValidator)
 	}
 	resp, _ = s.nextBlock(proposerKey, nil, nil)
-	s.Equal([]abci.ValidatorUpdate{{PubKey: tmPubKey, Power: 10}}, resp.ValidatorUpdates)
-}
-
-func (s *Suite) TestJailedValidatorPowerUpdate() {
-	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
-	tmProposerKey, _ := cryptocodec.ToTmProtoPublicKey(proposerKey)
-	_, pubkey, _ := app.NewTestConsPubAddress()
-	tmPubKey, _ := cryptocodec.ToTmProtoPublicKey(pubkey)
-	user2 := s.user(2)
-	if err := s.k.SwitchOn(s.ctx, user2, pubkey); err != nil {
-		panic(err)
-	}
-
-	validator := abci.Validator{
-		Address: pubkey.Address().Bytes(),
-		Power:   10,
-	}
-	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: false}}
-
-	s.nextBlock(proposerKey, votes, nil)
-	s.nextBlock(proposerKey, votes, nil)
-	if isValidator, err := s.k.IsValidator(s.ctx, user2); err != nil {
-		panic(err)
-	} else {
-		s.False(isValidator)
-	}
-	resp, _ := s.nextBlock(proposerKey, nil, nil)
-	s.Equal([]abci.ValidatorUpdate{{PubKey: tmPubKey, Power: 0}}, resp.ValidatorUpdates)
-	if err := s.bk.SetBalance(
-		s.ctx, user2,
-		s.bk.GetBalance(s.ctx, user2).Add(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(117_700_000000)),
-		),
-	); err != nil {
-		panic(err)
-	}
-	if err := s.app.GetDelegatingKeeper().Delegate(s.ctx, user2, sdk.NewInt(117_700_000000)); err != nil {
-		panic(err)
-	}
-
-	s.ctx = s.ctx.WithBlockHeight(123)
-	s.NoError(s.k.Unjail(s.ctx, s.user(2)))
-	if isValidator, err := s.k.IsValidator(s.ctx, s.user(2)); err != nil {
-		panic(err)
-	} else {
-		s.True(isValidator)
-	}
-	resp, _ = s.nextBlock(proposerKey, nil, nil)
-	s.Equal([]abci.ValidatorUpdate{
-		{PubKey: tmProposerKey, Power: 15},
-		{PubKey: tmPubKey, Power: 15},
-	}, resp.ValidatorUpdates)
+	s.Equal([]abci.ValidatorUpdate{{PubKey: tmPubKey, Power: 15}}, resp.ValidatorUpdates)
 }
 
 func (s *Suite) TestSwitchOnAfterSwitchOffWhileJailed() {
@@ -452,7 +401,7 @@ func (s Suite) TestNodeNodeLeap() {
 			},
 			{
 				PubKey: tmNewPubKey,
-				Power:  10,
+				Power:  15,
 			},
 		},
 		ebr.ValidatorUpdates,

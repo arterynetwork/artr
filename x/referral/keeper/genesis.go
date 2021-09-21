@@ -15,6 +15,8 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		params       types.Params
 		topLevel     []string
 		other        []types.Refs
+		banished     []types.Banished
+		neverPaid    []string
 		compressions []types.Compression
 		downgrades   []types.Downgrade
 		transitions  []types.Transition
@@ -24,7 +26,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		nextLevel []types.Refs
 	)
 	params = k.GetParams(ctx)
-	topLevel, err = k.GetTopLevelAccounts(ctx)
+	topLevel, banished, neverPaid, err = k.GetTopLevelAndBanishedAccounts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -89,21 +91,38 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		}
 	}
 
-	return types.NewGenesisState(params, topLevel, other, compressions, downgrades, transitions), nil
+	return types.NewGenesisState(params, topLevel, other, banished, neverPaid, compressions, downgrades, transitions), nil
 }
 
 func (k Keeper) ImportFromGenesis(
 	ctx sdk.Context,
 	topLevel []string,
 	otherAccounts []types.Refs,
+	banished []types.Banished,
+	neverPaid []string,
 	compressions []types.Compression,
 	downgrades []types.Downgrade,
 	transitions []types.Transition,
 ) error {
+	store := ctx.KVStore(k.storeKey)
+
+	neverPaidSet := make(map[string]bool, len(neverPaid))
+	for _, acc := range neverPaid {
+		neverPaidSet[acc] = true
+	}
+
 	k.Logger(ctx).Info("... top level accounts")
 	for _, acc := range topLevel {
 		if err := k.AddTopLevelAccount(ctx, acc); err != nil {
 			panic(errors.Wrapf(err, "cannot add %s", acc))
+		}
+		if !neverPaidSet[acc] {
+			key := []byte(acc)
+			var info types.Info
+			k.cdc.MustUnmarshalBinaryBare(store.Get(key), &info)
+			info.NeverPaid = false
+			store.Set(key, k.cdc.MustMarshalBinaryBare(&info))
+
 		}
 		k.Logger(ctx).Debug("account added", "acc", acc, "parent", nil)
 	}
@@ -113,7 +132,31 @@ func (k Keeper) ImportFromGenesis(
 			if err := k.appendChild(ctx, r.Referrer, acc, true); err != nil {
 				panic(errors.Wrapf(err, "cannot add %s", acc))
 			}
+			if !neverPaidSet[acc] {
+				key := []byte(acc)
+				var info types.Info
+				k.cdc.MustUnmarshalBinaryBare(store.Get(key), &info)
+				info.NeverPaid = false
+				store.Set(key, k.cdc.MustMarshalBinaryBare(&info))
+
+			}
 			k.Logger(ctx).Debug("account added", "acc", acc, "parent", r.Referrer)
+		}
+	}
+	{
+		k.Logger(ctx).Info("... banished accounts")
+
+		for _, ba := range banished {
+			store.Set(
+				[]byte(ba.Account),
+				k.cdc.MustMarshalBinaryBare(&types.Info{
+					Referrer:     ba.FormerReferrer,
+					Coins:        []sdk.Int{k.getBalance(ctx, ba.Account)},
+					Delegated:    []sdk.Int{k.getDelegated(ctx, ba.Account)},
+					Banished:     true,
+					NeverPaid:    neverPaidSet[ba.Account],
+				}),
+			)
 		}
 	}
 

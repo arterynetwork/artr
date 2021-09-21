@@ -2,10 +2,10 @@ package cli
 
 import (
 	"context"
+
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/schedule/types"
@@ -54,7 +54,7 @@ func cmdAtHeight() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Tasks)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }
 
@@ -82,6 +82,6 @@ func cmdAll() *cobra.Command {
 			return util.PrintConsoleOutput(clientCtx, res.Tasks)
 		},
 	}
-	flags.AddQueryFlagsToCmd(cmd)
+	util.AddQueryFlagsToCmd(cmd)
 	return cmd
 }

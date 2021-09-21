@@ -114,6 +114,11 @@ message Info {
     (gogoproto.jsontag)  = "banished,omitempty",
     (gogoproto.moretags) = "yaml:\"banished,omitempty\""
   ];
+
+  bool never_paid = 21 [
+    (gogoproto.jsontag)  = "naver_paid,omitempty",
+    (gogoproto.moretags) = "yaml:\"never_paid,omitempty\""
+  ];
 }
 
 message StatusCheckResult {

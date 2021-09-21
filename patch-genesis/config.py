@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 
 class Config:
@@ -8,6 +9,7 @@ class Config:
             output_filename: str = "genesis.v2.json",
             chain_id: str = "artery2.0",
             genesis_time: str = None,
+            initial_height: str = None,
             time_quotient: str = "1"
     ):
         if genesis_time is None:
@@ -17,14 +19,16 @@ class Config:
         self.genesis_time = genesis_time
         self.input = input_filename
         self.output = output_filename
-        self.initial_height: int = None  # will be set later
+        self.initial_height: Optional[int] = None  # will be set later
+        if initial_height:
+            self.initial_height = int(initial_height)
         self.time_quotient = int(time_quotient)
         if not 1 <= self.time_quotient <= 1440:
             raise ValueError('time_quotient is out of range')
 
-
     def init(self, genesis: dict):
-        self.initial_height = int(genesis["app_state"]["schedule"].get("params", {}).get("initial_height", "0"))
+        if self.initial_height is None:
+            self.initial_height = int(genesis["app_state"]["schedule"].get("params", {}).get("initial_height", "0"))
 
     def get_genesis_time(self) -> datetime:
         return datetime.fromisoformat(self.genesis_time.split(sep="Z")[0])
