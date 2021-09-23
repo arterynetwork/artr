@@ -7,7 +7,7 @@ import (
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
-type vpGenerator struct {
+type VpGenerator struct {
 	count, maxValidators uint32
 	lastScore            int64
 	ptr                  int
@@ -15,16 +15,16 @@ type vpGenerator struct {
 	distr                types.Distribution
 }
 
-func newVotingPowerGenerator(k Keeper, ctx sdk.Context) vpGenerator {
+func NewVotingPowerGenerator(k Keeper, ctx sdk.Context) VpGenerator {
 	p := k.GetParams(ctx)
-	return vpGenerator{
+	return VpGenerator{
 		maxValidators: p.MaxValidators,
 		distr:         p.VotingPower,
 		partAccum:     util.FractionZero(),
 	}
 }
 
-func (g *vpGenerator) GetVotingPower(score int64) int64 {
+func (g *VpGenerator) GetVotingPower(score int64) int64 {
 	g.count++
 	defer func() {
 		g.lastScore = score
@@ -42,6 +42,6 @@ func (g *vpGenerator) GetVotingPower(score int64) int64 {
 	}
 
 	g.ptr++
-	g.partAccum = g.partAccum.Add(g.distr.Slices[0].Part)
+	g.partAccum = g.partAccum.Add(g.distr.Slices[g.ptr].Part)
 	return g.distr.Slices[g.ptr].VotingPower
 }

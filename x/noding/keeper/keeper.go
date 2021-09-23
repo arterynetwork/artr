@@ -364,7 +364,7 @@ func (k Keeper) GatherValidatorUpdates(ctx sdk.Context) ([]abci.ValidatorUpdate,
 		}
 		return active[i].OkBlocksInRow > active[j].OkBlocksInRow
 	})
-	vpg := newVotingPowerGenerator(k, ctx)
+	vpg := NewVotingPowerGenerator(k, ctx)
 
 	for i = 0; i < n1; i++ {
 		data := active[i]

@@ -334,6 +334,7 @@ func NewArteryApp(
 	app.upgradeKeeper.SetUpgradeHandler("2.0.0-b.2",
 		InitializeVotingPower(app.nodingKeeper, app.subspaces[nodingTypes.DefaultParamspace]),
 	)
+	app.upgradeKeeper.SetUpgradeHandler("2.0.0-b.3", NopUpgradeHandler)
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
