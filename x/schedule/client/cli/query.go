@@ -1,63 +1,87 @@
 package cli
 
 import (
-	"fmt"
-	"strings"
+	"context"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/schedule/types"
 )
 
-// GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	// Group schedule queries under a subcommand
-	referralQueryCmd := &cobra.Command{
+func CmdQuery() *cobra.Command {
+	queryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
-		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
+		Aliases:                    []string{"s"},
+		Short:                      "Querying commands for the x/schedule module",
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
 		RunE:                       client.ValidateCmd,
 	}
 
-	referralQueryCmd.AddCommand(
-		flags.GetCommands(
-			getCmdParams(queryRoute, cdc),
-		)...,
+	queryCmd.AddCommand(
+		cmdAtHeight(),
+		cmdAll(),
 	)
-
-	return referralQueryCmd
+	return queryCmd
 }
 
-func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:     "params",
-		Aliases: []string{"p"},
-		Short:   "Get the module params",
-		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryParams,
-				}, "/",
-			))
+func cmdAtHeight() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "in <since> <to>",
+		Short: "Get all tasks scheduled to a specified time range",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get module params")
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			since := args[0]
+			to    := args[1]
+
+			res, err := queryClient.Get(
+				context.Background(),
+				&types.GetRequest{Since: since, To: to},
+			)
+			if err != nil {
 				return err
 			}
 
-			var out types.Params
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Tasks)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdAll() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "all",
+		Aliases: []string{"a"},
+		Short:   "Get all the scheduled tasks",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			res, err := queryClient.All(
+				context.Background(),
+				&types.AllRequest{},
+			)
+			if err != nil {
+				return err
+			}
+
+			return util.PrintConsoleOutput(clientCtx, res.Tasks)
+		},
+	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }

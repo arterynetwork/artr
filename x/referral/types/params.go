@@ -1,22 +1,26 @@
 package types
 
 import (
-	"github.com/arterynetwork/artr/util"
-	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
+
+	"github.com/pkg/errors"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 // Default parameter namespace
 const (
-	DefaultParamspace     = ModuleName
-	DefaultTransitionCost = 1_000000
+	DefaultParamspace      = ModuleName
+	DefaultTransitionPrice = 1_000000
 )
 
 var (
 	DefaultDelegatingAward = NetworkAward{
-		Network: [10]util.Fraction{
+		Network: []util.Fraction{
 			util.Percent(5),
 			util.Percent(1),
 			util.Percent(1),
@@ -32,7 +36,7 @@ var (
 	}
 
 	DefaultSubscriptionAward = NetworkAward{
-		Network: [10]util.Fraction{
+		Network: []util.Fraction{
 			util.Percent(15),
 			util.Percent(10),
 			util.Percent(7),
@@ -57,41 +61,71 @@ var (
 )
 
 // ParamKeyTable for referral module
-func ParamKeyTable() params.KeyTable {
-	return params.NewKeyTable().RegisterParamSet(&Params{})
-}
-
-type CompanyAccounts struct {
-	TopReferrer     sdk.AccAddress `json:"top_referrer" yaml:"top_referrer"`
-	ForSubscription sdk.AccAddress `json:"for_subscription" yaml:"for_subscription"`
-	PromoBonuses    sdk.AccAddress `json:"promo_bonuses" yaml:"promo_bonuses"`
-	StatusBonuses   sdk.AccAddress `json:"status_bonuses" yaml:"status_bonuses"`
-	LeaderBonuses   sdk.AccAddress `json:"leader_bonuses" yaml:"leader_bonuses"`
-	ForDelegating   sdk.AccAddress `json:"for_delegating" yaml:"for_delegating"`
-}
-
-type NetworkAward struct {
-	Network [10]util.Fraction `json:"network" yaml:"network,flow"`
-	Company util.Fraction     `json:"company" yaml:"company"`
+func ParamKeyTable() paramTypes.KeyTable {
+	return paramTypes.NewKeyTable().RegisterParamSet(&Params{})
 }
 
 func (na NetworkAward) Validate() error { return validateNetworkAward(na) }
 
 func (ca CompanyAccounts) Contains(acc sdk.AccAddress) bool {
-	return !acc.Empty() && (ca.TopReferrer.Equals(acc) ||
-		ca.ForSubscription.Equals(acc) ||
-		ca.PromoBonuses.Equals(acc) ||
-		ca.StatusBonuses.Equals(acc) ||
-		ca.LeaderBonuses.Equals(acc) ||
-		ca.ForDelegating.Equals(acc))
+	if acc.Empty() {
+		return false
+	}
+	bech32 := acc.String()
+	return ca.TopReferrer == bech32 ||
+		ca.ForSubscription == bech32 ||
+		ca.PromoBonuses == bech32 ||
+		ca.StatusBonuses == bech32 ||
+		ca.LeaderBonuses == bech32 ||
+		ca.ForDelegating == bech32
 }
 
-// Params - used for initializing default parameter for referral at genesis
-type Params struct {
-	CompanyAccounts   CompanyAccounts `json:"company_accounts" yaml:"company_accounts"`
-	DelegatingAward   NetworkAward    `json:"delegating_award" yaml:"delegating_award"`
-	SubscriptionAward NetworkAward    `json:"subscription_award" yaml:"subscription_award"`
-	TransitionCost    uint64          `json:"transition_cost" yaml:"transition_cost"`
+func (ca CompanyAccounts) GetTopReferrer() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.TopReferrer)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (ca CompanyAccounts) GetForSubscription() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (ca CompanyAccounts) GetPromoBonuses() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.PromoBonuses)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (ca CompanyAccounts) GetStatusBonuses() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.StatusBonuses)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (ca CompanyAccounts) GetLeaderBonuses() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.LeaderBonuses)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (ca CompanyAccounts) GetForDelegating() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(ca.ForDelegating)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 // NewParams creates a new Params object
@@ -101,13 +135,18 @@ func NewParams(ca CompanyAccounts) Params {
 	}
 }
 
+func (p Params) String() string {
+	out, _ := yaml.Marshal(p)
+	return string(out)
+}
+
 // ParamSetPairs - Implements params.ParamSet
-func (p *Params) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
-		params.NewParamSetPair(KeyCompanyAccounts, &p.CompanyAccounts, validateCompanyAccounts),
-		params.NewParamSetPair(KeyDelegatingAward, &p.DelegatingAward, validateNetworkAward),
-		params.NewParamSetPair(KeySubscriptionAward, &p.SubscriptionAward, validateNetworkAward),
-		params.NewParamSetPair(KeyTransitionCost, &p.TransitionCost, validateUint64),
+func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
+	return paramTypes.ParamSetPairs{
+		paramTypes.NewParamSetPair(KeyCompanyAccounts, &p.CompanyAccounts, validateCompanyAccounts),
+		paramTypes.NewParamSetPair(KeyDelegatingAward, &p.DelegatingAward, validateNetworkAward),
+		paramTypes.NewParamSetPair(KeySubscriptionAward, &p.SubscriptionAward, validateNetworkAward),
+		paramTypes.NewParamSetPair(KeyTransitionCost, &p.TransitionPrice, validateUint64),
 	}
 }
 
@@ -129,7 +168,7 @@ func DefaultParams() Params {
 	return Params{
 		DelegatingAward:   DefaultDelegatingAward,
 		SubscriptionAward: DefaultSubscriptionAward,
-		TransitionCost:    DefaultTransitionCost,
+		TransitionPrice:   DefaultTransitionPrice,
 	}
 }
 
@@ -138,23 +177,23 @@ func validateCompanyAccounts(i interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid parameter type: %T", i)
 	}
-	if ca.TopReferrer.Empty() {
-		return errors.New("empty company account for referral bonuses excess")
+	if _, err := sdk.AccAddressFromBech32(ca.TopReferrer); err != nil {
+		return errors.Wrap(err, "cannot parse top_referrer account address")
 	}
-	if ca.ForSubscription.Empty() {
-		return errors.New("empty company account for subscription")
+	if _, err := sdk.AccAddressFromBech32(ca.ForSubscription); err != nil {
+		return errors.Wrap(err, "cannot parse for_subscription account address")
 	}
-	if ca.PromoBonuses.Empty() {
-		return errors.New("empty company account for promo bonuses")
+	if _, err := sdk.AccAddressFromBech32(ca.PromoBonuses); err != nil {
+		return errors.Wrap(err, "cannot parse promo_bonuses account address")
 	}
-	if ca.StatusBonuses.Empty() {
-		return errors.New("empty company account for status bonuses")
+	if _, err := sdk.AccAddressFromBech32(ca.StatusBonuses); err != nil {
+		return errors.Wrap(err, "cannot parse status_bonuses account address")
 	}
-	if ca.LeaderBonuses.Empty() {
-		return errors.New("empty company account for leader bonuses")
+	if _, err := sdk.AccAddressFromBech32(ca.LeaderBonuses); err != nil {
+		return errors.Wrap(err, "cannot parse leader_bonuses account address")
 	}
-	if ca.ForDelegating.Empty() {
-		return errors.New("empty company account for delegating")
+	if _, err := sdk.AccAddressFromBech32(ca.ForDelegating); err != nil {
+		return errors.Wrap(err, "cannot parse for_delegating account address")
 	}
 
 	return nil

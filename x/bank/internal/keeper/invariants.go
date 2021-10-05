@@ -3,32 +3,30 @@ package keeper
 import (
 	"fmt"
 
-	"github.com/arterynetwork/artr/x/bank/internal/types"
+	"github.com/arterynetwork/artr/x/bank/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // RegisterInvariants registers the bank module invariants
-func RegisterInvariants(ir sdk.InvariantRegistry, ak types.AccountKeeper) {
+func RegisterInvariants(ir sdk.InvariantRegistry, k Keeper) {
 	ir.RegisterRoute(types.ModuleName, "nonnegative-outstanding",
-		NonnegativeBalanceInvariant(ak))
+		NonnegativeBalanceInvariant(k))
 }
 
 // NonnegativeBalanceInvariant checks that all accounts in the application have non-negative balances
-func NonnegativeBalanceInvariant(ak types.AccountKeeper) sdk.Invariant {
+func NonnegativeBalanceInvariant(k ViewKeeper) sdk.Invariant {
 	return func(ctx sdk.Context) (string, bool) {
 		var msg string
 		var count int
 
-		accts := ak.GetAllAccounts(ctx)
-		for _, acc := range accts {
-			coins := acc.GetCoins()
-			if coins.IsAnyNegative() {
+		k.IterateAllBalances(ctx, func(addr sdk.AccAddress, balance sdk.Coins) bool {
+			if balance.IsAnyNegative() {
 				count++
-				msg += fmt.Sprintf("\t%s has a negative denomination of %s\n",
-					acc.GetAddress().String(),
-					coins.String())
+				msg += fmt.Sprintf("\t%s has a negative balance of %s\n", addr, balance)
 			}
-		}
+
+			return false
+		})
 		broken := count != 0
 
 		return sdk.FormatInvariant(types.ModuleName, "nonnegative-outstanding",

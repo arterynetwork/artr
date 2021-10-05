@@ -7,16 +7,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	abci "github.com/tendermint/tendermint/abci/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/referral/types"
-	"github.com/arterynetwork/artr/x/schedule"
+	schedule "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestReferralGenesis(t *testing.T) {
@@ -33,13 +32,19 @@ type GenSuite struct {
 }
 
 func (s *GenSuite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetReferralKeeper()
 }
 
 func (s GenSuite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s GenSuite) TestCleanGenesis() {
@@ -47,15 +52,15 @@ func (s GenSuite) TestCleanGenesis() {
 }
 
 func (s GenSuite) TestTransition() {
-	subj := app.DefaultGenesisUsers["user4"]
-	dest := app.DefaultGenesisUsers["user3"]
+	subj := app.DefaultGenesisUsers["user4"].String()
+	dest := app.DefaultGenesisUsers["user3"].String()
 	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
 	s.checkExportImport()
 }
 
 func (s GenSuite) TestTransition_Declined() {
-	subj := app.DefaultGenesisUsers["user4"]
-	dest := app.DefaultGenesisUsers["user3"]
+	subj := app.DefaultGenesisUsers["user4"].String()
+	dest := app.DefaultGenesisUsers["user3"].String()
 	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
 	s.NoError(s.k.CancelTransition(s.ctx, subj, false))
 	s.checkExportImport()
@@ -64,15 +69,15 @@ func (s GenSuite) TestTransition_Declined() {
 func (s GenSuite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
 		CompanyAccounts: referral.CompanyAccounts{
-			TopReferrer:     app.DefaultGenesisUsers["user1"],
-			ForSubscription: app.DefaultGenesisUsers["user2"],
-			PromoBonuses:    app.DefaultGenesisUsers["user3"],
-			StatusBonuses:   app.DefaultGenesisUsers["user4"],
-			LeaderBonuses:   app.DefaultGenesisUsers["user5"],
-			ForDelegating:   app.DefaultGenesisUsers["user6"],
+			TopReferrer:     app.DefaultGenesisUsers["user1"].String(),
+			ForSubscription: app.DefaultGenesisUsers["user2"].String(),
+			PromoBonuses:    app.DefaultGenesisUsers["user3"].String(),
+			StatusBonuses:   app.DefaultGenesisUsers["user4"].String(),
+			LeaderBonuses:   app.DefaultGenesisUsers["user5"].String(),
+			ForDelegating:   app.DefaultGenesisUsers["user6"].String(),
 		},
 		DelegatingAward: referral.NetworkAward{
-			Network: [10]util.Fraction{
+			Network: []util.Fraction{
 				util.Percent(1),
 				util.Percent(2),
 				util.Percent(3),
@@ -87,7 +92,7 @@ func (s GenSuite) TestParams() {
 			Company: util.Percent(13),
 		},
 		SubscriptionAward: referral.NetworkAward{
-			Network: [10]util.Fraction{
+			Network: []util.Fraction{
 				util.Permille(1),
 				util.Permille(2),
 				util.Permille(3),
@@ -101,26 +106,27 @@ func (s GenSuite) TestParams() {
 			},
 			Company: util.Permille(13),
 		},
-		TransitionCost: 49_000000,
+		TransitionPrice: 49_000000,
 	})
 	s.checkExportImport()
 }
 
 func (s GenSuite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			referral.StoreKey,
 			schedule.StoreKey,
 			params.StoreKey,
 		},
 		map[string]app.Decoder{
-			referral.StoreKey: app.AccAddressDecoder,
+			referral.StoreKey: app.StringDecoder,
 			schedule.StoreKey: app.Uint64Decoder,
 			params.StoreKey:   app.DummyDecoder,
 		},
 		map[string]app.Decoder{
 			referral.StoreKey: s.RDecoder,
-			schedule.StoreKey: app.DummyDecoder,
+			schedule.StoreKey: app.ScheduleDecoder,
 			params.StoreKey:   app.DummyDecoder,
 		},
 		map[string][][]byte{},
@@ -128,8 +134,8 @@ func (s GenSuite) checkExportImport() {
 }
 
 func (s *GenSuite) RDecoder(bz []byte) (string, error) {
-	var item types.R
-	err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &item)
+	var item types.Info
+	err := s.app.Codec().UnmarshalBinaryBare(bz, &item)
 	if err != nil {
 		return "", err
 	}

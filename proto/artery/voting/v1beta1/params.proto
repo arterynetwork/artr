@@ -1,0 +1,17 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+// Params - used for initializing default parameter for voting at genesis
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+
+  // Time in hours
+  int32 voting_period = 1 [
+    (gogoproto.jsontag)  = "voting_period",
+    (gogoproto.moretags) = "yaml:\"voting_period\""
+  ];
+}

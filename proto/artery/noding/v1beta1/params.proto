@@ -1,0 +1,19 @@
+syntax = "proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/referral/v1beta1/types.proto";
+import "artery/noding/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+
+  uint32 max_validators = 1;
+  uint32 jail_after = 2;
+  uint32 unjail_after = 3;
+  uint32 lottery_validators = 4;
+  artery.referral.v1beta1.Status min_status = 5;
+  Distribution voting_power = 6 [(gogoproto.nullable) = false];
+}

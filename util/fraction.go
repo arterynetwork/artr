@@ -16,11 +16,23 @@ type Fraction struct {
 	denom *big.Int
 }
 
+type protoFieldMarshaler interface {
+	// Size is a value s10n length in bytes
+	Size() int;
+
+	// MarshalTo serializes a fraction to a byte stream
+	MarshalTo(dest []byte) (int, error);
+
+	// Unmarshal deserializes a fraction from a byte array
+	Unmarshal(bz []byte) error;
+}
+
 var (
-	_ json.Marshaler   = new(Fraction)
-	_ yaml.Marshaler   = new(Fraction)
-	_ json.Unmarshaler = new(Fraction)
-	_ yaml.Unmarshaler = new(Fraction)
+	_ json.Marshaler      = new(Fraction)
+	_ json.Unmarshaler    = new(Fraction)
+	_ yaml.Marshaler      = new(Fraction)
+	_ yaml.Unmarshaler    = new(Fraction)
+	_ protoFieldMarshaler = new(Fraction)
 )
 
 func (x Fraction) MarshalJSON() ([]byte, error) {
@@ -91,7 +103,7 @@ func ParseFraction(s string) (Fraction, error) {
 		err   error
 	)
 
-	if s == "nil" {
+	if s == "" || s == "nil" {
 		return Fraction{}, nil
 	}
 
@@ -106,7 +118,7 @@ func ParseFraction(s string) (Fraction, error) {
 		if len(match) == 0 {
 			return Fraction{}, fmt.Errorf("invalid fraction format, 'x%' or 'x/y' expected: " + s)
 		}
-		if len(match) > 2 {
+		if len(match) > 2 && len(match[2]) > 0 {
 			err = denom.UnmarshalText([]byte(match[2]))
 			if err != nil {
 				return Fraction{}, err
@@ -138,7 +150,7 @@ func (x Fraction) String() string {
 
 	if x.denom != nil && x.denom.IsInt64() && x.denom.Int64() == 100 {
 		sb.WriteRune('%')
-	} else {
+	} else if !(x.denom != nil && x.denom.IsInt64() && x.denom.Int64() == 1) {
 		sb.WriteRune('/')
 		bytes, err = x.denom.MarshalText()
 		if err != nil {
@@ -149,9 +161,9 @@ func (x Fraction) String() string {
 	return sb.String()
 }
 
-func (x Fraction) Int64() int64 {
-	return (&big.Int{}).Quo(x.num, x.denom).Int64()
-}
+func (x Fraction) BigInt() *big.Int { return (&big.Int{}).Quo(x.num, x.denom) }
+
+func (x Fraction) Int64() int64 { return x.BigInt().Int64() }
 
 func (x Fraction) Reduce() Fraction {
 	if x.denom.Sign() < 0 {
@@ -225,6 +237,7 @@ func (x Fraction) IsPositive() bool {
 	return x.num.Sign()*x.denom.Sign() > 0
 }
 
+func (x Fraction) Equal(y Fraction) bool { return x.Sub(y).IsZero() }
 func (x Fraction) GT(y Fraction) bool  { return x.Sub(y).IsPositive() }
 func (x Fraction) LT(y Fraction) bool  { return y.GT(x) }
 func (x Fraction) GTE(y Fraction) bool { return !x.LT(y) }
@@ -239,3 +252,13 @@ func lcm(x *big.Int, y *big.Int) *big.Int {
 	}
 	return res
 }
+
+func (x Fraction) Size() int { return len(x.String()) }
+
+func (x Fraction) MarshalTo(dest []byte) (int, error) {
+	s := x.String()
+	copy(dest, s)
+	return len(s), nil
+}
+
+func (x *Fraction) Unmarshal(bz []byte) error { return x.unmarshalText(string(bz)) }

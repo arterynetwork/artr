@@ -1,63 +1,61 @@
 package keeper
 
 import (
-	"github.com/arterynetwork/artr/x/delegating"
 	"encoding/binary"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/x/upgrade"
-	"github.com/tendermint/tendermint/libs/log"
 	"time"
 
-	"github.com/arterynetwork/artr/x/voting/types"
+	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/arterynetwork/artr/x/voting/types"
 )
 
 // Keeper of the voting store
 type Keeper struct {
-	storeKey           sdk.StoreKey
-	cdc                *codec.Codec
-	paramspace         types.ParamSubspace
-	scheduleKeeper     types.ScheduleKeeper
-	upgradeKeeper      types.UprgadeKeeper
-	nodingKeeper       types.NodingKeeper
-	delegatingKeeper   types.DelegatingKeeper
-	referralKeeper     types.ReferralKeeper
-	subscriptionKeeper types.SubscriptionKeeper
-	profileKeeper      types.ProfileKeeper
-	earningKeeper      types.EarningKeeper
-	vpnKeeper          types.VpnKeeper
-	bankKeeper         types.BankKeeper
+	storeKey         sdk.StoreKey
+	cdc              codec.BinaryMarshaler
+	paramspace       types.ParamSubspace
+	scheduleKeeper   types.ScheduleKeeper
+	upgradeKeeper    types.UprgadeKeeper
+	nodingKeeper     types.NodingKeeper
+	delegatingKeeper types.DelegatingKeeper
+	referralKeeper   types.ReferralKeeper
+	profileKeeper    types.ProfileKeeper
+	earningKeeper    types.EarningKeeper
+	bankKeeper       types.BankKeeper
 }
 
 // NewKeeper creates a voting keeper
 func NewKeeper(
-	cdc *codec.Codec, key sdk.StoreKey, paramspace types.ParamSubspace,
+	cdc codec.BinaryMarshaler, key sdk.StoreKey, paramspace types.ParamSubspace,
 	scheduleKeeper types.ScheduleKeeper,
 	upgradeKeeper types.UprgadeKeeper,
 	nodingKeeper types.NodingKeeper,
 	delegatingKeeper types.DelegatingKeeper,
 	referralKeeper types.ReferralKeeper,
-	subscriptionKeeper types.SubscriptionKeeper,
 	profileKeeper types.ProfileKeeper,
 	earningKeeper types.EarningKeeper,
-	vpnKeeper types.VpnKeeper,
 	bankKeeper types.BankKeeper,
 ) Keeper {
 	keeper := Keeper{
-		storeKey:           key,
-		cdc:                cdc,
-		paramspace:         paramspace.WithKeyTable(types.ParamKeyTable()),
-		scheduleKeeper:     scheduleKeeper,
-		upgradeKeeper:      upgradeKeeper,
-		nodingKeeper:       nodingKeeper,
-		delegatingKeeper:   delegatingKeeper,
-		referralKeeper:     referralKeeper,
-		subscriptionKeeper: subscriptionKeeper,
-		profileKeeper:      profileKeeper,
-		earningKeeper:      earningKeeper,
-		vpnKeeper:          vpnKeeper,
-		bankKeeper:         bankKeeper,
+		storeKey:         key,
+		cdc:              cdc,
+		paramspace:       paramspace.WithKeyTable(types.ParamKeyTable()),
+		scheduleKeeper:   scheduleKeeper,
+		upgradeKeeper:    upgradeKeeper,
+		nodingKeeper:     nodingKeeper,
+		delegatingKeeper: delegatingKeeper,
+		referralKeeper:   referralKeeper,
+		profileKeeper:    profileKeeper,
+		earningKeeper:    earningKeeper,
+		bankKeeper:       bankKeeper,
 	}
 	return keeper
 }
@@ -76,7 +74,7 @@ func (k Keeper) GetCurrentProposal(ctx sdk.Context) *types.Proposal {
 	}
 
 	var proposal types.Proposal
-	err := k.cdc.UnmarshalBinaryLengthPrefixed(bz, &proposal)
+	err := proto.Unmarshal(bz, &proposal)
 
 	if err != nil {
 		panic(err)
@@ -87,7 +85,10 @@ func (k Keeper) GetCurrentProposal(ctx sdk.Context) *types.Proposal {
 
 func (k Keeper) SetCurrentProposal(ctx sdk.Context, proposal types.Proposal) {
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryLengthPrefixed(proposal)
+	bz, err := proto.Marshal(&proposal)
+	if err != nil {
+		panic(err)
+	}
 	store.Set(types.KeyCurrentVote, bz)
 }
 
@@ -96,16 +97,21 @@ func (k Keeper) GetAgreed(ctx sdk.Context) (gov types.Government) {
 	bz := store.Get(types.KeyAgreedMembers)
 
 	if bz == nil {
-		return types.NewEmptyGovernment()
+		return types.Government{}
 	}
 
-	k.cdc.MustUnmarshalBinaryLengthPrefixed(bz, &gov)
+	if err := proto.Unmarshal(bz, &gov); err != nil {
+		panic(err)
+	}
 	return gov
 }
 
 func (k Keeper) SetAgreed(ctx sdk.Context, agreed types.Government) {
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryLengthPrefixed(agreed)
+	bz, err := proto.Marshal(&agreed)
+	if err != nil {
+		panic(err)
+	}
 	store.Set(types.KeyAgreedMembers, bz)
 }
 
@@ -114,16 +120,21 @@ func (k Keeper) GetDisagreed(ctx sdk.Context) (gov types.Government) {
 	bz := store.Get(types.KeyDisagreedMembers)
 
 	if bz == nil {
-		return types.NewEmptyGovernment()
+		return types.Government{}
 	}
 
-	k.cdc.MustUnmarshalBinaryLengthPrefixed(bz, &gov)
+	if err := proto.Unmarshal(bz, &gov); err != nil {
+		panic(err)
+	}
 	return gov
 }
 
 func (k Keeper) SetDisagreed(ctx sdk.Context, disagreed types.Government) {
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryLengthPrefixed(disagreed)
+	bz, err := proto.Marshal(&disagreed)
+	if err != nil {
+		panic(err)
+	}
 	store.Set(types.KeyDisagreedMembers, bz)
 }
 
@@ -132,12 +143,9 @@ func (k Keeper) Validate(gov types.Government,
 	dGov types.Government,
 ) (complete bool, agreed bool) {
 
-	if len(gov) == (len(aGov) + len(dGov)) {
+	if len(gov.Members) == (len(aGov.Members) + len(dGov.Members)) {
 		complete = true
-
-		if len(aGov) == len(gov) || len(aGov) >= len(gov)*2/3 {
-			agreed = true
-		}
+		agreed = len(aGov.Members)*3 >= len(gov.Members)*2
 	}
 
 	return complete, agreed
@@ -146,14 +154,17 @@ func (k Keeper) Validate(gov types.Government,
 func (k Keeper) SaveProposalToHistory(ctx sdk.Context, store sdk.KVStore) {
 	history := types.ProposalHistoryRecord{
 		Proposal:   *k.GetCurrentProposal(ctx),
-		Government: k.GetGovernment(ctx),
-		Agreed:     k.GetAgreed(ctx),
-		Disagreed:  k.GetDisagreed(ctx),
+		Government: k.GetGovernment(ctx).Members,
+		Agreed:     k.GetAgreed(ctx).Members,
+		Disagreed:  k.GetDisagreed(ctx).Members,
 		Started:    k.GetStartBlock(ctx),
-		Ended:      ctx.BlockHeight(),
+		Finished:   ctx.BlockHeight(),
 	}
 
-	historyBz := k.cdc.MustMarshalBinaryLengthPrefixed(history)
+	historyBz, err := proto.Marshal(&history)
+	if err != nil {
+		panic(err)
+	}
 	height := make([]byte, 8)
 	binary.BigEndian.PutUint64(height, uint64(ctx.BlockHeight()))
 	key := append(types.KeyHistoryPrefix, height...)
@@ -162,9 +173,12 @@ func (k Keeper) SaveProposalToHistory(ctx sdk.Context, store sdk.KVStore) {
 
 func (k Keeper) AddProposalHistoryRecord(ctx sdk.Context, record types.ProposalHistoryRecord) {
 	store := ctx.KVStore(k.storeKey)
-	historyBz := k.cdc.MustMarshalBinaryLengthPrefixed(record)
+	historyBz, err := proto.Marshal(&record)
+	if err != nil {
+		panic(err)
+	}
 	height := make([]byte, 8)
-	binary.BigEndian.PutUint64(height, uint64(record.Ended))
+	binary.BigEndian.PutUint64(height, uint64(record.Finished))
 	key := append(types.KeyHistoryPrefix, height...)
 	store.Set(key, historyBz)
 }
@@ -183,8 +197,9 @@ func (k Keeper) GetStartBlock(ctx sdk.Context) int64 {
 }
 
 func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed bool) {
+	k.Logger(ctx).Debug("EndProposal", "proposal", proposal, "agreed", agreed)
 	// Delete scheduled completion
-	k.scheduleKeeper.DeleteAllTasksOnBlock(ctx, uint64(proposal.EndBlock), types.HookName)
+	k.scheduleKeeper.DeleteAll(ctx, *proposal.EndTime, types.HookName)
 
 	store := ctx.KVStore(k.storeKey)
 
@@ -197,114 +212,122 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 	store.Delete(types.KeyDisagreedMembers)
 	store.Delete(types.KeyStartBlock)
 
-	agreedText := "no"
-
-	if agreed {
-		agreedText = "yes"
-	}
-
-	ctx.EventManager().EmitEvent(sdk.NewEvent(
-		types.EventTypeProposalEnd,
-		sdk.NewAttribute(types.AttributeKeyAgree, agreedText),
-	))
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventVotingFinished{
+			Name:   proposal.Name,
+			Agreed: agreed,
+		},
+	); err != nil { panic(err) }
 
 	if agreed {
 		var err error
-		switch proposal.TypeCode {
-		case types.ProposalTypeEnterPrice:
-			p := k.subscriptionKeeper.GetParams(ctx)
-			p.SubscriptionPrice = proposal.Params.(types.PriceProposalParams).Price
-			k.subscriptionKeeper.SetParams(ctx, p)
-		case types.ProposalTypeDelegationAward:
-			pp := proposal.Params.(types.DelegationAwardProposalParams)
-			val := delegating.NewPercentage(int(pp.Minimal), int(pp.ThousandPlus), int(pp.TenKPlus), int(pp.HundredKPlus))
+		switch proposal.Type {
+		case types.PROPOSAL_TYPE_ENTER_PRICE:
+			p := k.profileKeeper.GetParams(ctx)
+			p.SubscriptionPrice = proposal.GetPrice().Price
+			k.profileKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_DELEGATION_AWARD:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.Percentage = val
+			p.Percentage = proposal.GetDelegationAward().Award
 			k.delegatingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeDelegationNetworkAward:
+		case types.PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD:
 			p := k.referralKeeper.GetParams(ctx)
-			p.DelegatingAward = proposal.Params.(types.NetworkAwardProposalParams).Award
+			p.DelegatingAward = proposal.GetNetworkAward().Award
 			k.referralKeeper.SetParams(ctx, p)
-		case types.ProposalTypeProductNetworkAward:
+		case types.PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD:
 			p := k.referralKeeper.GetParams(ctx)
-			p.SubscriptionAward = proposal.Params.(types.NetworkAwardProposalParams).Award
+			p.SubscriptionAward = proposal.GetNetworkAward().Award
 			k.referralKeeper.SetParams(ctx, p)
-		case types.ProposalTypeGovernmentAdd:
-			k.AddGovernor(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeGovernmentRemove:
-			k.RemoveGovernor(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeProductVpnBasePrice:
-			p := k.subscriptionKeeper.GetParams(ctx)
-			p.VPNGBPrice = proposal.Params.(types.PriceProposalParams).Price
-			k.subscriptionKeeper.SetParams(ctx, p)
-		case types.ProposalTypeProductStorageBasePrice:
-			p := k.subscriptionKeeper.GetParams(ctx)
-			p.StorageGBPrice = proposal.Params.(types.PriceProposalParams).Price
-			k.subscriptionKeeper.SetParams(ctx, p)
-		case types.ProposalTypeAddFreeCreator:
-			k.profileKeeper.AddFreeCreator(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeRemoveFreeCreator:
-			k.profileKeeper.RemoveFreeCreator(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeSoftwareUpgrade:
-			p := proposal.Params.(types.SoftwareUpgradeProposalParams)
-			err = k.upgradeKeeper.ScheduleUpgrade(ctx, upgrade.Plan{
-				Name:   p.Name,
-				Time:   time.Time{},
-				Height: p.Height,
-				Info:   p.Info,
-			})
-		case types.ProposalTypeCancelSoftwareUpgrade:
+		case types.PROPOSAL_TYPE_GOVERNMENT_ADD:
+			k.AddGovernor(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_GOVERNMENT_REMOVE:
+			k.RemoveGovernor(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_PRODUCT_VPN_BASE_PRICE:
+			p := k.profileKeeper.GetParams(ctx)
+			p.VpnGbPrice = proposal.GetPrice().Price
+			k.profileKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_PRODUCT_STORAGE_BASE_PRICE:
+			p := k.profileKeeper.GetParams(ctx)
+			p.StorageGbPrice = proposal.GetPrice().Price
+			k.profileKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_FREE_CREATOR_ADD:
+			k.profileKeeper.AddFreeCreator(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_FREE_CREATOR_REMOVE:
+			k.profileKeeper.RemoveFreeCreator(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_SOFTWARE_UPGRADE:
+			p := proposal.GetSoftwareUpgrade()
+			plan := upgrade.Plan{
+				Name: p.Name,
+				Info: p.Info,
+			}
+			if p.Time != nil {
+				plan.Time = *p.Time
+			}
+			err = k.upgradeKeeper.ScheduleUpgrade(ctx, plan)
+		case types.PROPOSAL_TYPE_CANCEL_SOFTWARE_UPGRADE:
 			k.upgradeKeeper.ClearUpgradePlan(ctx)
-		case types.ProposalTypeStaffValidatorAdd:
-			err = k.nodingKeeper.AddToStaff(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeStaffValidatorRemove:
-			err = k.nodingKeeper.RemoveFromStaff(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeEarningSignerAdd:
-			k.earningKeeper.AddSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeEarningSignerRemove:
-			k.earningKeeper.RemoveSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeRateChangeSignerAdd:
-			k.subscriptionKeeper.AddCourseChangeSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeRateChangeSignerRemove:
-			k.subscriptionKeeper.RemoveCourseChangeSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeVpnCurrentSignerAdd:
-			k.vpnKeeper.AddSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeVpnCurrentSignerRemove:
-			k.vpnKeeper.RemoveSigner(ctx, proposal.Params.(types.AddressProposalParams).Address)
-		case types.ProposalTypeTransitionCost:
+		case types.PROPOSAL_TYPE_STAFF_VALIDATOR_ADD:
+			err = k.nodingKeeper.AddToStaff(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_STAFF_VALIDATOR_REMOVE:
+			err = k.nodingKeeper.RemoveFromStaff(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_EARNING_SIGNER_ADD:
+			k.earningKeeper.AddSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_EARNING_SIGNER_REMOVE:
+			k.earningKeeper.RemoveSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_TOKEN_RATE_SIGNER_ADD:
+			k.profileKeeper.AddTokenRateSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_TOKEN_RATE_SIGNER_REMOVE:
+			k.profileKeeper.RemoveTokenRateSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_VPN_SIGNER_ADD:
+			k.profileKeeper.AddVpnCurrentSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_VPN_SIGNER_REMOVE:
+			k.profileKeeper.RemoveVpnCurrentSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_STORAGE_SIGNER_ADD:
+			k.profileKeeper.AddStorageCurrentSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_STORAGE_SIGNER_REMOVE:
+			k.profileKeeper.RemoveStorageCurrentSigner(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_TRANSITION_PRICE:
 			p := k.referralKeeper.GetParams(ctx)
-			p.TransitionCost = uint64(proposal.Params.(types.PriceProposalParams).Price)
+			p.TransitionPrice = uint64(proposal.GetPrice().Price)
 			k.referralKeeper.SetParams(ctx, p)
-		case types.ProposalTypeMinSend:
-			k.bankKeeper.SetMinSend(ctx, proposal.Params.(types.MinAmountProposalParams).MinAmount)
-		case types.ProposalTypeMinDelegate:
+		case types.PROPOSAL_TYPE_MIN_SEND:
+			p := k.bankKeeper.GetParams(ctx)
+			p.MinSend = proposal.GetMinAmount().MinAmount
+			k.bankKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_MIN_DELEGATE:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.MinDelegate = proposal.Params.(types.MinAmountProposalParams).MinAmount
+			p.MinDelegate = proposal.GetMinAmount().MinAmount
 			k.delegatingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeMaxValidators:
+		case types.PROPOSAL_TYPE_MAX_VALIDATORS:
 			p := k.nodingKeeper.GetParams(ctx)
-			p.MaxValidators = proposal.Params.(types.ShortCountProposalParams).Count
+			p.MaxValidators = proposal.GetCount().Count
 			k.nodingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeGeneralAmnesty:
+		case types.PROPOSAL_TYPE_GENERAL_AMNESTY:
 			k.nodingKeeper.GeneralAmnesty(ctx)
-		case types.ProposalTypeLotteryValidators:
+		case types.PROPOSAL_TYPE_LUCKY_VALIDATORS:
 			p := k.nodingKeeper.GetParams(ctx)
-			p.LotteryValidators = proposal.Params.(types.ShortCountProposalParams).Count
+			p.LotteryValidators = proposal.GetCount().Count
 			k.nodingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeValidatorMinimalStatus:
+		case types.PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS:
 			p := k.nodingKeeper.GetParams(ctx)
-			p.MinStatus = proposal.Params.(types.StatusProposalParams).Status
+			p.MinStatus = proposal.GetStatus().Status
 			k.nodingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeJailAfter:
+		case types.PROPOSAL_TYPE_JAIL_AFTER:
 			p := k.nodingKeeper.GetParams(ctx)
-			p.JailAfter = proposal.Params.(types.ShortCountProposalParams).Count
+			p.JailAfter = proposal.GetCount().Count
 			k.nodingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeRevokePeriod:
+		case types.PROPOSAL_TYPE_REVOKE_PERIOD:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.RevokePeriod = int64(proposal.Params.(types.PeriodProposalParams).Period)
+			p.RevokePeriod = proposal.GetPeriod().Days
 			k.delegatingKeeper.SetParams(ctx, p)
-		case types.ProposalTypeDustDelegation:
-			k.bankKeeper.SetDustDelegation(ctx, proposal.Params.(types.MinAmountProposalParams).MinAmount)
+		case types.PROPOSAL_TYPE_DUST_DELEGATION:
+			p := k.bankKeeper.GetParams(ctx)
+			p.DustDelegation = proposal.GetMinAmount().MinAmount
+			k.bankKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_VOTING_POWER:
+			p := k.nodingKeeper.GetParams(ctx)
+			p.VotingPower = *proposal.GetVotingPower()
+			k.nodingKeeper.SetParams(ctx, p)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",
@@ -315,11 +338,11 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 	}
 }
 
-func (k Keeper) ScheduleEnding(ctx sdk.Context, block int64) {
-	k.scheduleKeeper.ScheduleTask(ctx, uint64(block), types.HookName, &[]byte{0x0})
+func (k Keeper) ScheduleEnding(ctx sdk.Context, time time.Time) {
+	k.scheduleKeeper.ScheduleTask(ctx, time, types.HookName, nil)
 }
 
-func (k Keeper) ProcessSchedule(ctx sdk.Context, data []byte) {
+func (k Keeper) ProcessSchedule(ctx sdk.Context, _ []byte, _ time.Time) {
 	proposal := k.GetCurrentProposal(ctx)
 
 	if proposal != nil {
@@ -350,9 +373,94 @@ func (k Keeper) GetHistory(ctx sdk.Context, limit int32, page int32) []types.Pro
 		}
 		current++
 		var record types.ProposalHistoryRecord
-		k.cdc.MustUnmarshalBinaryLengthPrefixed(iterator.Value(), &record)
+		if err := proto.Unmarshal(iterator.Value(), &record); err != nil {
+			panic(err)
+		}
 		records = append(records, record)
 	}
 
 	return records
+}
+
+func (k Keeper) Propose(ctx sdk.Context, msg types.MsgPropose) error {
+	if k.GetCurrentProposal(ctx) != nil {
+		return types.ErrOtherActive
+	}
+
+	var (
+		proposal = msg.Proposal
+		gov      = k.GetGovernment(ctx)
+	)
+	if !gov.Contains(proposal.GetAuthor()) {
+		return errors.Wrap(types.ErrSignerNotAllowed, msg.Proposal.Author)
+	}
+
+	params := k.GetParams(ctx)
+	endTime := ctx.BlockTime().Add(time.Duration(params.VotingPeriod) * time.Hour)
+	proposal.EndTime = &endTime
+
+	// Set proposal
+	k.SetCurrentProposal(ctx, proposal)
+
+	// Set empty lists of voters
+	agreed, disagreed := types.Government{Members: []string{proposal.Author}}, types.Government{}
+	k.SetAgreed(ctx, agreed)
+	k.SetDisagreed(ctx, disagreed)
+	k.ScheduleEnding(ctx, endTime)
+	k.SetStartBlock(ctx)
+
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventProposalCreated{
+			Name:   proposal.Name,
+			Author: proposal.Author,
+			Type:   proposal.Type,
+		},
+	); err != nil { panic(err) }
+
+	if complete, agree := k.Validate(gov, agreed, disagreed); complete {
+		k.EndProposal(ctx, proposal, agree)
+	}
+	return nil
+}
+
+func (k Keeper) Vote(ctx sdk.Context, voter sdk.AccAddress, agree bool) error {
+	proposal := k.GetCurrentProposal(ctx)
+	if proposal == nil {
+		return types.ErrNoActiveProposals
+	}
+
+	gov := k.GetGovernment(ctx)
+	if !gov.Contains(voter) {
+		return errors.Wrap(types.ErrSignerNotAllowed, voter.String())
+	}
+
+	agreed := k.GetAgreed(ctx)
+	if agreed.Contains(voter) {
+		return errors.Wrap(types.ErrAlreadyVoted, voter.String())
+	}
+
+	disagreed := k.GetDisagreed(ctx)
+	if disagreed.Contains(voter) {
+		return sdkerrors.Wrap(types.ErrAlreadyVoted, voter.String())
+	}
+
+	if agree {
+		agreed.Append(voter)
+		k.SetAgreed(ctx, agreed)
+	} else {
+		disagreed.Append(voter)
+		k.SetDisagreed(ctx, disagreed)
+	}
+
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventProposalVote{
+			Voter:  voter.String(),
+			Agreed: agree,
+		},
+	); err != nil { panic(err) }
+
+	if complete, agree := k.Validate(gov, agreed, disagreed); complete {
+		k.EndProposal(ctx, *proposal, agree)
+	}
+	return nil
 }

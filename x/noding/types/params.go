@@ -3,8 +3,11 @@ package types
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral"
@@ -17,16 +20,30 @@ const (
 	DefaultJailAfter         = 2
 	DefaultUnjailAfter       = util.BlocksOneHour
 	DefaultLotteryValidators = 0
-	DefaultMinStatus         = uint8(referral.StatusLeader)
+	DefaultMinStatus         = referral.StatusLeader
 )
 
 // Parameter store keys
 var (
+	DefaultVotingPower = Distribution{
+		Slices: []Distribution_Slice{
+			{
+				Part:        util.Percent(15),
+				VotingPower: 15,
+			}, {
+				Part:        util.Percent(85),
+				VotingPower: 10,
+			},
+		},
+		LuckiesVotingPower: 10,
+	}
+
 	KeyMaxValidators     = []byte("MaxValidators")
 	KeyJailAfter         = []byte("JailAfter")
 	KeyUnjailAfter       = []byte("UnjailAfter")
 	KeyLotteryValidators = []byte("LotteryValidators")
 	KeyMinStatus         = []byte("MinStatus")
+	KeyVotingPower       = []byte("VotingPower")
 )
 
 // ParamKeyTable for noding module
@@ -34,22 +51,8 @@ func ParamKeyTable() params.KeyTable {
 	return params.NewKeyTable().RegisterParamSet(&Params{})
 }
 
-// Params - used for initializing default parameter for noding at genesis
-type Params struct {
-	// MaxValidators - maximum count of validators that can be chosen for tendermint consensus
-	MaxValidators uint16 `json:"max_validators" yaml:"max_validators"`
-	// JailAfter - number of missed in row blocks after which a validator is jailed
-	JailAfter uint16 `json:"jail_after" yaml:"jail_after"`
-	// UnjailAfter - number of block after which a jailed validator may unjail
-	UnjailAfter int64 `json:"unjail_after" yaml:"unjail_after"`
-	// LotteryValidators - count of validators to be chosen randomly in addition to the top ones
-	LotteryValidators uint16 `json:"lottery_validators" yaml:"lottery_validators"`
-	// MinStatus - minimal status a validator must have
-	MinStatus uint8 `json:"min_status" yaml:"min_status"`
-}
-
 // NewParams creates a new Params object
-func NewParams(maxValidators uint16, jailAfter uint16, unjailAfter int64, lotteryValidators uint16, minStatus uint8) Params {
+func NewParams(maxValidators, jailAfter, unjailAfter, lotteryValidators uint32, minStatus referral.Status) Params {
 	return Params{
 		MaxValidators:     maxValidators,
 		JailAfter:         jailAfter,
@@ -61,9 +64,11 @@ func NewParams(maxValidators uint16, jailAfter uint16, unjailAfter int64, lotter
 
 // String implements the stringer interface for Params
 func (p Params) String() string {
-	return fmt.Sprintf(`MaxValidators: %d; JailAfter: %d; UnjailAfter: %d; LotteryValidators: %d; MinStatus: %d`,
-		p.MaxValidators, p.JailAfter, p.UnjailAfter, p.LotteryValidators, p.MinStatus,
-	)
+	bz, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(bz)
 }
 
 // ParamSetPairs - Implements params.ParamSet
@@ -74,6 +79,7 @@ func (p *Params) ParamSetPairs() params.ParamSetPairs {
 		params.NewParamSetPair(KeyUnjailAfter, &p.UnjailAfter, validateUnjailAfter),
 		params.NewParamSetPair(KeyLotteryValidators, &p.LotteryValidators, validateAdditionalValidators),
 		params.NewParamSetPair(KeyMinStatus, &p.MinStatus, validateStatus),
+		params.NewParamSetPair(KeyVotingPower, &p.VotingPower, validateVotingPower),
 	}
 }
 
@@ -89,28 +95,28 @@ func DefaultParams() Params {
 }
 
 func validateMaxValidators(value interface{}) error {
-	x, ok := value.(uint16)
+	x, ok := value.(uint32)
 	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", value)
+		return fmt.Errorf("invalid max_validators type: %T", value)
 	}
 	if x == 0 {
-		return fmt.Errorf("max validators must be positive: %d", x)
+		return fmt.Errorf("max_validators must be positive: %d", x)
 	}
 	return nil
 }
 
 func validateAdditionalValidators(value interface{}) error {
-	_, ok := value.(uint16)
+	_, ok := value.(uint32)
 	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", value)
+		return fmt.Errorf("invalid lottery_validators type: %T", value)
 	}
 	return nil
 }
 
 func validateJailAfter(value interface{}) error {
-	x, ok := value.(uint16)
+	x, ok := value.(uint32)
 	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", value)
+		return fmt.Errorf("invalid jail_after type: %T", value)
 	}
 	if x == 0 {
 		return fmt.Errorf("jail after must be positive: %d", x)
@@ -119,9 +125,9 @@ func validateJailAfter(value interface{}) error {
 }
 
 func validateUnjailAfter(value interface{}) error {
-	x, ok := value.(int64)
+	x, ok := value.(uint32)
 	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", value)
+		return fmt.Errorf("invalid unjail_after type: %T", value)
 	}
 	if x <= 0 {
 		return fmt.Errorf("ujail after must be positive: %d", x)
@@ -130,17 +136,25 @@ func validateUnjailAfter(value interface{}) error {
 }
 
 func validateStatus(i interface{}) error {
-	status, ok := i.(uint8)
+	status, ok := i.(referral.Status)
 	if !ok {
-		return fmt.Errorf("invalid parameter type (uint8 expected): %T", i)
+		return fmt.Errorf("invalid min_status type (uint8 expected): %T", i)
 	}
-	if status < uint8(referral.StatusLucky) {
+	if status < referral.StatusLucky {
 		return fmt.Errorf("status beyond min: %d", status)
 	}
-	if status > uint8(referral.StatusAbsoluteChampion) {
+	if status > referral.StatusAbsoluteChampion {
 		return fmt.Errorf("status above max: %d", status)
 	}
 	return nil
+}
+
+func validateVotingPower(i interface{}) error {
+	distr, ok := i.(Distribution)
+	if !ok {
+		return errors.Errorf("invalid voting_power type: %T", i)
+	}
+	return errors.Wrap(distr.Validate(), "invalid voting_power")
 }
 
 func (p *Params) Validate() error {
@@ -162,5 +176,6 @@ func (p *Params) Validate() error {
 	if err := validateStatus(p.MinStatus); err != nil {
 		return sdkerrors.Wrap(err, "invalid MinStatus")
 	}
+	if err := validateVotingPower(p.VotingPower); err != nil { return err }
 	return nil
 }

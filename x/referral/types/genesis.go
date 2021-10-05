@@ -1,116 +1,88 @@
 package types
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
-type Refs struct {
-	Referrer  sdk.AccAddress   `json:"referrer"`
-	Referrals []sdk.AccAddress `json:"referrals"`
-}
-
-type GenesisCompression struct {
-	Account sdk.AccAddress `json:"account"`
-	Height  int64          `json:"height"`
-}
-
-func NewGenesisCompression(acc sdk.AccAddress, at int64) GenesisCompression {
-	return GenesisCompression{
+func NewCompression(acc string, at time.Time) *Compression {
+	return &Compression{
 		Account: acc,
-		Height:  at,
+		Time:    at,
 	}
 }
 
-type GenesisStatusDowngrade struct {
-	Account sdk.AccAddress `json:"account"`
-	Current uint8          `json:"current"`
-	Height  int64          `json:"height"`
-}
-
-func NewGenesisStatusDowngrade(acc sdk.AccAddress, current Status, at int64) GenesisStatusDowngrade {
-	return GenesisStatusDowngrade{
+func NewDowngrade(acc string, current Status, at time.Time) *Downgrade {
+	return &Downgrade{
 		Account: acc,
-		Current: uint8(current),
-		Height:  at,
+		Current: current,
+		Time:    at,
 	}
 }
 
-// Transition represents an account transition request. Destination is equal to Subject's R.Transition field.
-type Transition struct {
-	Subject     sdk.AccAddress `json:"subj"`
-	Destination sdk.AccAddress `json:"dest"`
+func (d Downgrade) GetAccount() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(d.Account)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 // NewTransition creates and fully initializes a new Transition instance.
-func NewTransition(subject, destination sdk.AccAddress) Transition {
-	return Transition{
-		Subject:     subject,
-		Destination: destination,
+func NewTransition(subject, destination sdk.AccAddress) *Transition {
+	return &Transition{
+		Subject:     subject.String(),
+		Destination: destination.String(),
+	}
+}
+
+func NewRefs(parent string, children []string) *Refs {
+	return &Refs{
+		Referrer:  parent,
+		Referrals: children,
 	}
 }
 
 // Validate performs very basic sanity check.
 func (t Transition) Validate() error {
-	if t.Subject.Empty() {
-		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "subject address is missing")
+	if _, err := sdk.AccAddressFromBech32(t.Subject); err != nil {
+		return errors.Wrap(err, "invalid subject address")
 	}
-	if t.Destination.Empty() {
-		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "destination address is missing")
-	}
-	return nil
-}
-
-type GenesisBanishedOne struct {
-	Account        sdk.AccAddress `json:"acc" yaml:"acc"`
-	FormerReferrer sdk.AccAddress `json:"ref" yaml:"ref"`
-	Height         int64          `json:"h" yaml:"h"`
-}
-
-func (ba GenesisBanishedOne) Validate() error {
-	if ba.Account.Empty() {
-		return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "account address is missing")
+	if _, err := sdk.AccAddressFromBech32(t.Destination); err != nil {
+		return errors.Wrap(err, "invalid destination address")
 	}
 	return nil
-}
-
-// GenesisState - all referral state that must be provided at genesis
-type GenesisState struct {
-	Params           Params                   `json:"params" yaml:"params"`
-	TopLevelAccounts []sdk.AccAddress         `json:"top_level_accounts" yaml:"top_level_accounts"`
-	OtherAccounts    []Refs                   `json:"other_accounts" yaml:"other_accounts"`
-	BanishedAccounts []GenesisBanishedOne     `json:"banished_accounts" yaml:"banished_accounts"`
-	Compression      []GenesisCompression     `json:"compression,omitempty" yaml:"compression,omitempty"`
-	Downgrade        []GenesisStatusDowngrade `json:"downgrade,omitempty" yaml:"downgrade,omitempty"`
-	Transitions      []Transition             `json:"transitions,omitempty" yaml:"transitions,omitempty"`
 }
 
 // NewGenesisState creates a new GenesisState object
 func NewGenesisState(
 	params Params,
-	topLevelAccounts []sdk.AccAddress,
+	topLevelAccounts []string,
 	otherAccounts []Refs,
-	banishedAccounts []GenesisBanishedOne,
-	compressions []GenesisCompression,
-	downgrades []GenesisStatusDowngrade,
+	banished []Banished,
+	neverPaid []string,
+	compressions []Compression,
+	downgrades []Downgrade,
 	transitions []Transition,
-) GenesisState {
-	return GenesisState{
+) *GenesisState {
+	return &GenesisState{
 		Params:           params,
 		TopLevelAccounts: topLevelAccounts,
 		OtherAccounts:    otherAccounts,
-		BanishedAccounts: banishedAccounts,
-		Compression:      compressions,
-		Downgrade:        downgrades,
+		BanishedAccounts: banished,
+		NeverPaid:        neverPaid,
+		Compressions:     compressions,
+		Downgrades:       downgrades,
 		Transitions:      transitions,
 	}
 }
 
 // DefaultGenesisState - default GenesisState used by Cosmos Hub
-func DefaultGenesisState() GenesisState {
-	return GenesisState{
+func DefaultGenesisState() *GenesisState {
+	return &GenesisState{
 		Params: DefaultParams(),
 	}
 }
@@ -121,12 +93,7 @@ func ValidateGenesis(data GenesisState) error {
 		return errors.New("empty top level accounts set")
 	}
 	if err := data.Params.Validate(); err != nil {
-		return err
-	}
-	for i, ba := range data.BanishedAccounts {
-		if err := ba.Validate(); err != nil {
-			return errors.Wrapf(err, "invalid banished account #%d", i)
-		}
+		return errors.Wrap(err, "invalid params")
 	}
 	for i, t := range data.Transitions {
 		if err := t.Validate(); err != nil {

@@ -9,8 +9,7 @@ import (
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
-	k.InitClusters(ctx, data.Clusters)
-	k.InitRevokeRequests(ctx, data.Revoking)
+	k.InitAccounts(ctx, data.Accounts)
 }
 
 // ExportGenesis writes the current store values
@@ -19,7 +18,6 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) {
 func ExportGenesis(ctx sdk.Context, k Keeper) (data GenesisState) {
 	return NewGenesisState(
 		k.GetParams(ctx),
-		k.ExportClusters(ctx),
-		k.ExportRevokeRequests(ctx),
+		k.ExportAccounts(ctx),
 	)
 }

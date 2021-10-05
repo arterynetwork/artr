@@ -1,186 +1,28 @@
 package voting
 
 import (
-	"github.com/arterynetwork/artr/x/delegating"
-	"github.com/arterynetwork/artr/x/voting/types"
-	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+
+	"github.com/arterynetwork/artr/x/voting/keeper"
+	"github.com/arterynetwork/artr/x/voting/types"
 )
 
-// NewHandler creates an sdk.Handler for all the voting type messages
-func NewHandler(k Keeper) sdk.Handler {
+func NewHandler(k keeper.Keeper) sdk.Handler {
 	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+		srv := keeper.MsgServer(k)
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
+		sdkCtx := sdk.WrapSDKContext(ctx)
+
 		switch msg := msg.(type) {
-		case types.MsgCreateProposal:
-			return handleMsgCreateProposal(ctx, k, msg)
-		case types.MsgProposalVote:
-			return handleMsgProposalVote(ctx, k, msg)
+		case *types.MsgPropose:
+			res, err := srv.Propose(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgVote:
+			res, err := srv.Vote(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
-			errMsg := fmt.Sprintf("unrecognized %s message type: %T", ModuleName, msg)
-			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, errMsg)
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}
 	}
-}
-
-// handleMsgCreateProposal handle proposal creation messages
-func handleMsgCreateProposal(ctx sdk.Context, k Keeper, msg types.MsgCreateProposal) (*sdk.Result, error) {
-	if k.GetCurrentProposal(ctx) != nil {
-		return nil, types.ErrOtherActive
-	}
-
-	gov := k.GetGovernment(ctx)
-
-	if !gov.Contains(msg.Author) {
-		return nil, sdkerrors.Wrap(types.ErrSignerNotAllowed, msg.Author.String())
-	}
-
-	params := k.GetParams(ctx)
-	endBLock := ctx.BlockHeight() + int64(params.VotingPeriod)
-
-	switch msg.TypeCode {
-	case types.ProposalTypeDelegationAward:
-		p := msg.Params.(types.DelegationAwardProposalParams)
-		err := delegating.NewPercentage(int(p.Minimal), int(p.ThousandPlus), int(p.TenKPlus), int(p.HundredKPlus)).Validate()
-		if err != nil {
-			return nil, err
-		}
-	case types.ProposalTypeDelegationNetworkAward, types.ProposalTypeProductNetworkAward:
-		if err := msg.Params.(types.NetworkAwardProposalParams).Award.Validate(); err != nil {
-			return nil, err
-		}
-	case types.ProposalTypeGovernmentAdd:
-		if gov.Contains(msg.Params.(types.AddressProposalParams).Address) {
-			return nil, types.ErrProposalGovernorExists
-		}
-	case types.ProposalTypeGovernmentRemove:
-		if !gov.Contains(msg.Params.(types.AddressProposalParams).Address) {
-			return nil, types.ErrProposalGovernorNotExists
-		}
-		if len(gov) == 1 {
-			return nil, types.ErrProposalGovernorLast
-		}
-	case types.ProposalTypeTransitionCost:
-		if _, ok := msg.Params.(types.PriceProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeMinSend, types.ProposalTypeMinDelegate, types.ProposalTypeDustDelegation:
-		if _, ok := msg.Params.(types.MinAmountProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeMaxValidators:
-		if _, ok := msg.Params.(types.ShortCountProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeGeneralAmnesty:
-		if _, ok := msg.Params.(types.EmptyProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeLotteryValidators:
-		if _, ok := msg.Params.(types.ShortCountProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeValidatorMinimalStatus:
-		if _, ok := msg.Params.(types.StatusProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		}
-	case types.ProposalTypeJailAfter:
-		if p, ok := msg.Params.(types.ShortCountProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		} else if p.Count <= 0 {
-			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "positive number expected")
-		}
-	case types.ProposalTypeRevokePeriod:
-		if p, ok := msg.Params.(types.PeriodProposalParams); !ok {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "unexpected parameters type: %T", msg.Params)
-		} else if p.Period <= 0 {
-			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "positive number expected")
-		}
-	}
-
-	proposal := types.Proposal{
-		Name:     msg.Name,
-		TypeCode: msg.TypeCode,
-		Params:   msg.Params,
-		Author:   msg.Author,
-		EndBlock: endBLock,
-	}
-
-	// Set proposal
-	k.SetCurrentProposal(ctx, proposal)
-
-	// Set empty lists of voters
-	agreed, disagreed := types.Government{msg.Author}, types.NewEmptyGovernment()
-	k.SetAgreed(ctx, agreed)
-	k.SetDisagreed(ctx, disagreed)
-	k.ScheduleEnding(ctx, endBLock)
-	k.SetStartBlock(ctx)
-
-	ctx.EventManager().EmitEvent(
-		sdk.NewEvent(
-			types.EventTypeCreateProposal,
-			sdk.NewAttribute(types.AttributeKeyAuthor, msg.Author.String()),
-			sdk.NewAttribute(types.AttributeKeyTypeCode, fmt.Sprint(msg.TypeCode)),
-		),
-	)
-
-	complete, agree := k.Validate(gov, agreed, disagreed)
-
-	if complete {
-		k.EndProposal(ctx, proposal, agree)
-	}
-
-	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
-}
-
-// handleMsgCreateProposal handle proposal creation messages
-func handleMsgProposalVote(ctx sdk.Context, k Keeper, msg types.MsgProposalVote) (*sdk.Result, error) {
-	proposal := k.GetCurrentProposal(ctx)
-	if proposal == nil {
-		return nil, types.ErrNoActiveProposals
-	}
-
-	gov := k.GetGovernment(ctx)
-
-	if !gov.Contains(msg.Voter) {
-		return nil, sdkerrors.Wrap(types.ErrSignerNotAllowed, msg.Voter.String())
-	}
-
-	agreed := k.GetAgreed(ctx)
-
-	if agreed.Contains(msg.Voter) {
-		return nil, sdkerrors.Wrap(types.ErrAlreadyVoted, msg.Voter.String())
-	}
-
-	disagreed := k.GetDisagreed(ctx)
-
-	if disagreed.Contains(msg.Voter) {
-		return nil, sdkerrors.Wrap(types.ErrAlreadyVoted, msg.Voter.String())
-	}
-
-	if msg.Agree {
-		agreed = agreed.Append(msg.Voter)
-		k.SetAgreed(ctx, agreed)
-	} else {
-		disagreed = disagreed.Append(msg.Voter)
-		k.SetDisagreed(ctx, disagreed)
-	}
-
-	ctx.EventManager().EmitEvent(
-		sdk.NewEvent(
-			types.EventTypeProposalVote,
-			sdk.NewAttribute(types.AttributeKeyAuthor, msg.Voter.String()),
-			sdk.NewAttribute(types.AttributeKeyAgree, fmt.Sprint(msg.Agree)),
-		),
-	)
-
-	complete, agree := k.Validate(gov, agreed, disagreed)
-
-	if complete {
-		k.EndProposal(ctx, *proposal, agree)
-	}
-
-	return &sdk.Result{Events: ctx.EventManager().Events()}, nil
 }

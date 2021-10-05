@@ -1,0 +1,45 @@
+syntax = "proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+service Msg {
+  rpc RequestTransition(MsgRequestTransition) returns (MsgRequestTransitionResponse);
+  rpc ResolveTransition(MsgResolveTransition) returns (MsgResolveTransitionResponse);
+}
+
+message MsgRequestTransition {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string subject = 1 [
+    (gogoproto.jsontag)  = "subject",
+    (gogoproto.moretags) = "yaml:\"subject\""
+  ];
+  string destination = 2 [
+    (gogoproto.jsontag)  = "destination",
+    (gogoproto.moretags) = "yaml:\"destination\""
+  ];
+}
+
+message MsgResolveTransition {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string signer = 1 [
+    (gogoproto.jsontag)  = "signer",
+    (gogoproto.moretags) = "yaml:\"signer\""
+  ];
+  string subject = 2 [
+    (gogoproto.jsontag)  = "subject",
+    (gogoproto.moretags) = "yaml:\"subject\""
+  ];
+  bool decline = 3 [
+    (gogoproto.moretags) = "yaml:\"decline,omitempty\""
+  ];
+}
+
+message MsgRequestTransitionResponse {}
+message MsgResolveTransitionResponse {}

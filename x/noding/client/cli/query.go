@@ -1,27 +1,25 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
 // GetQueryCmd returns the cli query commands for this module
-func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func NewQueryCmd() *cobra.Command {
 	// Group noding queries under a subcommand
 	nodingQueryCmd := &cobra.Command{
 		Use:                        types.ModuleName,
+		Aliases:                    []string{"n"},
 		Short:                      fmt.Sprintf("Querying commands for the %s module", types.ModuleName),
 		DisableFlagParsing:         true,
 		SuggestionsMinimumDistance: 2,
@@ -29,269 +27,243 @@ func GetQueryCmd(queryRoute string, cdc *codec.Codec) *cobra.Command {
 	}
 
 	nodingQueryCmd.AddCommand(
-		flags.GetCommands(
-			GetCmdStatus(queryRoute, cdc),
-			getCmdState(queryRoute, cdc),
-			GetCmdInfo(queryRoute, cdc),
-			GetCmdProposer(queryRoute, cdc),
-			GetCmdIsAllowed(queryRoute, cdc),
-			GetCmdOperator(queryRoute, cdc),
-			util.LineBreak(),
-			getCmdSwitchedOn(queryRoute, cdc),
-			util.LineBreak(),
-			getCmdParams(queryRoute, cdc),
-		)...,
+		cmdInfo(),
+		cmdState(),
+		cmdProposer(),
+		cmdIsAllowed(),
+		cmdOperator(),
+		util.LineBreak(),
+		cmdSwitchedOn(),
+		cmdQueue(),
+		util.LineBreak(),
+		cmdParams(),
 	)
 
 	return nodingQueryCmd
 }
 
-func GetCmdStatus(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:        "status <address>",
-		Short:      "query if noding's on",
-		Deprecated: `use "state" instead`,
-		Args:       cobra.ExactArgs(1),
+func cmdInfo() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "info <address>",
+		Aliases: []string{"i"},
+		Short:   "query validator info",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryStatus,
-					accAddress,
-				}, "/",
-			))
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Printf("could not get noding status for address %s\n", accAddress)
-				return nil
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.GetRequest{
+				Account: args[0],
 			}
 
-			var out bool
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.Get(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res.Info)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdState(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "state <address>",
-		Short: `query account's validation status (is it on, is the validator jailed, is it in the set, and so on)`,
-		Args:  cobra.ExactArgs(1),
+func cmdState() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "state <address>",
+		Aliases: []string{"s"},
+		Short:   `query validator state (is it in the "main" or "lucky" set or in reserve, is it jailed or so on)`,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryState,
-					accAddress,
-				}, "/",
-			))
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Printf("could not get noding status for address %s\n", accAddress)
-				return nil
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.StateRequest{
+				Account: args[0],
 			}
 
-			if len(res) != 1 {
-				panic(errors.Errorf("cannot parse response, 1 byte expected, got %X", res))
+			res, err := queryClient.State(context.Background(), req)
+			if err != nil {
+				return err
 			}
-			var out = types.ValidatorState(res[0])
-			return cliCtx.PrintOutput(out.String())
+			return util.PrintConsoleOutput(clientCtx, res.State)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdInfo(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "info <address>",
-		Short: "query validator info",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryInfo,
-					accAddress,
-				}, "/",
-			))
-			if err != nil {
-				if err == types.ErrNotFound {
-					fmt.Println("no data")
-				} else {
-					fmt.Printf("could not get noding status for address %s\n", accAddress)
-				}
-				return nil
-			}
-
-			var out types.D
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
-		},
-	}
-}
-
-func GetCmdProposer(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func cmdProposer() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "proposer [height]",
 		Aliases: []string{"p"},
 		Short:   "Get a block proposer account address. Height is optional, default is the last block.",
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			path := []string{
-				"custom",
-				queryRoute,
-				types.QueryProposer,
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
 			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.ProposerRequest{}
+
 			if len(args) > 0 {
-				path = append(path, args[0])
+				h, err := strconv.ParseInt(args[0], 0, 64)
+				if err != nil {
+					return errors.Wrap(err, "cannot parse height")
+				}
+				req.Height = h
 			}
-			res, _, err := cliCtx.Query(strings.Join(path, "/"))
+
+			res, err := queryClient.Proposer(context.Background(), req)
 			if err != nil {
 				return err
 			}
-
-			var out sdk.AccAddress = res
-			return cliCtx.PrintOutput(out)
+			return util.PrintConsoleOutput(clientCtx, res.Account)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdIsAllowed(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:   "is-allowed <address>",
-		Short: "check is noding is allowed for an account",
-		Args:  cobra.ExactArgs(1),
+func cmdIsAllowed() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "is-allowed <address>",
+		Aliases: []string{"ia", "a"},
+		Short:   "check if noding is allowed for an account",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryAllowed,
-					accAddress,
-				}, "/",
-			))
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("no data for account")
 				return err
 			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.IsAllowedRequest{
+				Account: args[0],
+			}
 
-			var out types.AllowedQueryRes
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.IsAllowed(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdOperator(queryRoute string, cdc *codec.Codec) *cobra.Command {
+func cmdOperator() *cobra.Command {
 	var hex bool
 
-	result := &cobra.Command{
-		Use:   "whois <consensus address>",
-		Short: "find account address by attached node consensus address",
-		Args:  cobra.ExactArgs(1),
+	cmd := &cobra.Command{
+		Use:     "whois <consensus address>",
+		Aliases: []string{"w"},
+		Short:   "find account address by attached node consensus address",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			accAddress := args[0]
-			var format string
-			if hex {
-				format = types.QueryOperatorFormatHex
-			} else {
-				format = types.QueryOperatorFormatBech32
-			}
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryOperator,
-					format,
-					accAddress,
-				}, "/",
-			))
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				if err == types.ErrNotFound {
-					fmt.Println("no data")
-				} else {
-					fmt.Printf("could not get operator account for node %s:\n%s\n", accAddress, err.Error())
-				}
-				return nil
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+			var format types.OperatorRequest_Format
+			if hex {
+				format = types.OperatorRequest_FORMAT_HEX
+			} else {
+				format = types.OperatorRequest_FORMAT_BECH32
+			}
+			req := &types.OperatorRequest{
+				ConsAddress: args[0],
+				Format:      format,
 			}
 
-			var out = sdk.AccAddress(res)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.Operator(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res.Account)
 		},
 	}
 
-	result.Flags().BoolVarP(&hex, "hex", "x", false, "consensus address in hex format instead of bech32")
-
-	return result
+	cmd.Flags().BoolVarP(&hex, "hex", "x", false, "consensus address in hex format instead of bech32")
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdParams(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func cmdParams() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "params",
 		Short: "Get the module params",
 		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QueryParams,
-				}, "/",
-			))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get module params")
 				return err
 			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.ParamsRequest{}
 
-			var out types.Params
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.Params(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res.Params)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdSwitchedOn(queryRoute string, cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
+func cmdSwitchedOn() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "switched-on",
 		Aliases: []string{"so", "on"},
 		Short:   "Get the list of validators that are switched on and not jailed",
 		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-
-			res, _, err := cliCtx.Query(strings.Join(
-				[]string{
-					"custom",
-					queryRoute,
-					types.QuerySwitchedOn,
-				}, "/",
-			))
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
-				fmt.Println("could not get a list")
 				return err
 			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.SwitchedOnRequest{}
 
-			var out []sdk.AccAddress
-			cdc.MustUnmarshalJSON(res, &out)
-			return cliCtx.PrintOutput(out)
+			res, err := queryClient.SwitchedOn(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res.Accounts)
 		},
 	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdQueue() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "queue",
+		Aliases: []string{"q"},
+		Short:   `Get the list of "lucky" and "spare" validators`,
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.QueueRequest{}
+
+			res, err := queryClient.Queue(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res.Queue)
+		},
+	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
 }

@@ -1,9 +1,6 @@
 package types
 
-import (
-	"fmt"
-	"strings"
-)
+import sdk "github.com/cosmos/cosmos-sdk/types"
 
 // Query endpoints supported by the delegating querier
 const (
@@ -12,26 +9,18 @@ const (
 	QueryAccumulation = "accum"
 )
 
-type QueryResRevoking []RevokeRequest
-
-type QueryResAccumulation struct {
-	StartHeight   int64 `json:"start_height"`
-	EndHeight     int64 `json:"end_height"`
-	Percent       int   `json:"int"`
-	TotalUartrs   int64 `json:"total_uartrs"`
-	CurrentUartrs int64 `json:"current_uartrs"`
+func (req RevokingRequest) GetAccAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(req.AccAddress)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
-func (x QueryResRevoking) String() string {
-	if x == nil {
-		return "none"
+func (req AccumulationRequest) GetAccAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(req.AccAddress)
+	if err != nil {
+		panic(err)
 	}
-	sb := strings.Builder{}
-	for _, q := range x {
-		_, err := sb.WriteString(fmt.Sprintf("%d uartr at height %d\n", q.MicroCoins, q.HeightToImplementAt))
-		if err != nil {
-			panic(err)
-		}
-	}
-	return sb.String()[:sb.Len()-1]
+	return addr
 }

@@ -1,26 +1,22 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
 
-// GetTxCmd returns the transaction commands for this module
-func GetTxCmd(cdc *codec.Codec) *cobra.Command {
+// NewTxCmd returns the transaction commands for this module
+func NewTxCmd() *cobra.Command {
 	referralTxCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Aliases:                    []string{"ref", "r"},
@@ -30,68 +26,68 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	referralTxCmd.AddCommand(flags.PostCommands(
-		getCmdRequestTransition(cdc),
-		getCmdResolveTransition(cdc),
-	)...)
+	referralTxCmd.AddCommand(
+		getCmdRequestTransition(),
+		getCmdResolveTransition(),
+	)
 
 	return referralTxCmd
 }
 
-func getCmdRequestTransition(cdc *codec.Codec) *cobra.Command {
-	result := cobra.Command{
-		Use:     "request-transition <address>",
+func getCmdRequestTransition() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "request-transition <subject_key_or_address> <new_referrer_address>",
 		Aliases: []string{"rt", "transit", "trans"},
 		Short:   "Request transition to another referrer",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-
-			subjAddr := cliCtx.GetFromAddress()
-			destAddr, err := sdk.AccAddressFromBech32(args[0])
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
 			if err != nil {
-				return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+				return err
 			}
-
-			msg := types.NewMsgRequestTransition(subjAddr, destAddr)
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			msg := types.NewMsgRequestTransition(clientCtx.GetFromAddress().String(), args[1])
 			if err = msg.ValidateBasic(); err != nil {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	return &result
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
 }
 
-func getCmdResolveTransition(cdc *codec.Codec) *cobra.Command {
-	result := cobra.Command{
-		Use:     "resolve-transition <address> [yes|no]",
+func getCmdResolveTransition() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "resolve-transition <signer_key_or_address> <subject_address> [yes|no]",
 		Aliases: []string{"resolve"},
 		Short:   "Approve/decline a transition request (approve is default)",
-		Args:    cobra.RangeArgs(1, 2),
+		Args:    cobra.RangeArgs(2, 3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cliCtx := context.NewCLIContext().WithCodec(cdc)
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-
-			senderAddr := cliCtx.GetFromAddress()
-			subjAddr, err := sdk.AccAddressFromBech32(args[0])
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
 			if err != nil {
-				return sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
 			}
 
+			senderAddr := clientCtx.GetFromAddress().String()
+			subjAddr := args[1]
 			approved := true
-			if len(args) > 1 {
-				switch strings.ToLower(args[1]) {
+			if len(args) > 2 {
+				switch strings.ToLower(args[2]) {
 				case "yes", "y":
 					approved = true
 				case "no", "n":
 					approved = false
 				default:
-					return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "cannot parse the second argument")
+					return sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "cannot parse the 3rd argument")
 				}
 			}
 
@@ -100,8 +96,9 @@ func getCmdResolveTransition(cdc *codec.Codec) *cobra.Command {
 				return err
 			}
 
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
-	return &result
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
 }

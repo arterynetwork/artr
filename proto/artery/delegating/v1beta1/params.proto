@@ -1,0 +1,33 @@
+syntax = "proto3";
+package artery.delegating.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/delegating/types";
+
+// Params - used for initializing default parameter for delegating at genesis
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+
+  Percentage percentage = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "percentage",
+    (gogoproto.moretags) = "yaml:\"percentage\""
+  ];
+  int64 min_delegate  = 2;
+
+  // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
+  uint32 revoke_period = 3;
+}
+
+// Percentage - function from delegation size to delegation award percent
+message Percentage {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.equal)            = true;
+
+  int64 minimal        = 1 [(gogoproto.jsontag) = "minimal", (gogoproto.moretags) = "yaml:\"minimal\""];
+  int64 thousand_plus  = 2 [(gogoproto.jsontag) = "thousand_plus", (gogoproto.moretags) = "yaml:\"thousand_plus\""];
+  int64 ten_k_plus     = 3 [(gogoproto.jsontag) = "ten_k_plus", (gogoproto.moretags) = "yaml:\"ten_k_plus\""];
+  int64 hundred_k_plus = 4 [(gogoproto.jsontag) = "hundred_k_plus", (gogoproto.moretags) = "yaml:\"hundred_k_plus\""];
+}

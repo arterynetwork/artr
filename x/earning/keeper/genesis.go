@@ -14,11 +14,11 @@ func (k Keeper) GetEarners(ctx sdk.Context) []types.Earner {
 	for ; it.Valid(); it.Next() {
 		acc := sdk.AccAddress(it.Key())
 		var points types.Points
-		k.cdc.MustUnmarshalBinaryLengthPrefixed(it.Value(), &points)
-		result = append(result, types.Earner{
-			Points:  points,
-			Account: acc,
-		})
+		err := k.cdc.UnmarshalBinaryBare(it.Value(), &points)
+		if err != nil {
+			panic(err)
+		}
+		result = append(result, types.NewEarner(acc, points.Vpn, points.Storage))
 	}
 	return result
 }

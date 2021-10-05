@@ -1,14 +1,7 @@
 package types
 
-// earning module event types
-const (
-	EventTypeStart  = "start-paying-earnings"
-	EventTypeFinish = "finish-paying-earnings"
-	EventTypeEarn   = "earn"
+func (EventStartPaying) XXX_MessageName() string { return "start_paying" }
 
-	AttributeKeyAddress = "address"
-	AttributeKeyVpn     = "vpn"
-	AttributeKeyStorage = "storage"
+func (EventFinishPaying) XXX_MessageName() string { return "finish_paying" }
 
-	AttributeValueCategory = ModuleName
-)
+func (EventEarn) XXX_MessageName() string { return "earn" }

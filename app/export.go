@@ -2,10 +2,10 @@ package app
 
 import (
 	"encoding/json"
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmtypes "github.com/tendermint/tendermint/types"
+	serverTypes "github.com/cosmos/cosmos-sdk/server/types"
 
-	"github.com/cosmos/cosmos-sdk/codec"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -13,24 +13,34 @@ import (
 // file.
 func (app *ArteryApp) ExportAppStateAndValidators(
 	forZeroHeight bool, jailWhiteList []string,
-) (appState json.RawMessage, validators []tmtypes.GenesisValidator, err error) {
+) (serverTypes.ExportedApp, error) {
 
 	// as if they could withdraw from the start of the next block
-	ctx := app.NewContext(true, abci.Header{Height: app.LastBlockHeight()})
+	ctx := app.NewContext(true, tmproto.Header{Height: app.LastBlockHeight()})
+
+	// We export at last height + 1, because that's the height at which
+	// Tendermint will start InitChain.
+	height := app.LastBlockHeight() + 1
 
 	if forZeroHeight {
+		height = 0
 		app.prepForZeroHeightGenesis(ctx, jailWhiteList)
 	}
 
-	genState := app.mm.ExportGenesis(ctx)
-	appState, err = codec.MarshalJSONIndent(app.cdc, genState)
+	genState := app.mm.ExportGenesis(ctx, app.ec.Marshaler)
+	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
-		return nil, nil, err
+		return serverTypes.ExportedApp{}, err
 	}
 
 	// We should never have genesis validators per se.
 	// All validators should be added via noding module instead.
-	return appState, nil, nil
+	return serverTypes.ExportedApp{
+		AppState:        appState,
+		Validators:      nil,
+		Height:          height,
+		ConsensusParams: app.BaseApp.GetConsensusParams(ctx),
+	}, nil
 }
 
 // prepare for fresh start at zero height

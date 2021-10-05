@@ -1,0 +1,39 @@
+syntax="proto3";
+package artery.earning.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/earning/types";
+
+// Params - used for initializing default parameter for delegating at genesis
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+
+  repeated string signers = 1 [(gogoproto.moretags) = "yaml:\"signers,omitempty\""];
+}
+
+// StateParams - used for storing keeper inner state and exporting it to genesis if needed
+message StateParams {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+
+  bool locked = 1 [
+    (gogoproto.jsontag)  = "locked,omitempty",
+    (gogoproto.moretags) = "yaml:\"locked,omitempty\""
+  ];
+  string vpn_point_cost = 2 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.moretags)   = "yaml:\"vpn_point_cost,omitempty\""
+  ];
+  string storage_point_cost = 3 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.moretags)   = "yaml:\"storage_point_cost,omitempty\""
+  ];
+  uint32 items_per_block = 4 [
+    (gogoproto.jsontag)  = "items_per_block,omitempty",
+    (gogoproto.moretags) = "yaml:\"items_per_block,omitempty\""
+  ];
+}

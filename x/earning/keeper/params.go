@@ -1,8 +1,6 @@
 package keeper
 
 import (
-	"bytes"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/x/earning/types"
@@ -32,14 +30,15 @@ func (k Keeper) SetState(ctx sdk.Context, state types.StateParams) {
 
 func (k Keeper) AddSigner(ctx sdk.Context, address sdk.AccAddress) {
 	p := k.GetParams(ctx)
-	p.Signers = append(p.Signers, address)
+	p.Signers = append(p.Signers, address.String())
 	k.SetParams(ctx, p)
 }
 
 func (k Keeper) RemoveSigner(ctx sdk.Context, address sdk.AccAddress) {
 	p := k.GetParams(ctx)
+	bech32 := address.String()
 	for i, signer := range p.Signers {
-		if bytes.Equal(signer, address) {
+		if signer == bech32 {
 			last := len(p.Signers) - 1
 			if i != last {
 				p.Signers[i] = p.Signers[last]

@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/app"
@@ -33,13 +34,19 @@ type Suite struct {
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetNodingKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s Suite) TestCleanGenesis() {
@@ -104,6 +111,38 @@ func (s Suite) TestJailAndSwitchOff() {
 	s.checkExportImport()
 }
 
+func (s Suite) TestUnjail() {
+	user2 := app.DefaultGenesisUsers["user2"]
+	user1key := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
+	user1ca := sdk.ConsAddress(user1key.Address().Bytes())
+	_, user2key, user2ca := app.NewTestConsPubAddress()
+
+	if err := s.k.SwitchOn(s.ctx, user2, user2key); err != nil {
+		panic(err)
+	}
+
+	s.nextBlock(user1key, []abci.VoteInfo{
+		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
+		{Validator: abci.Validator{Address: user2ca, Power: 10}, SignedLastBlock: false},
+	}, nil)
+	s.nextBlock(user1key, []abci.VoteInfo{
+		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
+		{Validator: abci.Validator{Address: user2ca, Power: 10}, SignedLastBlock: false},
+	}, nil)
+	{
+		d, _ := s.k.Get(s.ctx, user2)
+		s.True(d.Jailed)
+	}
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + types.DefaultUnjailAfter)
+
+	s.NoError(s.k.Unjail(s.ctx, user2))
+	s.nextBlock(user1key, []abci.VoteInfo{
+		{Validator: abci.Validator{Address: user1ca, Power: 10}, SignedLastBlock: true},
+		{Validator: abci.Validator{Address: user2ca, Power: 10}, SignedLastBlock: true},
+	}, nil)
+	s.checkExportImport()
+}
+
 func (s Suite) TestByzantine() {
 	user2 := app.DefaultGenesisUsers["user2"]
 	user3 := app.DefaultGenesisUsers["user3"]
@@ -132,7 +171,7 @@ func (s Suite) TestByzantine() {
 		},
 		[]abci.Evidence{
 			{
-				Type:      "evil_deed",
+				Type:      abci.EvidenceType_DUPLICATE_VOTE,
 				Validator: val2,
 				Height:    s.ctx.BlockHeight(),
 			},
@@ -147,12 +186,12 @@ func (s Suite) TestByzantine() {
 		},
 		[]abci.Evidence{
 			{
-				Type:      "evil_deed",
+				Type:      abci.EvidenceType_DUPLICATE_VOTE,
 				Validator: val2,
 				Height:    s.ctx.BlockHeight(),
 			},
 			{
-				Type:      "evil_deed",
+				Type:      abci.EvidenceType_DUPLICATE_VOTE,
 				Validator: val3,
 				Height:    s.ctx.BlockHeight(),
 			},
@@ -190,6 +229,7 @@ func (s Suite) TestProposers() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			noding.StoreKey,
 			noding.IdxStoreKey,
@@ -217,8 +257,8 @@ func (s Suite) checkExportImport() {
 		},
 		map[string]app.Decoder{
 			noding.StoreKey: func(bz []byte) (string, error) {
-				var value types.D
-				err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &value)
+				var value types.Info
+				err := s.app.Codec().UnmarshalBinaryBare(bz, &value)
 				if err != nil {
 					return "", err
 				}
@@ -236,7 +276,7 @@ func (s *Suite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byzanti
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{Height: s.ctx.BlockHeight()})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
 	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
-		Header: abci.Header{
+		Header: tmproto.Header{
 			ProposerAddress: proposer.Address().Bytes(),
 		},
 		LastCommitInfo: abci.LastCommitInfo{

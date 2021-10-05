@@ -1,12 +1,14 @@
 package util
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
+import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
 
 const (
 	ConfigMainDenom      = "uartr"
 	ConfigDelegatedDenom = "uartrd"
 	ConfigRevokingDenom  = "uartrr"
-	ConfigStakeDenom     = "stake"
+
 	GBSize               = 1024 * 1024 * 1024
 	BlocksOneDay         = 2880
 	BlocksOneWeek        = BlocksOneDay * 7

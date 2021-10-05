@@ -1,15 +1,15 @@
 package types
 
 import (
+	"time"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	auth "github.com/cosmos/cosmos-sdk/x/auth/exported"
-	"github.com/cosmos/cosmos-sdk/x/params"
-	supply "github.com/cosmos/cosmos-sdk/x/supply/exported"
+	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/x/bank"
 	profile "github.com/arterynetwork/artr/x/profile/types"
 	referral "github.com/arterynetwork/artr/x/referral/types"
-	"github.com/arterynetwork/artr/x/schedule"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -21,28 +21,29 @@ type ParamSubspace interface {
 }
 
 type AccountKeeper interface {
-	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.Account
+	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.AccountI
 }
 
 type ScheduleKeeper interface {
-	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
-	GetParams(ctx sdk.Context) schedule.Params
-}
+	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
+	Delete(ctx sdk.Context, time time.Time, event string, payload []byte)
 
-type SupplyKeeper interface {
-	GetSupply(ctx sdk.Context) supply.SupplyI
-	SetSupply(ctx sdk.Context, supply supply.SupplyI)
-
-	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+	OneDay(ctx sdk.Context) time.Duration
+	OneWeek(ctx sdk.Context) time.Duration
 }
 
 type BankKeeper interface {
-	GetCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
-	GetDustDelegation(ctx sdk.Context) int64
+	GetParams(ctx sdk.Context) bank.Params
 
-	AddCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) (sdk.Coins, error)
+	AddCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
-	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) (sdk.Coins, error)
+	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
+
+	GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
+	GetSupply(ctx sdk.Context) bank.Supply
+	SetSupply(ctx sdk.Context, supply bank.Supply)
+
+	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 }
 
 type ProfileKeeper interface {
@@ -50,5 +51,5 @@ type ProfileKeeper interface {
 }
 
 type ReferralKeeper interface {
-	GetReferralFeesForDelegating(ctx sdk.Context, acc sdk.AccAddress) ([]referral.ReferralFee, error)
+	GetReferralFeesForDelegating(ctx sdk.Context, acc string) ([]referral.ReferralFee, error)
 }

@@ -15,4 +15,5 @@ const (
 	QuerierRoute = ModuleName
 
 	RevokeHookName = "delegating/revoke"
+	AccrueHookName = "delegating/accrue"
 )

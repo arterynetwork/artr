@@ -1,0 +1,193 @@
+syntax = "proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+import "artery/noding/v1beta1/params.proto";
+import "artery/noding/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+service Query {
+  // Params queries the x/noding module params.
+  rpc Params(ParamsRequest) returns (ParamsResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/params";
+  }
+  // Get queries noding status and statistics for a specified account.
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/get/{account}";
+  }
+  // State queries a validator state (is they in a "main" or "lucky" set or reserve, is they jailed, banned and so on)
+  rpc State(StateRequest) returns (StateResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/state/{account}";
+  }
+  // Proposer queries a specified block proposer account address.
+  rpc Proposer(ProposerRequest) returns (ProposerResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/proposer/{height}";
+  }
+  // IsAllowed queries if validation is allowed for a specified account.
+  rpc IsAllowed(IsAllowedRequest) returns (IsAllowedResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/is-allowed/{account}";
+  }
+  // Operator queries an account address which a specified node is assigned to.
+  rpc Operator(OperatorRequest) returns (OperatorResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/operator/{format}/{cons_address}";
+  }
+  // SwitchedOn queries a list of validators that are switched on and not jailed.
+  rpc SwitchedOn(SwitchedOnRequest) returns (SwitchedOnResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/switched-on";
+  }
+  // Queue queries a list of "lucky" and "spare" validators.
+  rpc Queue(QueueRequest) returns (QueueResponse) {
+    option (google.api.http).get = "/artery/noding/v1beta1/queue";
+  }
+}
+
+message ParamsRequest {}
+
+message ParamsResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+}
+
+message StateRequest {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message StateResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  ValidatorState state = 1 [
+    (gogoproto.jsontag)  = "state",
+    (gogoproto.moretags) = "yaml:\"state\""
+  ];
+}
+
+message GetRequest {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message GetResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  Info info = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "info",
+    (gogoproto.moretags) = "yaml:\"info\""
+  ];
+}
+
+message ProposerRequest {
+  option (gogoproto.goproto_getters) = false;
+
+  int64 height = 1 [
+    (gogoproto.jsontag)  = "height",
+    (gogoproto.moretags) = "yaml:\"height\""
+  ];
+}
+
+message ProposerResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message IsAllowedRequest {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message IsAllowedResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  bool verdict = 1 [
+    (gogoproto.jsontag)  = "verdict",
+    (gogoproto.moretags) = "yaml:\"verdict\""
+  ];
+  Reason reason = 2 [
+    (gogoproto.moretags) = "yaml:\"reason,omitempty\""
+  ];
+}
+
+message OperatorRequest {
+  option (gogoproto.goproto_getters) = false;
+
+  string cons_address = 1 [
+    (gogoproto.jsontag) = "cons_address",
+    (gogoproto.moretags) = "yaml:\"cons_address\""
+  ];
+  Format format = 2 [
+    (gogoproto.moretags) = "yaml:\"format,omitempty\""
+  ];
+
+  enum Format {
+    FORMAT_UNSPECIFIED = 0;
+    FORMAT_BECH32      = 1;
+    FORMAT_HEX         = 2;
+  }
+}
+
+message OperatorResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+}
+
+message SwitchedOnRequest {}
+
+message SwitchedOnResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  repeated string accounts = 1 [
+    (gogoproto.jsontag)  = "accounts",
+    (gogoproto.moretags) = "yaml:\"accounts\""
+  ];
+}
+
+message QueueRequest {}
+
+message QueueResponse {
+  option (gogoproto.goproto_getters) = false;
+
+  message Validator {
+    uint64 no = 1 [
+      (gogoproto.jsontag)  = "no",
+      (gogoproto.moretags) = "yaml:\"no\""
+    ];
+    string account = 2 [
+      (gogoproto.jsontag)  = "account",
+      (gogoproto.moretags) = "yaml:\"account\""
+    ];
+  }
+
+  repeated Validator queue = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "queue",
+    (gogoproto.moretags) = "yaml:\"queue\""
+  ];
+}

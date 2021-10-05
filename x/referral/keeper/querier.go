@@ -1,7 +1,7 @@
 package keeper
 
 import (
-	"strconv"
+	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 
@@ -13,213 +13,93 @@ import (
 )
 
 // NewQuerier creates a new querier for referral clients.
-func NewQuerier(k Keeper) sdk.Querier {
+func NewQuerier(k Keeper, legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, error) {
 		switch path[0] {
-		case types.QueryStatus:
-			return queryStatus(ctx, path[1:], k)
-		case types.QueryReferrer:
-			return queryParent(ctx, path[1:], k)
-		case types.QueryReferrals:
-			return queryChildren(ctx, path[1:], k)
 		case types.QueryCoinsInNetwork:
-			return queryCoins(ctx, path[1:], k)
-		case types.QueryDelegatedInNetwork:
-			return queryDelegated(ctx, path[1:], k)
+			return queryCoins(ctx, req, k, legacyQuerierCdc)
 		case types.QueryCheckStatus:
-			return queryCheckStatus(ctx, path[1:], k)
-		case types.QueryWhenCompression:
-			return queryCompressionTime(ctx, path[1:], k)
-		case types.QueryPendingTransition:
-			return queryPendingTransition(ctx, path[1:], k)
+			return queryCheckStatus(ctx, req, k, legacyQuerierCdc)
 		case types.QueryValidateTransition:
-			return queryValidateTransition(ctx, path[1:], k)
+			return queryValidateTransition(ctx, req, k, legacyQuerierCdc)
 		case types.QueryParams:
-			return queryParams(ctx, k)
+			return queryParams(ctx, k, legacyQuerierCdc)
 		case types.QueryInfo:
-			return queryInfo(ctx, path[1:], k)
+			return queryInfo(ctx, req, k, legacyQuerierCdc)
 		default:
 			return nil, sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown referral query endpoint")
 		}
 	}
 }
 
-func queryStatus(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+func queryCoins(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.CoinsRequest
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
-	status, err := k.GetStatus(ctx, addr)
+
+	maxDepth := int(params.MaxDepth)
+
+	//TODO: Refactor keeper to merge these calls in one
+	n, err := k.GetCoinsInNetwork(ctx, params.AccAddress, maxDepth)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot obtain total coins")
 	}
-	res, err := codec.MarshalJSONIndent(k.cdc, status)
+	d, err := k.GetDelegatedInNetwork(ctx, params.AccAddress, maxDepth)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot obtain delegated coins")
+	}
+
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.CoinsResponse{
+		Total:     n,
+		Delegated: d,
+	})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
 	return res, nil
 }
 
-func queryParent(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+func queryCheckStatus(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.CheckStatusRequest
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
-	parent, err := k.GetParent(ctx, addr)
+
+	result, err := k.AreStatusRequirementsFulfilled(ctx, params.AccAddress, params.Status)
 	if err != nil {
 		return nil, err
 	}
-	res, err := codec.MarshalJSONIndent(k.cdc, parent)
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-	return res, nil
-}
-
-func queryChildren(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-	children, err := k.GetChildren(ctx, addr)
-	if err != nil {
-		return nil, err
-	}
-	res, err := codec.MarshalJSONIndent(k.cdc, types.QueryResChildren(children))
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-	return res, nil
-}
-
-func queryCoins(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-
-	var d = 10
-	if len(path) > 1 {
-		d, err = strconv.Atoi(path[1])
-		if err != nil {
-			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
-		}
-	}
-
-	coins, err := k.GetCoinsInNetwork(ctx, addr, d)
-	if err != nil {
-		return nil, err
-	}
-	res, err := codec.MarshalJSONIndent(k.cdc, coins)
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-	return res, nil
-}
-
-func queryDelegated(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-
-	var d = 10
-	if len(path) > 1 {
-		d, err = strconv.Atoi(path[1])
-		if err != nil {
-			return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
-		}
-	}
-
-	coins, err := k.GetDelegatedInNetwork(ctx, addr, d)
-	if err != nil {
-		return nil, err
-	}
-	res, err := codec.MarshalJSONIndent(k.cdc, coins)
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-	return res, nil
-}
-
-func queryCheckStatus(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	var (
-		addr     sdk.AccAddress
-		status   int
-		result   types.StatusCheckResult
-		resBytes []byte
-		err      error
-	)
-	addr, err = sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-	status, err = strconv.Atoi(path[1])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
-	}
-	result, err = k.AreStatusRequirementsFulfilled(ctx, addr, types.Status(status))
-	if err != nil {
-		return nil, err
-	}
-	resBytes, err = codec.MarshalJSONIndent(k.cdc, result)
+	resBytes, err := codec.MarshalJSONIndent(legacyQuerierCdc, result)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
 	return resBytes, nil
 }
 
-func queryCompressionTime(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+func queryValidateTransition(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.ValidateTransitionRequest
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
-	h, err := k.GetCompressionBlockHeight(ctx, addr)
-	if err != nil {
-		return nil, err
-	}
-	res, err := codec.MarshalJSONIndent(k.cdc, h)
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
-	}
-	return res, nil
-}
 
-func queryPendingTransition(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
-	}
-	dest, err := k.GetPendingTransition(ctx, addr)
-	return dest, err
-}
-
-func queryValidateTransition(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	subj, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse subject address: "+err.Error())
-	}
-	dest, err := sdk.AccAddressFromBech32(path[1])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse destination address: "+err.Error())
-	}
-	var res types.QueryResValidateTransition
-	if err := k.ValidateTransition(ctx, subj, dest); err != nil {
-		res = types.QueryResValidateTransition{Ok: false, Err: err.Error()}
+	var response types.ValidateTransitionResponse
+	if err := k.validateTransition(ctx, params.Subject, params.Target, true); err != nil {
+		response = types.ValidateTransitionResponse{Error: err.Error()}
 	} else {
-		res = types.QueryResValidateTransition{Ok: true}
+		response = types.ValidateTransitionResponse{Ok: true}
 	}
-	json, err := codec.MarshalJSONIndent(k.cdc, res)
+	json, err := codec.MarshalJSONIndent(legacyQuerierCdc, response)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
 	return json, nil
 }
 
-func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+func queryParams(ctx sdk.Context, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	params := k.GetParams(ctx)
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, params)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -227,16 +107,17 @@ func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
 	return res, nil
 }
 
-func queryInfo(ctx sdk.Context, path []string, k Keeper) ([]byte, error) {
-	addr, err := sdk.AccAddressFromBech32(path[0])
-	if err != nil {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, err.Error())
+func queryInfo(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
+	var params types.GetRequest
+	if err := legacyQuerierCdc.UnmarshalJSON(req.Data, &params); err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
-	data, err := k.Get(ctx, addr)
+
+	data, err := k.Get(ctx, params.AccAddress)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, err.Error())
 	}
-	json, err := codec.MarshalJSONIndent(types.ModuleCdc, data)
+	json, err := codec.MarshalJSONIndent(legacyQuerierCdc, data)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}

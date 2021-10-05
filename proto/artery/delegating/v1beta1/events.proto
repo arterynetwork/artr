@@ -1,0 +1,26 @@
+syntax="proto3";
+package artery.delegating.v1beta1;
+
+option go_package = "github.com/arterynetwork/artr/x/delegating/types";
+
+message EventDelegate {
+  string account = 1;
+  uint64 ucoins = 2;
+  repeated string commission_to = 3;
+  repeated uint64 commission_amount = 4;
+}
+
+message EventUndelegate {
+  string account = 1;
+  uint64 ucoins = 2;
+}
+
+message EventAccrue {
+  string account = 1;
+  uint64 ucoins = 2;
+}
+
+message EventMassiveRevoke {
+  string account = 1;
+  uint64 ucoins = 2;
+}

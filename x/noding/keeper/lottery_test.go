@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -29,7 +29,7 @@ type LotterySuite struct {
 func (s *LotterySuite) SetupTest() {
 	defer func() {
 		if err := recover(); err != nil {
-			s.FailNow("panic on setup", "err", err)
+			s.FailNow("panic on setup", "%s", err)
 		}
 	}()
 
@@ -206,7 +206,7 @@ func (s *LotterySuite) TestBecomingTop() {
 		s.votes(map[int]bool{0: false, 1: true, 2: true, 5: true, 6: true}),
 		nil,
 	)
-	s.checkUpdates(map[int]int64{0: 0, 4: 10}, resp.ValidatorUpdates)
+	s.checkUpdates(map[int]int64{0: 0, 6: 15, 4: 10}, resp.ValidatorUpdates)
 
 	info, err := s.k.Get(s.ctx, s.accAddrs[6])
 	s.NoError(err)
@@ -241,7 +241,7 @@ func (s *LotterySuite) checkUpdates(expected map[int]int64, actual []abci.Valida
 	extra := len(expected) != len(actual)
 	for n, power := range expected {
 		ok := false
-		key := tmtypes.TM2PB.PubKey(s.pubKeys[n])
+		key, _ := cryptocodec.ToTmProtoPublicKey(s.pubKeys[n])
 		for _, upd := range actual {
 			if key.Equal(upd.PubKey) {
 				s.Equal(power, upd.Power, "wrong power for validator #%d", n)
@@ -259,7 +259,7 @@ func (s *LotterySuite) checkUpdates(expected map[int]int64, actual []abci.Valida
 			if _, ok := expected[n]; ok {
 				continue
 			}
-			key := tmtypes.TM2PB.PubKey(s.pubKeys[n])
+			key, _ := cryptocodec.ToTmProtoPublicKey(s.pubKeys[n])
 			for _, upd := range actual {
 				if key.Equal(upd.PubKey) {
 					s.Failf("Not equal:", "unexpected power %d for validator #%d", upd.Power, n)

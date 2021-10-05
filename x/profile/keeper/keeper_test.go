@@ -4,21 +4,22 @@ package keeper_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
-	"github.com/arterynetwork/artr/x/profile"
+	"github.com/arterynetwork/artr/x/bank"
+	"github.com/arterynetwork/artr/x/profile/keeper"
 	"github.com/arterynetwork/artr/x/profile/types"
 	"github.com/arterynetwork/artr/x/referral"
-	"github.com/arterynetwork/artr/x/schedule"
+	scheduleK "github.com/arterynetwork/artr/x/schedule/keeper"
+	schedule "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestProfileKeeper(t *testing.T) {
@@ -28,33 +29,40 @@ func TestProfileKeeper(t *testing.T) {
 type Suite struct {
 	suite.Suite
 
-	app            *app.ArteryApp
-	cleanup        func()
-	cdc            *codec.Codec
-	ctx            sdk.Context
-	k              profile.Keeper
-	refKeeper      referral.Keeper
-	scheduleKeeper schedule.Keeper
-	authKeeper     auth.AccountKeeper
+	app     *app.ArteryApp
+	cleanup func()
+	cdc     codec.BinaryMarshaler
+	ctx     sdk.Context
+	k       keeper.Keeper
+	bk      bank.Keeper
+	rk      referral.Keeper
+	sk      scheduleK.Keeper
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 
 	s.cdc = s.app.Codec()
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
 	s.k = s.app.GetProfileKeeper()
-	s.refKeeper = s.app.GetReferralKeeper()
-	s.scheduleKeeper = s.app.GetScheduleKeeper()
-	s.authKeeper = s.app.GetAccountKeeper()
+	s.bk = s.app.GetBankKeeper()
+	s.rk = s.app.GetReferralKeeper()
+	s.sk = s.app.GetScheduleKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s *Suite) TestCreateAccountWithProfile() {
-	_, _, addr := authtypes.KeyTestPubAddr()
+	genesisTime := s.ctx.BlockTime()
+	_, _, addr := testdata.KeyTestPubAddr()
 	data := types.Profile{
 		Nickname:   "v_pupkin",
 		CardNumber: 12345,
@@ -64,35 +72,43 @@ func (s *Suite) TestCreateAccountWithProfile() {
 	s.Equal(addr, s.k.GetProfileAccountByNickname(s.ctx, "v_pupkin"))
 
 	{
-		parent, err := s.refKeeper.GetParent(s.ctx, addr)
+		parent, err := s.rk.GetParent(s.ctx, addr.String())
 		s.NoError(err)
-		s.Equal(app.DefaultGenesisUsers["user1"], parent)
+		s.Equal(app.DefaultGenesisUsers["user1"].String(), parent)
 	}
 	{
-		h, err := s.refKeeper.GetCompressionBlockHeight(s.ctx, addr)
+		refInfo, err := s.rk.Get(s.ctx, addr.String())
 		s.NoError(err)
-		s.Equal(int64(1+2*util.BlocksOneMonth), h)
+		t := refInfo.CompressionAt
+		s.NotNil(t)
+		s.Equal(genesisTime.Add(2 * 30*24*time.Hour), *t)
 	}
 	{
-		tasks := s.scheduleKeeper.GetTasks(s.ctx, 1+2*util.BlocksOneMonth)
-		s.Equal(schedule.Schedule{schedule.Task{referral.CompressionHookName, addr}}, tasks)
+		t := genesisTime.Add(2 * 30*24*time.Hour)
+		tasks := s.sk.GetTasks(s.ctx, t, t.Add(1))
+		s.Equal(
+			[]schedule.Task{
+				{Time: t, HandlerName: referral.CompressionHookName, Data: []byte(addr.String())},
+			},
+			tasks,
+		)
 	}
 }
 
 func (s *Suite) TestCreateAccountWithProfile_NonUniqueNick() {
-	_, _, addr := authtypes.KeyTestPubAddr()
+	_, _, addr := testdata.KeyTestPubAddr()
 	data := types.Profile{
 		Nickname:   "v_pupkin",
 		CardNumber: 12345,
 	}
 	s.NoError(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user1"], data))
 
-	_, _, addr = authtypes.KeyTestPubAddr()
+	_, _, addr = testdata.KeyTestPubAddr()
 	s.Error(s.k.CreateAccountWithProfile(s.ctx, addr, app.DefaultGenesisUsers["user2"], data))
 }
 
 func (s *Suite) TestCreateAccountWithProfile_NickLikeCard() {
-	_, _, addr := authtypes.KeyTestPubAddr()
+	_, _, addr := testdata.KeyTestPubAddr()
 	data := types.Profile{
 		Nickname:   "ARTR-1122-3344-5566",
 		CardNumber: 12345,
@@ -104,24 +120,33 @@ func (s *Suite) TestCreateAccountWithProfile_NickLikeCard() {
 }
 
 func (s *Suite) TestCreateAccount() {
-	_, _, addr := authtypes.KeyTestPubAddr()
+	genesisTime := s.ctx.BlockTime()
+	_, _, addr := testdata.KeyTestPubAddr()
 	s.NoError(s.k.CreateAccount(s.ctx, addr, app.DefaultGenesisUsers["user1"]))
 
 	s.NotNil(s.k.GetProfile(s.ctx, addr), "profile created")
 
 	{
-		parent, err := s.refKeeper.GetParent(s.ctx, addr)
+		parent, err := s.rk.GetParent(s.ctx, addr.String())
 		s.NoError(err)
-		s.Equal(app.DefaultGenesisUsers["user1"], parent)
+		s.Equal(app.DefaultGenesisUsers["user1"].String(), parent)
 	}
 	{
-		h, err := s.refKeeper.GetCompressionBlockHeight(s.ctx, addr)
+		refInfo, err := s.rk.Get(s.ctx, addr.String())
 		s.NoError(err)
-		s.Equal(int64(1+2*util.BlocksOneMonth), h)
+		t := refInfo.CompressionAt
+		s.NotNil(t)
+		s.Equal(genesisTime.Add(2 * 30*24*time.Hour), *t)
 	}
 	{
-		tasks := s.scheduleKeeper.GetTasks(s.ctx, 1+2*util.BlocksOneMonth)
-		s.Equal(schedule.Schedule{schedule.Task{referral.CompressionHookName, addr}}, tasks)
+		t := genesisTime.Add(2 * 30*24*time.Hour)
+		tasks := s.sk.GetTasks(s.ctx, t, t.Add(1))
+		s.Equal(
+			[]schedule.Task{
+				{Time: t, HandlerName: referral.CompressionHookName, Data: []byte(addr.String())},
+			},
+			tasks,
+		)
 	}
 }
 
@@ -136,7 +161,7 @@ func (s *Suite) TestRename() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // from genesis
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 
 	p.Nickname = "user2a"
@@ -150,7 +175,7 @@ func (s *Suite) TestRename() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // -1 ARTR for rename
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 }
 
@@ -166,7 +191,7 @@ func (s *Suite) TestRename_InsufficientFunds() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // from genesis
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 
 	p.Nickname = "user2a"
@@ -180,7 +205,7 @@ func (s *Suite) TestRename_InsufficientFunds() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // nothing changed
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 }
 
@@ -195,7 +220,7 @@ func (s *Suite) TestRename_ClearAndSet() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // from genesis
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 
 	p.Nickname = ""
@@ -209,7 +234,7 @@ func (s *Suite) TestRename_ClearAndSet() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // nothing changed, removal is free
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 
 	p.Nickname = "user2"
@@ -223,6 +248,6 @@ func (s *Suite) TestRename_ClearAndSet() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		), // -1 ARTR
-		s.authKeeper.GetAccount(s.ctx, user).GetCoins(),
+		s.bk.GetBalance(s.ctx, user),
 	)
 }

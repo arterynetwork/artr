@@ -1,16 +1,7 @@
 package types
 
-// noding module event types
-const (
-	EventTypeValidatorBanished = "validator_banished"
-	EventTypeValidatorJailed   = "validator_jailed"
-	EventTypeValidatorWarning  = "validator_warning"
-	EventTypeValidatorBanned   = "validator_banned"
+func (EventValidatorBanished) XXX_MessageName() string { return "validator_banished" }
 
-	AttributeKeyAccountAddress = "account_address"
-	AttributeKeyReason         = "reason"
-	AttributeKeyEvidences      = "evidences"
+func (EventValidatorJailed) XXX_MessageName() string { return "validator_jailed" }
 
-	AttributeValueNotEnoughStatus     = "not_enough_status"
-	AttributeValueNotEnoughDelegation = "not_enough_delegation"
-)
+func (EventByzantine) XXX_MessageName() string { return "byzantine" }

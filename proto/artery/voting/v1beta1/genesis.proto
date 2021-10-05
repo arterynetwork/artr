@@ -1,0 +1,43 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/voting/v1beta1/params.proto";
+import "artery/voting/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+// GenesisState - all voting state that must be provided at genesis
+message GenesisState {
+  repeated string government = 1 [
+    (gogoproto.jsontag)  = "government",
+    (gogoproto.moretags) = "yaml:\"government\""
+  ];
+  Params params = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+  Proposal current_proposal = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "current_proposal,omitempty",
+    (gogoproto.moretags) = "yaml:\"current_proposal,omitempty\""
+  ];
+  int64 start_block = 4 [
+    (gogoproto.jsontag)  = "start_block,omitempty",
+    (gogoproto.moretags) = "yaml:\"start_block,omitempty\""
+  ];
+  repeated string agreed = 5 [
+    (gogoproto.jsontag)  = "agreed,omitempty",
+    (gogoproto.moretags) = "yaml:\"agreed,omitempty\""
+  ];
+  repeated string disagreed = 6 [
+    (gogoproto.jsontag)  = "disagreed,omitempty",
+    (gogoproto.moretags) = "yaml:\"disagreed,omitempty\""
+  ];
+  repeated ProposalHistoryRecord history = 7 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "history,omitempty",
+    (gogoproto.moretags) = "yaml:\"history,omitempty\""
+  ];
+}

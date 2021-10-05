@@ -1,0 +1,64 @@
+syntax = "proto3";
+package artery.profile.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/profile/types";
+
+// Params - used for initializing default parameter for profile at genesis
+message Params {
+  option (gogoproto.goproto_getters)  = false;
+  option (gogoproto.goproto_stringer) = false;
+
+  repeated string creators = 1 [
+    (gogoproto.jsontag)  = "creators",
+    (gogoproto.moretags) = "yaml:\"creators\""
+  ];
+  int64 rename_price = 2 [
+    (gogoproto.jsontag)  = "rename_price",
+    (gogoproto.moretags) = "yaml:\"rename_price\""
+  ];
+  uint64 card_magic = 3 [
+    (gogoproto.jsontag)  = "card_magic",
+    (gogoproto.moretags) = "yaml:\"card_magic\""
+  ];
+  repeated string storage_signers = 4 [
+    (gogoproto.jsontag)  = "storage_signers",
+    (gogoproto.moretags) = "yaml:\"storage_signers,flow\""
+  ];
+  repeated string vpn_signers = 5 [
+    (gogoproto.jsontag)  = "vpn_signers",
+    (gogoproto.moretags) = "yaml:\"vpn_signers,flow\""
+  ];
+
+  string token_rate = 6 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "token_rate",
+    (gogoproto.moretags)   = "yaml:\"token_rate\""
+  ];
+  uint32 subscription_price = 7 [
+    (gogoproto.jsontag)  = "subscription_price",
+    (gogoproto.moretags) = "yaml:\"subscription_price\""
+  ];
+  uint32 vpn_gb_price = 8 [
+    (gogoproto.jsontag)  = "vpn_gb_price",
+    (gogoproto.moretags) = "yaml:\"vpn_gb_price\""
+  ];
+  uint32 storage_gb_price = 9 [
+    (gogoproto.jsontag)  = "storage_gb_price",
+    (gogoproto.moretags) = "yaml:\"storage_gb_price\""
+  ];
+  uint32 base_vpn_gb = 10 [
+    (gogoproto.jsontag)  = "base_vpn_gb",
+    (gogoproto.moretags) = "yaml:\"base_vpn_gb\""
+  ];
+  uint32 base_storage_gb = 11 [
+    (gogoproto.jsontag)  = "base_storage_gb",
+    (gogoproto.moretags) = "yaml:\"base_storage_gb\""
+  ];
+  repeated string token_rate_signers = 12 [
+    (gogoproto.jsontag)  = "token_rate_signers",
+    (gogoproto.moretags) = "yaml:\"token_rate_signers,flow\""
+  ];
+}

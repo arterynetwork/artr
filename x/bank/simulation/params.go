@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/arterynetwork/artr/x/bank/internal/types"
+	"github.com/arterynetwork/artr/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
 )
 

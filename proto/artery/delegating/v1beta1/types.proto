@@ -1,0 +1,30 @@
+syntax = "proto3";
+package artery.delegating.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/delegating/types";
+
+message RevokeRequest {
+  google.protobuf.Timestamp time = 1 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = false
+  ];
+  string amount = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false
+  ];
+}
+
+message Record {
+  //TODO: Remove this field, remove accrue time in favor of proper re-schedule
+  google.protobuf.Timestamp next_accrue = 1 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true
+  ];
+  repeated RevokeRequest requests = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"requests,omitempty\""
+  ];
+}

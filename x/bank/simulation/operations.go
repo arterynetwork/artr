@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 
 	"github.com/arterynetwork/artr/x/bank/internal/keeper"
-	"github.com/arterynetwork/artr/x/bank/internal/types"
+	"github.com/arterynetwork/artr/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/simapp/helpers"

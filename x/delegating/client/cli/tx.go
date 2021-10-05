@@ -1,22 +1,21 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/client/context"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+
 	"github.com/spf13/cobra"
 
-	"github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/client/tx"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/delegating/types"
 )
 
-// GetTxCmd returns the transaction commands for this module
-func GetTxCmd(cdc *codec.Codec) *cobra.Command {
+// NewTxCmd returns the transaction commands for this module
+func NewTxCmd() *cobra.Command {
 	delegatingTxCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Aliases:                    []string{"d"},
@@ -26,74 +25,83 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 
-	delegatingTxCmd.AddCommand(flags.PostCommands(
-		GetCmdDelegate(cdc),
-		GetCmdRevoke(cdc),
-	)...)
+	delegatingTxCmd.AddCommand(
+		GetCmdDelegate(),
+		GetCmdRevoke(),
+	)
 
 	return delegatingTxCmd
 }
 
-func GetCmdDelegate(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:     "delegate <microARTRs>",
+func GetCmdDelegate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "delegate <key_or_address> <microARTRs>",
 		Aliases: []string{"d"},
 		Short:   "delegate funds",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				inBuf  = bufio.NewReader(cmd.InOrStdin())
-				cliCtx = context.NewCLIContext().WithCodec(cdc)
-				txBldr = auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-
-				err    error
-				amount uint64
-				msg    sdk.Msg
-			)
-
-			_, err = fmt.Sscan(args[0], &amount)
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			msg = types.NewMsgDelegate(cliCtx.FromAddress, sdk.NewIntFromUint64(amount))
+			var amount uint64
+			_, err = fmt.Sscan(args[1], &amount)
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgDelegate(clientCtx.GetFromAddress(), sdk.NewIntFromUint64(amount))
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err
 			}
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), &msg)
 		},
 	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
 }
 
-func GetCmdRevoke(cdc *codec.Codec) *cobra.Command {
-	return &cobra.Command{
-		Use:     "revoke <microARTRs>",
+func GetCmdRevoke() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "revoke <key_or_address> <microARTRs>",
 		Aliases: []string{"r", "u"},
 		Short:   "revoke funds from delegating",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				inBuf  = bufio.NewReader(cmd.InOrStdin())
-				cliCtx = context.NewCLIContext().WithCodec(cdc)
-				txBldr = auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-
-				err    error
-				amount uint64
-				msg    sdk.Msg
-			)
-
-			_, err = fmt.Sscan(args[0], &amount)
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
 			if err != nil {
 				return err
 			}
 
-			msg = types.NewMsgRevoke(cliCtx.FromAddress, sdk.NewIntFromUint64(amount))
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			var amount uint64
+			_, err = fmt.Sscan(args[1], &amount)
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgRevoke(clientCtx.GetFromAddress(), sdk.NewIntFromUint64(amount))
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err
 			}
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), &msg)
 		},
 	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
 }

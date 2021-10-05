@@ -12,4 +12,10 @@ const (
 
 	// QuerierRoute to be used for querierer msgs
 	QuerierRoute = ModuleName
+
+	// VpnCollectorName is the root string for an account address for Artery VPN tariff payment collection
+	VpnCollectorName = "vpn"
+
+	// StorageCollectorName is the root string for an account address for Artery Storage tariff payment collection
+	StorageCollectorName = "storage"
 )

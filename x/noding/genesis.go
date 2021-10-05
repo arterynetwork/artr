@@ -11,11 +11,11 @@ import (
 func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) []abci.ValidatorUpdate {
 	k.Logger(ctx).Info("Starting from genesis...")
 	k.SetParams(ctx, data.Params)
-	err := k.SetActiveValidators(ctx, data.ActiveValidators)
+	err := k.SetActiveValidators(ctx, data.Active)
 	if err != nil {
 		panic(err)
 	}
-	err = k.SetNonActiveValidators(ctx, data.NonActiveValidators)
+	err = k.SetNonActiveValidators(ctx, data.NonActive)
 	if err != nil {
 		panic(err)
 	}
@@ -29,7 +29,7 @@ func InitGenesis(ctx sdk.Context, k Keeper, data GenesisState) []abci.ValidatorU
 // ExportGenesis writes the current store values
 // to a genesis file, which can be imported again
 // with InitGenesis
-func ExportGenesis(ctx sdk.Context, k Keeper) (data GenesisState) {
+func ExportGenesis(ctx sdk.Context, k Keeper) (data *GenesisState) {
 	params := k.GetParams(ctx)
 	active, err := k.GetActiveValidators(ctx)
 	if err != nil {

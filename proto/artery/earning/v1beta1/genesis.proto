@@ -1,0 +1,29 @@
+syntax = "proto3";
+package artery.earning.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/earning/v1beta1/params.proto";
+import "artery/earning/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/earning/types";
+
+// GenesisState - all earning state that must be provided at genesis
+message GenesisState {
+  option (gogoproto.goproto_getters) = false;
+
+  Params params = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "params",
+    (gogoproto.moretags) = "yaml:\"params\""
+  ];
+  StateParams state = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "state,omitempty",
+    (gogoproto.moretags) = "yaml:\"state,omitempty\""
+  ];
+  repeated Earner earners = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "earners,omitempty",
+    (gogoproto.moretags) = "yaml:\"earners,omitempty\""
+  ];
+}

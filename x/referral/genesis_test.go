@@ -5,20 +5,22 @@ package referral_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
+	profileK "github.com/arterynetwork/artr/x/profile/keeper"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/referral/types"
-	"github.com/arterynetwork/artr/x/schedule"
-	"github.com/arterynetwork/artr/x/subscription"
+	scheduleT "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestReferralGenesis(t *testing.T) {
@@ -32,18 +34,24 @@ type Suite struct {
 	cleanup   func()
 	ctx       sdk.Context
 	k         referral.Keeper
-	subKeeper subscription.Keeper
+	subKeeper profileK.Keeper
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetReferralKeeper()
-	s.subKeeper = s.app.GetSubscriptionKeeper()
+	s.subKeeper = s.app.GetProfileKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s Suite) TestCleanGenesis() {
@@ -57,31 +65,38 @@ func (s Suite) TestStatusDowngrade() {
 		err    error
 	)
 	var (
-		user2 = app.DefaultGenesisUsers["user2"]
+		user2 = app.DefaultGenesisUsers["user2"].String()
 		user8 = app.DefaultGenesisUsers["user8"]
 	)
+
+	p := s.subKeeper.GetProfile(s.ctx, user8)
+	*p.ActiveUntil = s.ctx.BlockTime().Add(-time.Hour)
+	s.NoError(s.subKeeper.SetProfile(s.ctx, user8, *p))
+
+	// so, user2 loses its status
 	if status, err = s.k.GetStatus(s.ctx, user2); err != nil {
 		panic(err)
 	}
-	s.subKeeper.SetActivityInfo(s.ctx, user8, subscription.NewActivityInfo(false, 0))
-	if err := s.k.SetActive(s.ctx, user8, false); err != nil {
-		panic(err)
-	}
-	// so, user2 loses its status
 	if check, err = s.k.AreStatusRequirementsFulfilled(s.ctx, user2, status); err != nil {
 		panic(err)
 	}
 	s.False(check.Overall)
+
 	s.checkExportImport()
 }
 
 func (s Suite) TestCompression() {
 	user1 := app.DefaultGenesisUsers["user1"]
-	s.subKeeper.SetActivityInfo(s.ctx, user1, subscription.NewActivityInfo(false, 0))
-	if err := s.k.SetActive(s.ctx, user1, false); err != nil {
-		panic(err)
-	}
+
+	p := s.subKeeper.GetProfile(s.ctx, user1)
+	*p.ActiveUntil = s.ctx.BlockTime().Add(-time.Hour)
+	s.NoError(s.subKeeper.SetProfile(s.ctx, user1, *p))
+
 	// so, compression is scheduled
+	info, err := s.k.Get(s.ctx, user1.String())
+	s.NoError(err)
+	s.NotNil(info.CompressionAt)
+
 	s.checkExportImport()
 }
 
@@ -96,7 +111,7 @@ func (s *Suite) TestParams() {
 			ForDelegating:   user(15),
 		},
 		DelegatingAward: referral.NetworkAward{
-			Network: [10]util.Fraction{
+			Network: []util.Fraction{
 				util.Permille(1),
 				util.Permille(3),
 				util.Permille(5),
@@ -111,7 +126,7 @@ func (s *Suite) TestParams() {
 			Company: util.Percent(21),
 		},
 		SubscriptionAward: referral.NetworkAward{
-			Network: [10]util.Fraction{
+			Network: []util.Fraction{
 				util.Permille(2),
 				util.Permille(4),
 				util.Permille(6),
@@ -130,17 +145,23 @@ func (s *Suite) TestParams() {
 }
 
 func (s Suite) TestBanished() {
-	user := app.DefaultGenesisUsers["user14"]
-	s.subKeeper.SetActivityInfo(s.ctx, user, subscription.NewActivityInfo(false, 0))
-	if err := s.k.SetActive(s.ctx, user, false); err != nil {
+	user := app.DefaultGenesisUsers["user14"].String()
+
+	if err := s.k.SetActive(s.ctx, user, false, true); err != nil {
 		panic(err)
 	}
 	s.NoError(s.k.Compress(s.ctx, user))
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + util.BlocksOneMonth)
-	s.NoError(s.k.Banish(s.ctx, user))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + util.BlocksOneMonth).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour))
+	s.nextBlock()
+	for i := 1; i <= 7; i++ {
+		user := fmt.Sprintf("user%d", i)
+		addr := app.DefaultGenesisUsers[user]
+		s.NoError(s.subKeeper.PayTariff(s.ctx, addr, 5), "pay tariff for %s (%s)", user, addr.String())
+	}
 
 	r, err := s.k.Get(s.ctx, user)
 	s.NoError(err)
+	s.True(r.Banished)
 	s.Zero(r.Status)
 
 	s.checkExportImport()
@@ -148,32 +169,46 @@ func (s Suite) TestBanished() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			referral.StoreKey,
-			schedule.StoreKey,
+			scheduleT.StoreKey,
 			params.StoreKey,
 		},
 		map[string]app.Decoder{
-			referral.StoreKey: app.AccAddressDecoder,
-			schedule.StoreKey: app.Uint64Decoder,
-			params.StoreKey:   app.DummyDecoder,
+			referral.StoreKey:  app.StringDecoder,
+			scheduleT.StoreKey: app.Uint64Decoder,
+			params.StoreKey:    app.DummyDecoder,
 		},
 		map[string]app.Decoder{
 			referral.StoreKey: func(bz []byte) (string, error) {
-				var result types.R
-				err := s.app.Codec().UnmarshalBinaryLengthPrefixed(bz, &result)
+				var result types.Info
+				err := s.app.Codec().UnmarshalBinaryBare(bz, &result)
 				if err != nil {
 					return "", err
 				}
 				return fmt.Sprintf("%+v", result), nil
 			},
-			schedule.StoreKey: app.DummyDecoder,
+			scheduleT.StoreKey: app.DummyDecoder,
 			params.StoreKey:   app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)
 }
 
-func user(n int) sdk.AccAddress {
-	return app.DefaultGenesisUsers[fmt.Sprintf("user%d", n)]
+func user(n int) string {
+	return app.DefaultGenesisUsers[fmt.Sprintf("user%d", n)].String()
+}
+
+var bbHeader = abci.RequestBeginBlock{
+	Header: tmproto.Header{
+		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+	},
+}
+
+func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
+	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
+	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	return ebr, bbr
 }

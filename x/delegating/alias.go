@@ -13,17 +13,18 @@ const (
 	DefaultParamspace = types.DefaultParamspace
 	QuerierRoute      = types.QuerierRoute
 	RevokeHookName    = types.RevokeHookName
+	AccrueHookName    = types.AccrueHookName
 )
 
 var (
 	// functions aliases
-	NewKeeper           = keeper.NewKeeper
-	NewQuerier          = keeper.NewQuerier
-	RegisterCodec       = types.RegisterCodec
-	NewGenesisState     = types.NewGenesisState
-	DefaultGenesisState = types.DefaultGenesisState
-	ValidateGenesis     = types.ValidateGenesis
-	NewPercentage       = types.NewPercentage
+	NewKeeper                = keeper.NewKeeper
+	NewQuerier               = keeper.NewQuerier
+	RegisterLegacyAminoCodec = types.RegisterLegacyAminoCodec
+	NewGenesisState          = types.NewGenesisState
+	DefaultGenesisState      = types.DefaultGenesisState
+	ValidateGenesis          = types.ValidateGenesis
+	NewPercentage            = types.NewPercentage
 
 	// variable aliases
 	ModuleCdc = types.ModuleCdc

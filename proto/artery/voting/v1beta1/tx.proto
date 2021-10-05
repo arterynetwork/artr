@@ -1,0 +1,38 @@
+syntax = "proto3";
+package artery.voting.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "artery/voting/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/voting/types";
+
+service Msg {
+  rpc Propose(MsgPropose) returns (MsgProposeResponse);
+  rpc Vote(MsgVote) returns (MsgVoteResponse);
+}
+
+message MsgPropose {
+  // end_block should be left blank, it will be ignored anyway.
+  Proposal proposal = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "proposal",
+    (gogoproto.moretags) = "yaml:\"proposal\""
+  ];
+}
+
+message MsgProposeResponse {}
+
+message MsgVote {
+  option (gogoproto.goproto_getters) = false;
+
+  string voter = 1 [
+    (gogoproto.jsontag)  = "voter",
+    (gogoproto.moretags) = "yaml:\"voter\""
+  ];
+  bool agree = 2 [
+    (gogoproto.jsontag)  = "agree",
+    (gogoproto.moretags) = "yaml:\"agree\""
+  ];
+}
+
+message MsgVoteResponse {}

@@ -3,18 +3,18 @@
 package profile_test
 
 import (
-	"github.com/cosmos/cosmos-sdk/x/params"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-
+	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
-	"github.com/arterynetwork/artr/x/profile"
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/profile/keeper"
 	"github.com/arterynetwork/artr/x/profile/types"
 )
 
@@ -28,17 +28,23 @@ type Suite struct {
 	app     *app.ArteryApp
 	cleanup func()
 	ctx     sdk.Context
-	k       profile.Keeper
+	k       keeper.Keeper
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetProfileKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s Suite) TestCleanGenesis() {
@@ -46,54 +52,76 @@ func (s Suite) TestCleanGenesis() {
 }
 
 func (s Suite) TestFullData() {
-	_, _, newAcc := authtypes.KeyTestPubAddr()
-	s.k.CreateAccountWithProfile(s.ctx, newAcc, app.DefaultGenesisUsers["user13"], types.Profile{
-		AutoPay:     true,
-		ActiveUntil: 42,
-		Noding:      true,
-		Storage:     true,
-		Validator:   true,
-		VPN:         true,
-		Nickname:    "FooBar",
-		CardNumber:  12345,
-	})
+	genesis_time := s.ctx.BlockTime()
+	_, _, newAcc := testdata.KeyTestPubAddr()
+	s.NoError(
+		s.k.CreateAccountWithProfile(s.ctx, newAcc, app.DefaultGenesisUsers["user13"], types.NewProfile(
+			genesis_time.Add(42 * 30*time.Second),
+			true,
+			true,
+			true,
+			true,
+			true,
+			"FooBar",
+			12345,
+		)),
+	)
 	s.checkExportImport()
 }
 
 func (s *Suite) TestParams() {
 	s.Panics(func() {
-		s.k.SetParams(s.ctx, profile.Params{
-			Creators:  []sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
-			Fee:       1234,
-			CardMagic: 999999666666,
+		s.k.SetParams(s.ctx, types.Params{
+			BaseStorageGb:     13,
+			BaseVpnGb:         14,
+			StorageGbPrice:    15,
+			VpnGbPrice:        16,
+			SubscriptionPrice: 17,
+			TokenRate:         util.NewFraction(1111111, 9),
+			Creators:          []string{app.DefaultGenesisUsers["user5"].String()},
+			StorageSigners:    []string{app.DefaultGenesisUsers["user6"].String()},
+			VpnSigners:        []string{app.DefaultGenesisUsers["user7"].String()},
+			TokenRateSigners:  []string{app.DefaultGenesisUsers["user8"].String()},
+			RenamePrice:       1234,
+			CardMagic:         999999666666,
 		})
 	})
-	s.k.SetParams(s.ctx, profile.Params{
-		Creators: []sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
-		Fee:      1234,
+	s.k.SetParams(s.ctx, types.Params{
+		BaseStorageGb:     13,
+		BaseVpnGb:         14,
+		StorageGbPrice:    15,
+		VpnGbPrice:        16,
+		SubscriptionPrice: 17,
+		TokenRate:         util.NewFraction(1111111, 9),
+		Creators:          []string{app.DefaultGenesisUsers["user5"].String()},
+		StorageSigners:    []string{app.DefaultGenesisUsers["user6"].String()},
+		VpnSigners:        []string{app.DefaultGenesisUsers["user7"].String()},
+		TokenRateSigners:  []string{app.DefaultGenesisUsers["user8"].String()},
+		RenamePrice:       1234,
 	})
 	s.checkExportImport()
 }
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
-			profile.StoreKey,
-			profile.AliasStoreKey,
-			profile.CardStoreKey,
+			types.StoreKey,
+			types.AliasStoreKey,
+			types.CardStoreKey,
 			params.StoreKey,
 		},
 		map[string]app.Decoder{
-			profile.StoreKey:      app.DummyDecoder,
-			profile.AliasStoreKey: app.DummyDecoder,
-			profile.CardStoreKey:  app.Uint64Decoder,
-			params.StoreKey:       app.DummyDecoder,
+			types.StoreKey:      app.DummyDecoder,
+			types.AliasStoreKey: app.DummyDecoder,
+			types.CardStoreKey:  app.Uint64Decoder,
+			params.StoreKey:     app.DummyDecoder,
 		},
 		map[string]app.Decoder{
-			profile.StoreKey:      app.DummyDecoder,
-			profile.AliasStoreKey: app.DummyDecoder,
-			profile.CardStoreKey:  app.DummyDecoder,
-			params.StoreKey:       app.DummyDecoder,
+			types.StoreKey:      app.DummyDecoder,
+			types.AliasStoreKey: app.DummyDecoder,
+			types.CardStoreKey:  app.DummyDecoder,
+			params.StoreKey:     app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)

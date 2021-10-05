@@ -9,29 +9,24 @@ const (
 	ModuleName        = types.ModuleName
 	RouterKey         = types.RouterKey
 	StoreKey          = types.StoreKey
-	IdxStoreKey       = types.IdxSoreKey
+	IdxStoreKey       = types.IdxStoreKey
 	DefaultParamspace = types.DefaultParamspace
 	QuerierRoute      = types.QuerierRoute
 	SwitchOnConst     = types.SwitchOnConst
 	SwitchOffConst    = types.SwitchOffConst
 	UnjailConst       = types.UnjailConst
 
-	ValidatorStateOff   = types.ValidatorStateOff
-	ValidatorStateBan   = types.ValidatorStateBan
-	ValidatorStateJail  = types.ValidatorStateJail
-	ValidatorStateSpare = types.ValidatorStateSpare
-	ValidatorStateLucky = types.ValidatorStateLucky
-	ValidatorStateTop   = types.ValidatorStateTop
+	ValidatorStateOff   = types.VALIDATOR_STATE_OFF
+	ValidatorStateBan   = types.VALIDATOR_STATE_BAN
+	ValidatorStateJail  = types.VALIDATOR_STATE_JAIL
+	ValidatorStateSpare = types.VALIDATOR_STATE_SPARE
+	ValidatorStateLucky = types.VALIDATOR_STATE_LUCKY
+	ValidatorStateTop   = types.VALIDATOR_STATE_TOP
 )
 
 var (
 	// functions aliases
 	NewKeeper           = keeper.NewKeeper
-	NewQuerier          = keeper.NewQuerier
-	NewMsgSwitchOn      = types.NewMsgSwitchOn
-	NewMsgSwitchOff     = types.NewMsgSwitchOff
-	NewMsgUnjail        = types.NewMsgUnjail
-	RegisterCodec       = types.RegisterCodec
 	NewGenesisState     = types.NewGenesisState
 	DefaultGenesisState = types.DefaultGenesisState
 	ValidateGenesis     = types.ValidateGenesis
@@ -51,10 +46,6 @@ type (
 	Keeper       = keeper.Keeper
 	GenesisState = types.GenesisState
 	Params       = types.Params
-
-	MsgSwitchOn  = types.MsgSwitchOn
-	MsgSwitchOff = types.MsgSwitchOff
-	MsgUnjail    = types.MsgUnjail
 
 	ValidatorState = types.ValidatorState
 )

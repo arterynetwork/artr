@@ -1,0 +1,10 @@
+syntax = "proto3";
+package artery.schedule.v1beta1;
+
+option go_package = "github.com/arterynetwork/artr/x/schedule/types";
+
+message Params {
+  // Day to nanoseconds. Must be set to 86400000000000 in production. Can be set to a smaller value in testnet for
+  // faster testing.
+  uint64 day_nanos = 1;
+}

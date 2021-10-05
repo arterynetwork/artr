@@ -6,20 +6,21 @@ import (
 )
 
 const (
-	ModuleName        = types.ModuleName
-	RouterKey         = types.RouterKey
-	StoreKey          = types.StoreKey
-	DefaultParamspace = types.DefaultParamspace
-	QuerierRoute      = types.QuerierRoute
-	StartHookName     = types.StartHookName
-	ContinueHookName  = types.ContinueHookName
+	ModuleName           = types.ModuleName
+	RouterKey            = types.RouterKey
+	StoreKey             = types.StoreKey
+	DefaultParamspace    = types.DefaultParamspace
+	QuerierRoute         = types.QuerierRoute
+	StartHookName        = types.StartHookName
+	ContinueHookName     = types.ContinueHookName
+	VpnCollectorName     = types.VpnCollectorName
+	StorageCollectorName = types.StorageCollectorName
 )
 
 var (
 	// functions aliases
 	NewKeeper           = keeper.NewKeeper
 	NewQuerier          = keeper.NewQuerier
-	RegisterCodec       = types.RegisterCodec
 	NewGenesisState     = types.NewGenesisState
 	DefaultGenesisState = types.DefaultGenesisState
 	ValidateGenesis     = types.ValidateGenesis

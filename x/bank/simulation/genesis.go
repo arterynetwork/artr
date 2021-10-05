@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/arterynetwork/artr/x/bank/internal/types"
+	"github.com/arterynetwork/artr/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/module"
 )
@@ -29,7 +29,7 @@ func RandomizedGenState(simState *module.SimulationState) {
 		func(r *rand.Rand) { sendEnabled = GenSendEnabled(r) },
 	)
 
-	bankGenesis := types.NewGenesisState(sendEnabled, 1000, 0)
+	bankGenesis := types.NewGenesisState(sendEnabled, 1000)
 
 	fmt.Printf("Selected randomly generated bank parameters:\n%s\n", codec.MustMarshalJSONIndent(simState.Cdc, bankGenesis))
 	simState.GenState[types.ModuleName] = simState.Cdc.MustMarshalJSON(bankGenesis)

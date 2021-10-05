@@ -1,0 +1,77 @@
+syntax = "proto3";
+package artery.earning.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
+import "artery/earning/v1beta1/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/earning/types";
+
+service Msg {
+  rpc ListEarners(MsgListEarners) returns (MsgListEarnersResponse);
+  rpc Run(MsgRun) returns (MsgRunResponse);
+  rpc Reset(MsgReset) returns (MsgResetResponse);
+}
+
+message MsgListEarners {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string signer = 1 [
+    (gogoproto.jsontag)  = "signer",
+    (gogoproto.moretags) = "yaml:\"signer\""
+  ];
+  repeated Earner earners = 2 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "earners",
+    (gogoproto.moretags)   = "yaml:\"earners\""
+  ];
+}
+
+message MsgListEarnersResponse {}
+
+message MsgRun {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string signer = 1 [
+    (gogoproto.jsontag)  = "signer",
+    (gogoproto.moretags) = "yaml:\"signer\""
+  ];
+  string fund_part = 2 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "fund_part",
+    (gogoproto.moretags)   = "yaml:\"fund_part\""
+  ];
+  uint32 per_block = 3 [
+    (gogoproto.jsontag)  = "per_block",
+    (gogoproto.moretags) = "yaml:\"per_block\""
+  ];
+  int64 total_vpn = 4 [
+    (gogoproto.moretags) = "yaml:\"total_vpn,omitempty\""
+  ];
+  int64 total_storage = 5 [
+    (gogoproto.moretags) = "yaml:\"total_storage,omitempty\""
+  ];
+  google.protobuf.Timestamp time = 6 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "time",
+    (gogoproto.moretags) = "yaml:\"time\""
+  ];
+}
+
+message MsgRunResponse {}
+
+message MsgReset {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string signer = 1 [
+    (gogoproto.jsontag)  = "signer",
+    (gogoproto.moretags) = "yaml:\"signer\""
+  ];
+}
+
+message MsgResetResponse {}

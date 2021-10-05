@@ -1,0 +1,34 @@
+syntax = "proto3";
+package artery.earning.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/earning/types";
+
+message Earner {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string account = 3 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  int64 vpn = 1 [
+    (gogoproto.moretags) = "yaml:\"vpn,omitempty\""
+  ];
+  int64 storage = 2 [
+    (gogoproto.moretags) = "yaml:\"storage,omitempty\""
+  ];
+}
+
+message Points {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  int64 vpn = 1 [
+    (gogoproto.moretags) = "yaml:\"vpn,omitempty\""
+  ];
+  int64 storage = 2 [
+    (gogoproto.moretags) = "yaml:\"storage,omitempty\""
+  ];
+}

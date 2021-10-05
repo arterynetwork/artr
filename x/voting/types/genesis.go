@@ -1,57 +1,79 @@
 package types
 
 import (
-	"errors"
+	"github.com/pkg/errors"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// GenesisState - all voting state that must be provided at genesis
-type GenesisState struct {
-	Government      []sdk.AccAddress        `json:"government" yaml:"government"`
-	Params          Params                  `json:"params" yaml:"params"`
-	CurrentProposal Proposal                `json:"current_proposal,omitempty" yaml:"current_proposal,omitempty"`
-	StartBlock      int64                   `json:"start_block,omitempty" yaml:"start_block,omitempty"`
-	Agreed          []sdk.AccAddress        `json:"agreed,omitempty" yaml:"agreed,omitempty"`
-	Disagreed       []sdk.AccAddress        `json:"disagreed,omitempty" yaml:"disagreed,omitempty"`
-	History         []ProposalHistoryRecord `json:"history,omitempty" yaml:"history,omitempty"`
-}
-
-// NewGenesisState creates a new GenesisState object
-func NewGenesisState(
-	params Params,
-	gov Government,
-	currentProposal Proposal,
-	startBlock int64,
-	agreed Government,
-	disagreed Government,
-	history []ProposalHistoryRecord,
-) GenesisState {
-	return GenesisState{
-		Params:          params,
-		Government:      gov,
-		CurrentProposal: currentProposal,
-		StartBlock:      startBlock,
-		Agreed:          agreed,
-		Disagreed:       disagreed,
-		History:         history[:],
+// DefaultGenesisState - default GenesisState used by Cosmos Hub
+func DefaultGenesisState() *GenesisState {
+	return &GenesisState{
+		Params: DefaultParams(),
 	}
 }
 
-// DefaultGenesisState - default GenesisState used by Cosmos Hub
-func DefaultGenesisState() GenesisState {
-	return GenesisState{
-		Params: DefaultParams(),
+func NewGenesisState(params Params, gov Government, current *Proposal, start int64, agreed, disagreed Government, history []ProposalHistoryRecord) *GenesisState {
+	var currentProposal Proposal
+	if current != nil {
+		currentProposal = *current
+	}
+	return &GenesisState{
+		Params:          params,
+		Government:      gov.Members,
+		CurrentProposal: currentProposal,
+		StartBlock:      start,
+		Agreed:          agreed.Members,
+		Disagreed:       disagreed.Members,
+		History:         history,
 	}
 }
 
 // ValidateGenesis validates the voting genesis parameters
 func ValidateGenesis(data GenesisState) error {
-	if data.Government == nil || len(data.Government) == 0 {
-		return errors.New("no Government accounts")
+	if len(data.Government) == 0 {
+		return errors.New("invalid government: empty list")
+	}
+	for i, bech32 := range data.Government {
+		if _, err := sdk.AccAddressFromBech32(bech32); err != nil {
+			return errors.Wrapf(err, "invalid government (item #%d)", i)
+		}
 	}
 	if err := data.Params.Validate(); err != nil {
-		return err
+		return errors.Wrap(err, "invalid params")
 	}
-
+	if data.CurrentProposal.Equal(Proposal{}) {
+		if data.StartBlock != 0 {
+			return errors.New("invalid start_block: must be zero unless current_proposal is set")
+		}
+		if data.Agreed != nil {
+			return errors.New("invalid agreed: must be empty unless current_proposal is set")
+		}
+		if data.Disagreed != nil {
+			return errors.New("invalid disagreed: must be empty unless current_proposal is set")
+		}
+	} else {
+		if err := data.CurrentProposal.Validate(); err != nil {
+			return errors.Wrap(err, "invalid current_proposal")
+		}
+		if data.StartBlock <= 0 {
+			return errors.New("invalid start_block: must be positive as current_proposal is set")
+		}
+		for i, bech32 := range data.Agreed {
+			if _, err := sdk.AccAddressFromBech32(bech32); err != nil {
+				return errors.Wrapf(err, "invalid agreed (item #%d)", i)
+			}
+		}
+		for i, bech32 := range data.Disagreed {
+			if _, err := sdk.AccAddressFromBech32(bech32); err != nil {
+				return errors.Wrapf(err, "invalid disagreed (item #%d)", i)
+			}
+		}
+	}
+	for i, r := range data.History {
+		if err := r.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid history (item #%d)", i)
+		}
+	}
 	return nil
 }

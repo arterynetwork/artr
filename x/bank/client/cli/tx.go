@@ -1,22 +1,19 @@
 package cli
 
 import (
-	"bufio"
-
 	"github.com/spf13/cobra"
 
-	"github.com/arterynetwork/artr/x/bank/internal/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+
+	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/bank/types"
 )
 
-// GetTxCmd returns the transaction commands for this module
-func GetTxCmd(cdc *codec.Codec) *cobra.Command {
+// NewTxCmd returns the transaction commands for this module
+func NewTxCmd() *cobra.Command {
 	txCmd := &cobra.Command{
 		Use:                        types.ModuleName,
 		Short:                      "Bank transaction subcommands",
@@ -25,40 +22,46 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		RunE:                       client.ValidateCmd,
 	}
 	txCmd.AddCommand(
-		SendTxCmd(cdc),
+		NewSendTxCmd(),
 	)
 	return txCmd
 }
 
 // SendTxCmd will create a send tx and sign it with the given key.
-func SendTxCmd(cdc *codec.Codec) *cobra.Command {
+func NewSendTxCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "send <from_key_or_address> <to_address> <amount>",
 		Short: "Create and sign a send tx",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			inBuf := bufio.NewReader(cmd.InOrStdin())
-			txBldr := auth.NewTxBuilderFromCLI(inBuf).WithTxEncoder(utils.GetTxEncoder(cdc))
-			cliCtx := context.NewCLIContextWithInputAndFrom(inBuf, args[0]).WithCodec(cdc)
-
-			to, err := sdk.AccAddressFromBech32(args[1])
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			toAddr, err := sdk.AccAddressFromBech32(args[1])
 			if err != nil {
 				return err
 			}
 
-			// parse coins trying to be sent
-			coins, err := sdk.ParseCoins(args[2])
+			coins, err := sdk.ParseCoinsNormalized(args[2])
 			if err != nil {
 				return err
 			}
 
-			// build and sign the transaction, then broadcast to Tendermint
-			msg := types.NewMsgSend(cliCtx.GetFromAddress(), to, coins)
-			return utils.GenerateOrBroadcastMsgs(cliCtx, txBldr, []sdk.Msg{msg})
+			msg := types.NewMsgSend(clientCtx.GetFromAddress(), toAddr, coins)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
 	}
 
-	cmd = flags.PostCommands(cmd)[0]
+	util.AddTxFlagsToCmd(cmd)
 
 	return cmd
 }

@@ -1,0 +1,117 @@
+syntax = "proto3";
+package artery.noding.v1beta1;
+
+import "gogoproto/gogo.proto";
+import "tendermint/abci/types.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/noding/types";
+
+message Info {
+  option (gogoproto.goproto_getters) = false;
+
+  reserved 1;
+  reserved "power";
+
+  // Status - if the validator is on (true) or off (false)
+  bool status = 2 [(gogoproto.moretags) = "yaml:\"status,omitempty\""];
+
+  // LastPower - voting power that the validator had during the last block signing.
+  // It must be 0 if the validator was not chosen for signing.
+  int64 last_power = 3 [(gogoproto.moretags) = "yaml:\"last_power,omitempty\""];
+
+  // PubKey - consensus public key of assigned node (bech32)
+  string pub_key = 4 [(gogoproto.moretags) = "yaml:\"pub_key,omitempty\""];
+
+  // LastPubKey - last known to TM consensus public key of assigned node (bech32)
+  string last_pub_key = 5 [(gogoproto.moretags) = "yaml:\"last_pub_key,omitempty\""];
+
+  // Strokes - how many times has that validator missed a block
+  int64 strokes = 6 [(gogoproto.moretags) = "yaml:\"strokes,omitempty\""];
+
+  // OkBlocksInRow - how many blocks the validator successfully signed (in row, i.e. without being missing).
+  // It must be 0 if the validator missed the last block. It must not be reset if the validator was not chosen for
+  // signing a block.
+  int64 ok_blocks_in_row = 7 [(gogoproto.moretags) = "yaml:\"ok_blocks_in_row,omitempty\""];
+
+  // MissedBlocksInRow - how many blocks the validator missed in row (i.e. without successful signing).
+  // It must be 0 if the validator successfully signed the last block. It must not reset if the validator wasn't
+  // chosen for signing a block. But it must be reset if the validator is jailed.
+  int64 missed_blocks_in_row = 8 [(gogoproto.moretags) = "yaml:\"missed_blocks_in_row,omitempty\""];
+
+  // Jailed - if the validator is jailed for missing blocks
+  bool jailed = 9 [(gogoproto.moretags) = "yaml:\"jailed,omitempty\""];
+
+  // UnjailAt - block height after which the validator can unjail
+  int64 unjail_at = 10 [(gogoproto.moretags) = "yaml:\"unjail_at,omitempty\""];
+
+  // ProposedCount - how many blocks was proposed (successfully) by a validator for the all time
+  int64 proposed_count = 11 [(gogoproto.moretags) = "yaml:\"proposed_count,omitempty\""];
+
+  // JailCount - how many times a validator was jailed for the all time
+  int64 jail_count = 12 [(gogoproto.moretags) = "yaml:\"jail_count,omitempty"];
+
+  // LotteryNo - account's number in the lottery validators' queue
+  uint64 lottery_no = 13 [(gogoproto.moretags) = "yaml:\"lottery_no,omitempty\""];
+
+  // Score - validator's priority. It's high enough means the validator's chosen for block signing.
+  int64 score = 14;
+
+  // Infractions - evidences of byzantine behavior (from Tendermint)
+  repeated tendermint.abci.Evidence infractions = 16 [
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"infractions,omitempty\""
+  ];
+
+  // BannedForLife - is the validator permanently banned
+  bool banned_for_life = 17 [(gogoproto.moretags) = "yaml:\"banned_for_life,omitempty\""];
+
+  // Staff nodes are allowed to be validators even if they are not qualified by status/stake
+  bool staff = 18 [(gogoproto.moretags) = "yaml:\"staff,omitempty\""];
+}
+
+enum ValidatorState {
+  option (gogoproto.goproto_enum_prefix) = false;
+
+  // VALIDATOR_STATE_OFF - validation's being switched off and can be switched on if stake and status are enough.
+  VALIDATOR_STATE_OFF = 0;
+
+  // VALIDATOR_STATE_BAN - the account is banned forever for malevolent behavior and validation can never be switched on.
+  VALIDATOR_STATE_BAN = 1;
+
+  // VALIDATOR_STATE_JAIL - validation's suspended and can be resumed after jail period is over.
+  VALIDATOR_STATE_JAIL = 2;
+
+  // VALIDATOR_STATE_SPARE - validator is in reserve now, it can be entitled to block signing as soon as somebody frees a position.
+  VALIDATOR_STATE_SPARE = 3;
+
+  // VALIDATOR_STATE_LUCKY - validator takes one of "lucky" slots; it can sign a block, but will be moved to the reserve after it did so or failed in any way.
+  VALIDATOR_STATE_LUCKY = 4;
+
+  // VALIDATOR_STATE_TOP - validator takes one of "top" slots; it can sign blocks while its rating is high enough to keep the position.
+  VALIDATOR_STATE_TOP = 5;
+}
+
+enum Reason {
+  option (gogoproto.goproto_enum_prefix) = false;
+
+  REASON_UNSPECIFIED       = 0;
+  REASON_NOT_ENOUGH_STATUS = 1;
+  REASON_NOT_ENOUGH_STAKE  = 2;
+}
+
+message Distribution {
+  option (gogoproto.equal) = true;
+
+  message Slice {
+    option (gogoproto.equal) = true;
+
+    string part = 1 [
+      (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+      (gogoproto.nullable)   = false
+    ];
+    int64 voting_power = 2;
+  }
+
+  repeated Slice slices = 1 [(gogoproto.nullable) = false];
+  int64 luckies_voting_power = 2;
+}

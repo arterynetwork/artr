@@ -1,0 +1,47 @@
+syntax = "proto3";
+package artery.delegating.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/delegating/types";
+
+service Msg {
+  rpc Delegate(MsgDelegate) returns (MsgDelegateResponse);
+  rpc Revoke(MsgRevoke) returns (MsgRevokeResponse);
+}
+
+message MsgDelegate {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  string micro_coins = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "micro_coins",
+    (gogoproto.moretags)   = "yaml:\"micro_coins\""
+  ];
+}
+
+message MsgDelegateResponse {}
+
+message MsgRevoke {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  string micro_coins = 2 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "micro_coins",
+    (gogoproto.moretags)   = "yaml:\"micro_coins\""
+  ];
+}
+
+message MsgRevokeResponse {}

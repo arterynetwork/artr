@@ -3,6 +3,7 @@ package keeper
 import (
 	"github.com/arterynetwork/artr/x/voting/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/golang/protobuf/proto"
 )
 
 func (k Keeper) GetGovernment(ctx sdk.Context) types.Government {
@@ -12,23 +13,31 @@ func (k Keeper) GetGovernment(ctx sdk.Context) types.Government {
 
 	var gov types.Government
 
-	k.cdc.MustUnmarshalBinaryBare(bz, &gov)
+	err := proto.Unmarshal(bz, &gov)
+	if err != nil {
+		panic(err)
+	}
 
 	return gov
 }
 
 func (k Keeper) SetGovernment(ctx sdk.Context, gov types.Government) {
 	store := ctx.KVStore(k.storeKey)
-	bz := k.cdc.MustMarshalBinaryBare(gov)
+	bz, err := proto.Marshal(&gov)
+	if err != nil {
+		panic(err)
+	}
 	store.Set(types.KeyGovernment, bz)
 }
 
 func (k Keeper) RemoveGovernor(ctx sdk.Context, gov sdk.AccAddress) {
 	govs := k.GetGovernment(ctx)
-	k.SetGovernment(ctx, govs.Remove(gov))
+	govs.Remove(gov)
+	k.SetGovernment(ctx, govs)
 }
 
 func (k Keeper) AddGovernor(ctx sdk.Context, gov sdk.AccAddress) {
 	govs := k.GetGovernment(ctx)
-	k.SetGovernment(ctx, govs.Append(gov))
+	govs.Append(gov)
+	k.SetGovernment(ctx, govs)
 }

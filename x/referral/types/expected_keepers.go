@@ -1,12 +1,13 @@
 package types
 
 import (
+	"time"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	auth "github.com/cosmos/cosmos-sdk/x/auth/exported"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/x/bank"
-	"github.com/arterynetwork/artr/x/schedule"
 )
 
 // ParamSubspace defines the expected Subspace interface
@@ -18,19 +19,25 @@ type ParamSubspace interface {
 }
 
 type AccountKeeper interface {
-	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.Account
+	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.AccountI
 }
 
 type ScheduleKeeper interface {
-	ScheduleTask(ctx sdk.Context, block uint64, event string, data *[]byte) error
-	GetParams(cts sdk.Context) schedule.Params
+	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
+	Delete(ctx sdk.Context, time time.Time, event string, payload []byte)
+
+	OneDay(ctx sdk.Context) time.Duration
+	OneWeek(ctx sdk.Context) time.Duration
+	OneMonth(ctx sdk.Context) time.Duration
 }
 
 type BankKeeper interface {
-	GetDustDelegation(ctx sdk.Context) int64
+	GetParams(ctx sdk.Context) bank.Params
 
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
 	SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
+
+	GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
 }
 
 type SupplyKeeper interface {

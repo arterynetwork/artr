@@ -14,25 +14,25 @@ import (
 )
 
 // NewQuerier creates a new querier for noding clients.
-func NewQuerier(k Keeper) sdk.Querier {
+func NewQuerier(k Keeper, legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, error) {
 		switch path[0] {
 		//case types.QueryParams:
 		//	return queryParams(ctx, k)
 		case types.QueryStatus:
-			return queryStatus(ctx, k, path[1:])
+			return queryStatus(ctx, k, path[1:], legacyQuerierCdc)
 		case types.QueryInfo:
-			return queryInfo(ctx, k, path[1:])
+			return queryInfo(ctx, k, path[1:], legacyQuerierCdc)
 		case types.QueryProposer:
 			return queryProposer(ctx, k, path[1:])
 		case types.QueryAllowed:
-			return queryAllowed(ctx, k, path[1:])
+			return queryAllowed(ctx, k, path[1:], legacyQuerierCdc)
 		case types.QueryOperator:
 			return queryOperator(ctx, k, path[1:])
 		case types.QueryParams:
-			return queryParams(ctx, k)
+			return queryParams(ctx, k, legacyQuerierCdc)
 		case types.QuerySwitchedOn:
-			return querySwitchedOn(ctx, k)
+			return querySwitchedOn(ctx, k, legacyQuerierCdc)
 		case types.QueryState:
 			return queryState(ctx, k, path[1:])
 		default:
@@ -41,10 +41,10 @@ func NewQuerier(k Keeper) sdk.Querier {
 	}
 }
 
-func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
+func queryParams(ctx sdk.Context, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	params := k.GetParams(ctx)
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, params)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, params)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -52,7 +52,7 @@ func queryParams(ctx sdk.Context, k Keeper) ([]byte, error) {
 	return res, nil
 }
 
-func queryStatus(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
+func queryStatus(ctx sdk.Context, k Keeper, path []string, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	if len(path) < 1 {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "not enough arguments")
 	}
@@ -67,7 +67,7 @@ func queryStatus(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, data)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, data)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -75,7 +75,7 @@ func queryStatus(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 	return res, nil
 }
 
-func queryInfo(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
+func queryInfo(ctx sdk.Context, k Keeper, path []string, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	if len(path) < 1 {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "not enough arguments")
 	}
@@ -90,7 +90,7 @@ func queryInfo(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, data)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, data)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -114,7 +114,7 @@ func queryProposer(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 	return k.GetBlockProposer(ctx, height)
 }
 
-func queryAllowed(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
+func queryAllowed(ctx sdk.Context, k Keeper, path []string, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	if len(path) < 1 {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "not enough arguments")
 	}
@@ -129,7 +129,7 @@ func queryAllowed(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, types.NewAllowedQueryRes(verdict, reason))
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.IsAllowedResponse{Verdict: verdict, Reason: reason})
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}
@@ -163,13 +163,13 @@ func queryOperator(ctx sdk.Context, k Keeper, path []string) ([]byte, error) {
 	return data, nil
 }
 
-func querySwitchedOn(ctx sdk.Context, k Keeper) ([]byte, error) {
+func querySwitchedOn(ctx sdk.Context, k Keeper, legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 	list, err := k.GetActiveValidatorList(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := codec.MarshalJSONIndent(types.ModuleCdc, list)
+	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, list)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())
 	}

@@ -1,0 +1,58 @@
+syntax = "proto3";
+package artery.referral.v1beta1;
+
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/arterynetwork/artr/x/referral/types";
+
+// Params - used for initializing default parameter for x/referral at genesis
+message Params {
+  option (gogoproto.goproto_stringer) = false;
+
+  CompanyAccounts company_accounts = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "company_accounts",
+    (gogoproto.moretags) = "yaml:\"company_accounts\""
+  ];
+  NetworkAward delegating_award = 2 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "delegating_award",
+    (gogoproto.moretags) = "yaml:\"delegating_award\""
+  ];
+  NetworkAward subscription_award = 3 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "subscription_award",
+    (gogoproto.moretags) = "yaml:\"subscription_award\""
+  ];
+  uint64 transition_price = 4 [
+    (gogoproto.jsontag)  = "transition_price",
+    (gogoproto.moretags) = "yaml:\"transition_price\""
+  ];
+}
+
+message CompanyAccounts {
+  option (gogoproto.goproto_getters) = false;
+
+  string top_referrer     = 1 [(gogoproto.jsontag) = "top_referrer", (gogoproto.moretags) = "yaml:\"top_referrer\""];
+  string for_subscription = 2 [(gogoproto.jsontag) = "for_subscription", (gogoproto.moretags) = "yaml:\"for_subscription\""];
+  string promo_bonuses    = 3 [(gogoproto.jsontag) = "promo_bonuses", (gogoproto.moretags) = "yaml:\"promo_bonuses\""];
+  string status_bonuses   = 4 [(gogoproto.jsontag) = "status_bonuses", (gogoproto.moretags) = "yaml:\"status_bonuses\""];
+  string leader_bonuses   = 5 [(gogoproto.jsontag) = "leader_bonuses", (gogoproto.moretags) = "yaml:\"leader_bonuses\""];
+  string for_delegating   = 6 [(gogoproto.jsontag) = "for_delegating", (gogoproto.moretags) = "yaml:\"for_delegating\""];
+}
+
+message NetworkAward {
+  option (gogoproto.equal) = true;
+
+  repeated string network = 1 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.jsontag)    = "network",
+    (gogoproto.moretags)   = "yaml:\"network,flow\""
+  ];
+  string company = 2 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = false,
+    (gogoproto.jsontag)    = "company",
+    (gogoproto.moretags)   = "yaml:\"company\""
+  ];
+}

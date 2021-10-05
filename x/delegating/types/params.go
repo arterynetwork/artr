@@ -1,11 +1,13 @@
 package types
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
-	"github.com/cosmos/cosmos-sdk/x/params"
-
-	"github.com/arterynetwork/artr/util"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
 // Default parameter namespace
@@ -17,9 +19,8 @@ const (
 	DefaultTenKPlusPercent     = 27
 	DefaultHundredKPlusPercent = 30
 
-	DefaultMinDelegate = 1000
-
-	DefaultRevokePeriod = 14 * util.BlocksOneDay
+	DefaultMinDelegate  = 1000
+	DefaultRevokePeriod = 14
 )
 
 // Parameter store keys
@@ -30,38 +31,29 @@ var (
 )
 
 // ParamKeyTable for delegating module
-func ParamKeyTable() params.KeyTable {
-	return params.NewKeyTable().RegisterParamSet(&Params{})
+func ParamKeyTable() paramTypes.KeyTable {
+	return paramTypes.NewKeyTable().RegisterParamSet(&Params{})
 }
 
-type Percentage struct {
-	Minimal      int `json:"minimal" yaml:"minimal"`
-	ThousandPlus int `json:"thousand_plus" yaml:"thousand_plus"`
-	TenKPlus     int `json:"ten_k_plus" yaml:"ten_k_plus"`
-	HundredKPlus int `json:"hundred_k_plus" yaml:"hundred_k_plus"`
+func (p Percentage) String() string {
+	out, _ := yaml.Marshal(p)
+	return string(out)
 }
 
-func NewPercentage(minimal int, oneK int, tenK int, hundredK int) Percentage {
-	return Percentage{
-		Minimal:      minimal,
-		ThousandPlus: oneK,
-		TenKPlus:     tenK,
-		HundredKPlus: hundredK,
+func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
+	return &Percentage{
+		Minimal:      int64(minimal),
+		ThousandPlus: int64(oneK),
+		TenKPlus:     int64(tenK),
+		HundredKPlus: int64(hundredK),
 	}
 }
 
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
-// Params - used for initializing default parameter for delegating at genesis
-type Params struct {
-	Percentage   Percentage `json:"percentage" yaml:"percentage"`
-	MinDelegate  int64      `json:"min_delegate" yaml:"min_delegate"`
-	RevokePeriod int64		`json:"revoke_period" yaml:"revoke_period"`
-}
-
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod int64) Params {
-	return Params{
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32) *Params {
+	return &Params{
 		Percentage:   percentage,
 		MinDelegate:  minDelegate,
 		RevokePeriod: revokePeriod,
@@ -69,18 +61,18 @@ func NewParams(percentage Percentage, minDelegate int64, revokePeriod int64) Par
 }
 
 // ParamSetPairs - Implements params.ParamSet
-func (p *Params) ParamSetPairs() params.ParamSetPairs {
-	return params.ParamSetPairs{
-		params.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
-		params.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
-		params.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
+func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
+	return paramTypes.ParamSetPairs{
+		paramTypes.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
+		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
+		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
 	}
 }
 
 // DefaultParams defines the parameters for this module
-func DefaultParams() Params {
+func DefaultParams() *Params {
 	return NewParams(
-		NewPercentage(
+		*NewPercentage(
 			DefaultMinimalPercent,
 			DefaultThousandPlusPercent,
 			DefaultTenKPlusPercent,
@@ -98,8 +90,22 @@ func (p Params) Validate() error {
 	if err := validateMinDelegate(p.MinDelegate); err != nil {
 		return errors.Wrap(err, "invalid MinDelegate")
 	}
-	if err := validateRevokePeriod(p.RevokePeriod); err != nil { return errors.Wrap(err, "invalid RevokePeriod") }
+	if err := validateRevokePeriod(p.RevokePeriod); err != nil {
+		return errors.Wrap(err, "invalid RevokePeriod")
+	}
 	return nil
+}
+
+func (p Params) String() string {
+	bz, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(bz)
+}
+
+func (p Params) GetRevokePeriod(sk ScheduleKeeper, ctx sdk.Context) time.Duration {
+	return time.Duration(p.RevokePeriod) * sk.OneDay(ctx)
 }
 
 func validatePercentage(i interface{}) error {
@@ -143,7 +149,7 @@ func validateMinDelegate(i interface{}) error {
 }
 
 func validateRevokePeriod(i interface{}) error {
-	rp, ok := i.(int64)
+	rp, ok := i.(uint32)
 	if !ok {
 		return errors.Errorf("invalid RevokePeriod parameter type: %T", i)
 	}

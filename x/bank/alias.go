@@ -4,7 +4,7 @@ package bank
 
 import (
 	"github.com/arterynetwork/artr/x/bank/internal/keeper"
-	"github.com/arterynetwork/artr/x/bank/internal/types"
+	"github.com/arterynetwork/artr/x/bank/types"
 )
 
 const (
@@ -13,13 +13,8 @@ const (
 	ModuleName         = types.ModuleName
 	QuerierRoute       = types.QuerierRoute
 	RouterKey          = types.RouterKey
+	StoreKey           = types.StoreKey
 	DefaultParamspace  = types.DefaultParamspace
-	DefaultSendEnabled = types.DefaultSendEnabled
-
-	EventTypeTransfer      = types.EventTypeTransfer
-	AttributeKeyRecipient  = types.AttributeKeyRecipient
-	AttributeKeySender     = types.AttributeKeySender
-	AttributeValueCategory = types.AttributeValueCategory
 )
 
 var (
@@ -29,7 +24,7 @@ var (
 	NewBaseSendKeeper           = keeper.NewBaseSendKeeper
 	NewBaseViewKeeper           = keeper.NewBaseViewKeeper
 	NewQuerier                  = keeper.NewQuerier
-	RegisterCodec               = types.RegisterCodec
+	RegisterLegacyAminoCodec    = types.RegisterLegacyAminoCodec
 	ErrNoInputs                 = types.ErrNoInputs
 	ErrNoOutputs                = types.ErrNoOutputs
 	ErrInputOutputMismatch      = types.ErrInputOutputMismatch
@@ -38,14 +33,11 @@ var (
 	DefaultGenesisState         = types.DefaultGenesisState
 	ValidateGenesis             = types.ValidateGenesis
 	NewMsgSend                  = types.NewMsgSend
-	NewMsgMultiSend             = types.NewMsgMultiSend
-	NewInput                    = types.NewInput
-	NewOutput                   = types.NewOutput
-	ValidateInputsOutputs       = types.ValidateInputsOutputs
 	ParamKeyTable               = types.ParamKeyTable
 	NewQueryBalanceParams       = types.NewQueryBalanceParams
 	ModuleCdc                   = types.ModuleCdc
-	ParamStoreKeySendEnabled    = types.ParamStoreKeySendEnabled
+	NewInput                    = types.NewInput
+	NewOutput                   = types.NewOutput
 )
 
 type (
@@ -57,8 +49,9 @@ type (
 	BaseViewKeeper     = keeper.BaseViewKeeper
 	GenesisState       = types.GenesisState
 	MsgSend            = types.MsgSend
-	MsgMultiSend       = types.MsgMultiSend
+	QueryBalanceParams = types.QueryBalanceParams
 	Input              = types.Input
 	Output             = types.Output
-	QueryBalanceParams = types.QueryBalanceParams
+	Supply			   = types.Supply
+	Params             = types.Params
 )

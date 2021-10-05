@@ -5,8 +5,8 @@ const (
 	ModuleName = "noding"
 
 	// StoreKey is to be used when creating the KVStore for module data
-	StoreKey   = ModuleName
-	IdxSoreKey = StoreKey + "-index"
+	StoreKey    = ModuleName
+	IdxStoreKey = StoreKey + "-index"
 
 	// RouterKey to be used for routing msgs
 	RouterKey = ModuleName

@@ -4,18 +4,20 @@ package earning_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/params"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/earning"
-	"github.com/arterynetwork/artr/x/schedule"
+	schedule "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestEarningGenesis(t *testing.T) {
@@ -32,13 +34,19 @@ type Suite struct {
 }
 
 func (s *Suite) SetupTest() {
-	s.app, s.cleanup = app.NewAppFromGenesis(nil)
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetEarningKeeper()
 }
 
 func (s *Suite) TearDownTest() {
-	s.cleanup()
+	if s.cleanup != nil {
+		s.cleanup()
+	}
 }
 
 func (s Suite) TestCleanGenesis() {
@@ -63,7 +71,7 @@ func (s Suite) TestLocked() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	user2 := app.DefaultGenesisUsers["user2"]
 	user3 := app.DefaultGenesisUsers["user3"]
-	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5*util.GBSize); err != nil {
+	if err := s.app.GetProfileKeeper().PayTariff(s.ctx, user1, 5); err != nil {
 		panic(err)
 	}
 	if err := s.k.ListEarners(s.ctx, []earning.Earner{
@@ -78,7 +86,7 @@ func (s Suite) TestLocked() {
 		util.NewFraction(7, 30),
 		2,
 		earning.NewPoints(30, 45),
-		10,
+		s.ctx.BlockTime().Add(10*30*time.Second),
 	); err != nil {
 		panic(err)
 	}
@@ -89,7 +97,7 @@ func (s Suite) TestSecondPage() {
 	user1 := app.DefaultGenesisUsers["user1"]
 	user2 := app.DefaultGenesisUsers["user2"]
 	user3 := app.DefaultGenesisUsers["user3"]
-	if err := s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, user1, 5*util.GBSize); err != nil {
+	if err := s.app.GetProfileKeeper().PayTariff(s.ctx, user1, 5); err != nil {
 		panic(err)
 	}
 	if err := s.k.ListEarners(s.ctx, []earning.Earner{
@@ -104,15 +112,15 @@ func (s Suite) TestSecondPage() {
 		util.NewFraction(7, 30),
 		2,
 		earning.NewPoints(30, 45),
-		2,
+		s.ctx.BlockTime().Add(time.Minute),
 	); err != nil {
 		panic(err)
 	}
 
 	s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
-	s.ctx = s.ctx.WithBlockHeight(2)
+	s.ctx = s.ctx.WithBlockHeight(3).WithBlockTime(s.ctx.BlockTime().Add(2*30*time.Second))
 	s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
-		Header: abci.Header{
+		Header: tmproto.Header{
 			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 		},
 	})
@@ -122,8 +130,8 @@ func (s Suite) TestSecondPage() {
 
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, earning.Params{
-		Signers: []sdk.AccAddress{
-			app.DefaultGenesisUsers["user9"],
+		Signers: []string{
+			app.DefaultGenesisUsers["user9"].String(),
 		},
 	})
 	s.checkExportImport()
@@ -131,6 +139,7 @@ func (s *Suite) TestParams() {
 
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
+		s.ctx.BlockTime(),
 		[]string{
 			earning.StoreKey,
 			schedule.StoreKey,

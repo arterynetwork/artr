@@ -13,18 +13,15 @@ const (
 	DefaultParamspace = types.DefaultParamspace
 	QuerierRoute      = types.QuerierRoute
 
-	StatusLucky            = types.Lucky
-	StatusLeader           = types.Leader
-	StatusMaster           = types.Master
-	StatusChampion         = types.Champion
-	StatusBusinessman      = types.Businessman
-	StatusProfessional     = types.Professional
-	StatusTopLeader        = types.TopLeader
-	StatusHero             = types.Hero
-	StatusAbsoluteChampion = types.AbsoluteChampion
-
-	CompressionPeriod    = keeper.CompressionPeriod
-	StatusDowngradeAfter = keeper.StatusDowngradeAfter
+	StatusLucky            = types.STATUS_LUCKY
+	StatusLeader           = types.STATUS_LEADER
+	StatusMaster           = types.STATUS_MASTER
+	StatusChampion         = types.STATUS_CHAMPION
+	StatusBusinessman      = types.STATUS_BUSINESSMAN
+	StatusProfessional     = types.STATUS_PROFESSIONAL
+	StatusTopLeader        = types.STATUS_TOP_LEADER
+	StatusHero             = types.STATUS_HERO
+	StatusAbsoluteChampion = types.STATUS_ABSOLUTE_CHAMPION
 
 	StatusUpdatedCallback = keeper.StatusUpdatedCallback
 	StakeChangedCallback  = keeper.StakeChangedCallback
@@ -34,13 +31,13 @@ const (
 	CompressionHookName       = keeper.CompressionHookName
 	TransitionTimeoutHookName = keeper.TransitionTimeoutHookName
 	BanishHookName            = keeper.BanishHookName
+	StatusBonusHookName       = keeper.StatusBonusHookName
 )
 
 var (
 	// functions aliases
 	NewKeeper           = keeper.NewKeeper
 	NewQuerier          = keeper.NewQuerier
-	RegisterCodec       = types.RegisterCodec
 	NewGenesisState     = types.NewGenesisState
 	DefaultGenesisState = types.DefaultGenesisState
 	ValidateGenesis     = types.ValidateGenesis
@@ -58,5 +55,5 @@ type (
 	NetworkAward      = types.NetworkAward
 	StatusCheckResult = types.StatusCheckResult
 	Status            = types.Status
-	DataRecord        = types.R
+	DataRecord        = types.Info
 )

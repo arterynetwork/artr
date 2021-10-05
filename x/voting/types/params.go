@@ -1,10 +1,14 @@
 package types
 
 import (
-	"github.com/arterynetwork/artr/util"
 	"fmt"
+	"gopkg.in/yaml.v2"
 
-	"github.com/cosmos/cosmos-sdk/x/params"
+	"github.com/pkg/errors"
+
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 // Default parameter namespace
@@ -24,11 +28,6 @@ func ParamKeyTable() params.KeyTable {
 	return params.NewKeyTable().RegisterParamSet(&Params{})
 }
 
-// Params - used for initializing default parameter for voting at genesis
-type Params struct {
-	VotingPeriod int32 `json:"voting_period" yaml:"voting_period"`
-}
-
 // NewParams creates a new Params object
 func NewParams(votingPeriod int32) Params {
 	return Params{
@@ -38,9 +37,11 @@ func NewParams(votingPeriod int32) Params {
 
 // String implements the stringer interface for Params
 func (p Params) String() string {
-	return fmt.Sprintf(`
-		VotingPeriod: #{p.VotingPeriod}
-	`)
+	bz, err := yaml.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	return string(bz)
 }
 
 // ParamSetPairs - Implements params.ParamSet
@@ -57,7 +58,7 @@ func DefaultParams() Params {
 
 func (p Params) Validate() error {
 	if err := validateVotingPeriod(p.VotingPeriod); err != nil {
-		return err
+		return errors.Wrap(err, "invalid voting_period")
 	}
 	return nil
 }
@@ -68,8 +69,8 @@ func validateVotingPeriod(i interface{}) error {
 		return fmt.Errorf("invalid parameter type: %T", i)
 	}
 
-	if v < 100 {
-		return fmt.Errorf("validating period must be more then 100 blocks: %d", v)
+	if v < 1 {
+		return fmt.Errorf("validating period must be at least 1 hour: %d", v)
 	}
 
 	return nil

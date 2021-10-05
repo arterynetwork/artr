@@ -3,26 +3,29 @@
 package keeper_test
 
 import (
-	"github.com/arterynetwork/artr/x/subscription"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/suite"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth"
-	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	authK "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	delegatingK "github.com/arterynetwork/artr/x/delegating/keeper"
+	profileK "github.com/arterynetwork/artr/x/profile/keeper"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
@@ -41,11 +44,12 @@ type BaseSuite struct {
 	app     *app.ArteryApp
 	cleanup func()
 
-	cdc       *codec.Codec
-	ctx       sdk.Context
-	k         referral.Keeper
-	storeKey  sdk.StoreKey
-	accKeeper auth.AccountKeeper
+	cdc      codec.BinaryMarshaler
+	ctx      sdk.Context
+	k        referral.Keeper
+	ak       authK.AccountKeeper
+	bk       bank.Keeper
+	storeKey sdk.StoreKey
 }
 
 func (s *BaseSuite) setupTest(genesis json.RawMessage) {
@@ -55,32 +59,37 @@ func (s *BaseSuite) setupTest(genesis json.RawMessage) {
 		}
 	}()
 
-	s.app, s.cleanup = app.NewAppFromGenesis(genesis)
+	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(genesis)
 
 	s.cdc = s.app.Codec()
-	s.ctx = s.app.NewContext(true, abci.Header{Height: 1})
 	s.k = s.app.GetReferralKeeper()
+	s.ak = s.app.GetAccountKeeper()
+	s.bk = s.app.GetBankKeeper()
 	s.storeKey = s.app.GetKeys()[referral.ModuleName]
-	s.accKeeper = s.app.GetAccountKeeper()
 }
 
 func (s *BaseSuite) TearDownTest() {
-	if s.cleanup == nil {
-		s.FailNow("cleanup callback is not set")
+	if s.cleanup != nil {
+		s.cleanup()
 	}
-	s.cleanup()
 }
 
-type Suite struct{
+type Suite struct {
 	BaseSuite
 
-	pk subscription.Keeper
+	pk profileK.Keeper
 	dk delegatingK.Keeper
 }
 
 func (s *Suite) SetupTest() {
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
 	s.setupTest(nil)
-	s.pk = s.app.GetSubscriptionKeeper()
+
+	s.pk = s.app.GetProfileKeeper()
 	s.dk = s.app.GetDelegatingKeeper()
 }
 
@@ -93,11 +102,11 @@ var (
 )
 
 func (s *Suite) TestAppendChild() {
-	accounts := [12]sdk.AccAddress{}
+	accounts := [12]string{}
 	for i := 0; i < 12; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
-		s.Nil(
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
+		s.NoError(
 			s.setBalance(addr, sdk.Coins{sdk.Coin{
 				Denom:  util.ConfigMainDenom,
 				Amount: sdk.NewInt(1 << i),
@@ -105,12 +114,12 @@ func (s *Suite) TestAppendChild() {
 		)
 	}
 
-	s.Nil(s.set(accounts[0], types.NewR(nil, sdk.NewInt(1), sdk.ZeroInt())))
-	s.Nil(s.k.SetActive(s.ctx, accounts[0], true))
+	s.NoError(s.set(accounts[0], types.NewInfo("", sdk.NewInt(1), sdk.ZeroInt())))
+	s.NoError(s.k.SetActive(s.ctx, accounts[0], true, true))
 
 	for i := 0; i <= 10; i++ {
-		s.Nil(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
-		s.Nil(s.k.SetActive(s.ctx, accounts[i+1], true))
+		s.NoError(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
+		s.NoError(s.k.SetActive(s.ctx, accounts[i+1], true, true))
 	}
 
 	for i, expected := range [12][11]int64{
@@ -128,7 +137,7 @@ func (s *Suite) TestAppendChild() {
 		{0x0800},
 	} {
 		value, err := s.get(accounts[i])
-		s.Nilf(err, "Get account #%d", i)
+		s.NoErrorf(err, "Get account #%d", i)
 		for j := 0; j <= 10; j++ {
 			s.Equalf(
 				expected[j], value.Coins[j].Int64(),
@@ -136,7 +145,7 @@ func (s *Suite) TestAppendChild() {
 		}
 
 		if i == 0 {
-			s.Nil(value.Referrer, "GetParent #0")
+			s.Equal("", value.Referrer, "GetParent #0")
 		} else {
 			s.Equalf(
 				accounts[i-1],
@@ -149,34 +158,34 @@ func (s *Suite) TestAppendChild() {
 			s.Empty(value.Referrals, "GetChildren #11")
 		} else {
 			s.Equalf(
-				[]sdk.AccAddress{accounts[i+1]},
+				[]string{accounts[i+1]},
 				value.Referrals,
 				"GetChildren #%d", i,
 			)
 		}
 
-		expectedRefCount := [11]int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+		expectedRefCount := []uint64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 		for j := 10; j > 11-i; j-- {
 			expectedRefCount[j] = 0
 		}
 		s.Equalf(
 			expectedRefCount,
-			value.ActiveReferralsCount,
+			value.ActiveRefCounts,
 			"ActiveReferralsCount #%d", i,
 		)
 	}
 }
 
 func (s *Suite) TestGetters() {
-	_, _, acc := authtypes.KeyTestPubAddr()
-	_, _, parent := authtypes.KeyTestPubAddr()
-	_, _, child1 := authtypes.KeyTestPubAddr()
-	_, _, child2 := authtypes.KeyTestPubAddr()
-	s.Nil(
-		s.set(acc, types.R{
-			Status:    types.Hero,
-			Referrer:  parent,
-			Referrals: []sdk.AccAddress{child1, child2},
+	_, _, acc := testdata.KeyTestPubAddr()
+	_, _, parent := testdata.KeyTestPubAddr()
+	_, _, child1 := testdata.KeyTestPubAddr()
+	_, _, child2 := testdata.KeyTestPubAddr()
+	s.NoError(
+		s.set(acc.String(), types.Info{
+			Status:    types.STATUS_HERO,
+			Referrer:  parent.String(),
+			Referrals: []string{child1.String(), child2.String()},
 			//			Coins:                [11]sdk.Int{},
 			//			Delegated:            [11]sdk.Int{},
 			//			Active:               false,
@@ -184,25 +193,25 @@ func (s *Suite) TestGetters() {
 		}),
 	)
 
-	resultStatus, err := s.k.GetStatus(s.ctx, acc)
-	s.Nil(err, "GetStatus without error")
-	s.Equal(types.Hero, resultStatus, "GetStatus")
+	resultStatus, err := s.k.GetStatus(s.ctx, acc.String())
+	s.NoError(err, "GetStatus without error")
+	s.Equal(types.STATUS_HERO, resultStatus, "GetStatus")
 
-	resultParent, err := s.k.GetParent(s.ctx, acc)
-	s.Nil(err, "GetParent without error")
-	s.Equal(parent, resultParent, "GetParent")
+	resultParent, err := s.k.GetParent(s.ctx, acc.String())
+	s.NoError(err, "GetParent without error")
+	s.Equal(parent.String(), resultParent, "GetParent")
 
-	resultChildren, err := s.k.GetChildren(s.ctx, acc)
-	s.Nil(err, "GetChildren without error")
-	s.Equal([]sdk.AccAddress{child1, child2}, resultChildren, "GetChildren")
+	resultChildren, err := s.k.GetChildren(s.ctx, acc.String())
+	s.NoError(err, "GetChildren without error")
+	s.Equal([]string{child1.String(), child2.String()}, resultChildren, "GetChildren")
 }
 
 func (s *Suite) TestGetCoinsInNetwork() {
-	accounts := [12]sdk.AccAddress{}
+	accounts := [12]string{}
 	for i := 0; i < 12; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
-		s.Nil(
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
+		s.NoError(
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
 					Denom:  util.ConfigMainDenom,
@@ -215,13 +224,12 @@ func (s *Suite) TestGetCoinsInNetwork() {
 			}),
 		)
 	}
-	s.Nil(s.set(accounts[0], types.R{
-		Status:               types.Leader,
-		StatusDowngradeAt:    -1,
-		Active:               true,
-		ActiveReferralsCount: [11]int{1},
-		Coins:                [11]sdk.Int{sdk.NewInt(3)},
-		Delegated:            [11]sdk.Int{sdk.NewInt(2)},
+	s.NoError(s.set(accounts[0], types.Info{
+		Status:          types.STATUS_LEADER,
+		Active:          true,
+		ActiveRefCounts: []uint64{1},
+		Coins:           []sdk.Int{sdk.NewInt(3)},
+		Delegated:       []sdk.Int{sdk.NewInt(2)},
 	}))
 
 	//                  0
@@ -235,36 +243,44 @@ func (s *Suite) TestGetCoinsInNetwork() {
 	//      4       6   9
 	//  ═══ │ ═════════ │ ═════ end of open lines
 	//      5           A
-	s.Nil(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[3], accounts[4]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[3], accounts[6]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[1], accounts[7]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[7], accounts[8]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[8], accounts[9]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[9], accounts[10]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[0], accounts[11]))
-	for i := 1; i <= 11; i++ {
-		s.Nil(s.k.SetActive(s.ctx, accounts[i], true))
-	}
+	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[1], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[2], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[3], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[3], accounts[4]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[4], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[5], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[3], accounts[6]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[6], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[7]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[7], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[7], accounts[8]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[8], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[8], accounts[9]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[9], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[9], accounts[10]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[10], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[11]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[11], true, true))
 
 	res, err := s.k.GetCoinsInNetwork(s.ctx, accounts[0], 10)
-	s.Nil(err, "GetCoinsInNetwork")
+	s.NoError(err, "GetCoinsInNetwork")
 	s.Equal(uint64(0x00CFF3FF), res.Uint64(), "GetCoinsInNetwork")
 
 	res, err = s.k.GetDelegatedInNetwork(s.ctx, accounts[0], 10)
-	s.Nil(err, "GetDelegatedInNetwork")
+	s.NoError(err, "GetDelegatedInNetwork")
 	s.Equal(uint64(0x008AA2AA), res.Uint64(), "GetDelegatedInNetwork")
 }
 
 func (s *Suite) TestReferralFees() {
-	accounts := [12]sdk.AccAddress{}
+	accounts := [12]string{}
 	for i := 0; i < 12; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
-		s.Nil(
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
+		s.NoError(
 			s.setBalance(addr, sdk.Coins{sdk.Coin{
 				Denom:  util.ConfigMainDenom,
 				Amount: sdk.NewInt(1),
@@ -272,25 +288,23 @@ func (s *Suite) TestReferralFees() {
 		)
 	}
 	s.NoError(
-		s.set(accounts[0], types.R{
-			Status:    types.Lucky,
-			Coins:     [11]sdk.Int{sdk.NewInt(1)},
-			Delegated: [11]sdk.Int{},
+		s.set(accounts[0], types.Info{
+			Status:    types.STATUS_LUCKY,
+			Coins:     []sdk.Int{sdk.NewInt(1)},
+			Delegated: []sdk.Int{},
 		}),
 	)
-	s.NoError(s.k.SetActive(s.ctx, accounts[0], true))
-	for i := 0; i < 12-1; i++ {
-		s.NoError(s.k.AppendChild(s.ctx, accounts[i], accounts[i+1]))
-	}
-	for i := 0; i < 12; i++ {
-		s.NoError(s.k.SetActive(s.ctx, accounts[i], true))
+	s.NoError(s.k.SetActive(s.ctx, accounts[0], true, true))
+	for i := 1; i < 12; i++ {
+		s.NoError(s.k.AppendChild(s.ctx, accounts[i-1], accounts[i]))
+		s.NoError(s.k.SetActive(s.ctx, accounts[i], true, true))
 	}
 
 	var companyAccs types.CompanyAccounts
 	s.app.GetSubspaces()[referral.DefaultParamspace].Get(s.ctx, types.KeyCompanyAccounts, &companyAccs)
 
 	res, err := s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForDelegating all newbies: no error")
+	s.NoError(err, "GetReferralFeesForDelegating all newbies: no error")
 	s.Equal(4, len(res), "GetReferralFeesForDelegating all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -310,7 +324,7 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFesForDelegating all newbies: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForSubscription all newbies: no error")
+	s.NoError(err, "GetReferralFeesForSubscription all newbies: no error")
 	s.Equal(7, len(res), "GetReferralFeesForSubscription all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -342,13 +356,13 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFeesForSubscription all newbies: status bonus")
 
 	for i := 0; i < 12; i++ {
-		s.Nil(s.update(accounts[i], func(value *types.R) {
-			value.Status = types.AbsoluteChampion
+		s.NoError(s.update(accounts[i], func(value *types.Info) {
+			value.Status = types.STATUS_ABSOLUTE_CHAMPION
 		}))
 	}
 
 	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForDelegating all pros: no error")
+	s.NoError(err, "GetReferralFeesForDelegating all pros: no error")
 	s.Equal(11, len(res), "GetReferralFeesForDelegating all pros: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -396,7 +410,7 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFesForDelegating all pros: company")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForSubscription all pros: no error")
+	s.NoError(err, "GetReferralFeesForSubscription all pros: no error")
 	s.Equal(14, len(res), "GetReferralFeesForSubscription all pros: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -455,12 +469,12 @@ func (s *Suite) TestReferralFees() {
 		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription all pros: status bonus")
 
-	s.Nil(s.update(accounts[10], func(value *types.R) {
-		value.Referrer = nil
+	s.NoError(s.update(accounts[10], func(value *types.Info) {
+		value.Referrer = ""
 	}))
 
 	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForDelegating short chain: no error")
+	s.NoError(err, "GetReferralFeesForDelegating short chain: no error")
 	s.Equal(3, len(res), "GetReferralFeesForDelegating short chain: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -476,7 +490,7 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFesForDelegating short chain: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForSubscription short chain: no error")
+	s.NoError(err, "GetReferralFeesForSubscription short chain: no error")
 	s.Equal(6, len(res), "GetReferralFeesForSubscription short chain: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
@@ -503,12 +517,12 @@ func (s *Suite) TestReferralFees() {
 		Ratio:       util.Percent(5),
 	}, "GetReferralFeesForSubscription short chain: status bonus")
 
-	s.Nil(s.update(accounts[11], func(value *types.R) {
-		value.Referrer = nil
+	s.NoError(s.update(accounts[11], func(value *types.Info) {
+		value.Referrer = ""
 	}))
 
 	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForDelegating top account: no error")
+	s.NoError(err, "GetReferralFeesForDelegating top account: no error")
 	s.Equal(2, len(res), "GetReferralFeesForDelegating top account: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
@@ -520,7 +534,7 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFesForDelegating top account: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.Nil(err, "GetReferralFeesForSubscription top account: no error")
+	s.NoError(err, "GetReferralFeesForSubscription top account: no error")
 	s.Equal(5, len(res), "GetReferralFeesForSubscription top account: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
@@ -545,11 +559,11 @@ func (s *Suite) TestReferralFees() {
 }
 
 func (s *Suite) TestCompression() {
-	accounts := [10]sdk.AccAddress{}
+	accounts := [10]string{}
 	for i := 0; i < 10; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
-		s.Nil(
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
+		s.NoError(
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
 					Denom:  util.ConfigMainDenom,
@@ -562,14 +576,19 @@ func (s *Suite) TestCompression() {
 			}),
 		)
 	}
-	s.Nil(s.set(accounts[0], types.R{
-		Status:               types.Lucky,
-		StatusDowngradeAt:    -1,
-		Active:               true,
-		ActiveReferralsCount: [11]int{1},
-		Coins:                [11]sdk.Int{sdk.NewInt(3)},
-		Delegated:            [11]sdk.Int{sdk.NewInt(2)},
-		CompressionAt:        -1,
+	zero := sdk.ZeroInt()
+	s.NoError(s.set(accounts[0], types.Info{
+		Status:          types.STATUS_LUCKY,
+		Active:          true,
+		ActiveRefCounts: []uint64{1},
+		Coins: []sdk.Int{
+			sdk.NewInt(3),
+			zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
+		},
+		Delegated: []sdk.Int{
+			sdk.NewInt(2),
+			zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
+		},
 	}))
 
 	//           0                        0
@@ -581,229 +600,231 @@ func (s *Suite) TestCompression() {
 	//    3   5     8          3    6     7
 	//     ┌──┴──┐
 	//     6      7
-	s.Nil(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[1], accounts[4]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[5], accounts[6]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[5], accounts[7]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[4], accounts[8]))
-	s.Nil(s.k.AppendChild(s.ctx, accounts[0], accounts[9]))
-	for i := 1; i <= 9; i++ {
-		s.Nil(s.k.SetActive(s.ctx, accounts[i], true))
-	}
+	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[1]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[1], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[2]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[2], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[2], accounts[3]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[3], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[1], accounts[4]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[4], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[5]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[5], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[5], accounts[6]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[6], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[5], accounts[7]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[7], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[4], accounts[8]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[8], true, true))
+	s.NoError(s.k.AppendChild(s.ctx, accounts[0], accounts[9]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[9], true, true))
 
-	s.Nil(s.k.SetActive(s.ctx, accounts[4], false))
-	s.Nil(s.k.Compress(s.ctx, accounts[4]))
+	s.NoError(s.k.SetActive(s.ctx, accounts[4], false, true))
+	s.NoError(s.k.Compress(s.ctx, accounts[4]))
 
-	zero := sdk.ZeroInt()
-	for i, expected := range [10]types.R{
+	for i, expected := range [10]types.Info{
 		{ // item #0
-			Status:            types.Lucky,
-			StatusDowngradeAt: -1,
-			Active:            true,
-			Referrer:          nil,
-			Referrals: []sdk.AccAddress{
+			Status: types.STATUS_LUCKY,
+			Active: true,
+			Referrals: []string{
 				accounts[1],
 				accounts[9],
 			},
-			ActiveReferralsCount: [11]int{1, 2, 3, 3},
-			Coins: [11]sdk.Int{
+			ActiveRefCounts: []uint64{1, 2, 3, 3, 0, 0, 0, 0, 0, 0, 0},
+			ActiveReferrals: []string{
+				accounts[1],
+				accounts[9],
+			},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x000003),
 				sdk.NewInt(0x0C000C),
 				sdk.NewInt(0x030F30),
 				sdk.NewInt(0x00F0C0),
 				zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000002),
 				sdk.NewInt(0x080008),
 				sdk.NewInt(0x020A20),
 				sdk.NewInt(0x00A080),
 				zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #1
-			Status:            types.Lucky,
-			StatusDowngradeAt: -1,
-			Active:            true,
-			Referrer:          accounts[0],
-			Referrals: []sdk.AccAddress{
+			Status:   types.STATUS_LUCKY,
+			Active:   true,
+			Referrer: accounts[0],
+			Referrals: []string{
 				accounts[2],
 				accounts[4],
 				accounts[5],
 				accounts[8],
 			},
-			ActiveReferralsCount: [11]int{1, 3, 3},
-			Coins: [11]sdk.Int{
+			ActiveRefCounts: []uint64{1, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0},
+			ActiveReferrals: []string{
+				accounts[2],
+				accounts[5],
+				accounts[8],
+			},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x00000C),
 				sdk.NewInt(0x030F30),
 				sdk.NewInt(0x00F0C0),
 				zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000008),
 				sdk.NewInt(0x020A20),
 				sdk.NewInt(0x00A080),
 				zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #2
-			Status:            types.Lucky,
-			StatusDowngradeAt: -1,
-			Active:            true,
-			Referrer:          accounts[1],
-			Referrals: []sdk.AccAddress{
+			Status:   types.STATUS_LUCKY,
+			Active:   true,
+			Referrer: accounts[1],
+			Referrals: []string{
 				accounts[3],
 			},
-			ActiveReferralsCount: [11]int{1, 1},
-			Coins: [11]sdk.Int{
+			ActiveRefCounts: []uint64{1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			ActiveReferrals: []string{
+				accounts[3],
+			},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x000030),
 				sdk.NewInt(0x0000C0),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000020),
 				sdk.NewInt(0x000080),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #3
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[2],
-			ActiveReferralsCount: [11]int{1},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          true,
+			Referrer:        accounts[2],
+			ActiveRefCounts: []uint64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x0000C0),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000080),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #4
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               false,
-			Referrer:             accounts[1],
-			ActiveReferralsCount: [11]int{},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          false,
+			Referrer:        accounts[1],
+			ActiveRefCounts: []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x000300),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000200),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #5
-			Status:            types.Lucky,
-			StatusDowngradeAt: -1,
-			Active:            true,
-			Referrer:          accounts[1],
-			Referrals: []sdk.AccAddress{
+			Status:   types.STATUS_LUCKY,
+			Active:   true,
+			Referrer: accounts[1],
+			Referrals: []string{
 				accounts[6],
 				accounts[7],
 			},
-			ActiveReferralsCount: [11]int{1, 2},
-			Coins: [11]sdk.Int{
+			ActiveRefCounts: []uint64{1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			ActiveReferrals: []string{
+				accounts[6],
+				accounts[7],
+			},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x000C00),
 				sdk.NewInt(0x00F000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x000800),
 				sdk.NewInt(0x00A000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #6
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[5],
-			ActiveReferralsCount: [11]int{1},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          true,
+			Referrer:        accounts[5],
+			ActiveRefCounts: []uint64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x003000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x002000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #7
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[5],
-			ActiveReferralsCount: [11]int{1},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          true,
+			Referrer:        accounts[5],
+			ActiveRefCounts: []uint64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x00C000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x008000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #8
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[1],
-			ActiveReferralsCount: [11]int{1},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          true,
+			Referrer:        accounts[1],
+			ActiveRefCounts: []uint64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x030000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x020000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 		{ // item #9
-			Status:               types.Lucky,
-			StatusDowngradeAt:    -1,
-			Active:               true,
-			Referrer:             accounts[0],
-			ActiveReferralsCount: [11]int{1},
-			Coins: [11]sdk.Int{
+			Status:          types.STATUS_LUCKY,
+			Active:          true,
+			Referrer:        accounts[0],
+			ActiveRefCounts: []uint64{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+			Coins: []sdk.Int{
 				sdk.NewInt(0x0C0000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			Delegated: [11]sdk.Int{
+			Delegated: []sdk.Int{
 				sdk.NewInt(0x080000),
 				zero, zero, zero, zero, zero, zero, zero, zero, zero, zero,
 			},
-			CompressionAt: -1,
 		},
 	} {
+		sort.Strings(expected.ActiveReferrals)
 		value, err := s.get(accounts[i])
-		s.Nilf(err, "get item #%d without error", i)
+		s.NoErrorf(err, "get item #%d without error", i)
 		s.Equalf(expected, value, "value of item #%d", i)
 	}
 }
 
 func (s *Suite) TestAddChildJustBeforeCompression() {
-	user1 := app.DefaultGenesisUsers["user1"]
+	user1 := app.DefaultGenesisUsers["user1"].String()
+	genesisTime := s.ctx.BlockTime()
 
-	accounts := [3]sdk.AccAddress{}
+	accounts := [3]string{}
 	for i := 0; i < 3; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
 		s.NoError(
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
@@ -821,31 +842,32 @@ func (s *Suite) TestAddChildJustBeforeCompression() {
 	s.NoError(s.k.AppendChild(s.ctx, user1, accounts[0]))
 
 	// When tariff is over
-	s.ctx = s.ctx.WithBlockHeight(8999)
+	s.ctx = s.ctx.WithBlockHeight(1 + 9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.nextBlock()
 	info, err := s.get(user1)
 	s.NoError(err)
 	s.False(info.Active)
-	s.False(info.RegistrationClosed(s.ctx))
+	s.False(info.RegistrationClosed(s.ctx, s.app.GetScheduleKeeper()))
 	s.NoError(s.k.AppendChild(s.ctx, user1, accounts[1]))
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(9001+86400)
+	s.ctx = s.ctx.WithBlockHeight(9002 + 86400).WithBlockTime(genesisTime.Add(9001*30*time.Second + 30*24*time.Hour))
 	s.nextBlock()
 	info, err = s.get(user1)
 	s.NoError(err)
 	s.False(info.Active)
-	s.True(info.RegistrationClosed(s.ctx))
+	s.True(info.RegistrationClosed(s.ctx, s.app.GetScheduleKeeper()))
 	s.Error(s.k.AppendChild(s.ctx, user1, accounts[2]))
 }
 
 func (s *Suite) TestAddChildAfterCompression() {
-	user1 := app.DefaultGenesisUsers["user1"]
+	user1 := app.DefaultGenesisUsers["user1"].String()
+	genesisTime := s.ctx.BlockTime()
 
-	accounts := [2]sdk.AccAddress{}
+	accounts := [2]string{}
 	for i := 0; i < 2; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
 		s.NoError(
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
@@ -863,31 +885,32 @@ func (s *Suite) TestAddChildAfterCompression() {
 	s.NoError(s.k.AppendChild(s.ctx, user1, accounts[0]))
 
 	// When tariff is over
-	s.ctx = s.ctx.WithBlockHeight(8999)
+	s.ctx = s.ctx.WithBlockHeight(1 + 9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.nextBlock()
 	info, err := s.get(user1)
 	s.NoError(err)
 	s.False(info.Active)
-	s.False(info.RegistrationClosed(s.ctx))
+	s.False(info.RegistrationClosed(s.ctx, s.app.GetScheduleKeeper()))
 	s.NoError(s.k.AppendChild(s.ctx, user1, accounts[1]))
 
 	// After compression
-	s.ctx = s.ctx.WithBlockHeight(8999+2*86400)
+	s.ctx = s.ctx.WithBlockHeight(9002 + 2*86400).WithBlockTime(genesisTime.Add(9001*30*time.Second + 2*30*24*time.Hour))
 	s.nextBlock()
 	info, err = s.get(user1)
 	s.NoError(err)
 	s.Zero(len(info.Referrals))
-	s.True(info.RegistrationClosed(s.ctx))
+	s.True(info.RegistrationClosed(s.ctx, s.app.GetScheduleKeeper()))
 	s.Error(s.k.AppendChild(s.ctx, user1, accounts[1]))
 }
 
 func (s *Suite) TestAddChildAfterReactivation() {
-	user1 := app.DefaultGenesisUsers["user1"]
+	user1 := app.DefaultGenesisUsers["user1"].String()
+	genesisTime := s.ctx.BlockTime()
 
-	accounts := [1]sdk.AccAddress{}
+	accounts := [1]string{}
 	for i := 0; i < 1; i++ {
-		_, _, addr := authtypes.KeyTestPubAddr()
-		accounts[i] = addr
+		_, _, addr := testdata.KeyTestPubAddr()
+		accounts[i] = addr.String()
 		s.NoError(
 			s.setBalance(addr, sdk.Coins{
 				sdk.Coin{
@@ -903,40 +926,42 @@ func (s *Suite) TestAddChildAfterReactivation() {
 	}
 
 	// Tariff is over
-	s.ctx = s.ctx.WithBlockHeight(8999)
+	s.ctx = s.ctx.WithBlockHeight(1 + 9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.nextBlock()
 	info, err := s.get(user1)
 	s.NoError(err)
 	s.False(info.Active)
 
 	// Compression
-	s.ctx = s.ctx.WithBlockHeight(8999+2*86400)
+	s.ctx = s.ctx.WithBlockHeight(9002 + 2*86400).WithBlockTime(genesisTime.Add(9001*30*time.Second + 2*30*24*time.Hour))
 	s.nextBlock()
 	info, err = s.get(user1)
 	s.NoError(err)
 	s.Zero(len(info.Referrals))
 
 	// Pay tariff
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5 * util.GBSize))
+	s.NoError(s.app.GetProfileKeeper().PayTariff(s.ctx, app.DefaultGenesisUsers["user1"], 5))
 	info, err = s.get(user1)
 	s.NoError(err)
 	s.True(info.Active)
-	s.False(info.RegistrationClosed(s.ctx))
+	s.False(info.RegistrationClosed(s.ctx, s.app.GetScheduleKeeper()))
 	s.NoError(s.k.AppendChild(s.ctx, user1, accounts[0]))
 }
 
 func (s *Suite) TestStatusDowngrade() {
-	if err := s.k.Compress(s.ctx, app.DefaultGenesisUsers["user4"]); err != nil {
+	genesis_time := s.ctx.BlockTime()
+	if err := s.k.Compress(s.ctx, app.DefaultGenesisUsers["user4"].String()); err != nil {
 		panic(err)
 	}
 	// After that, user2 does not fulfill level2 requirements anymore
 
-	addr := app.DefaultGenesisUsers["user2"]
+	addr := app.DefaultGenesisUsers["user2"].String()
 	if r, err := s.get(addr); err != nil {
 		panic(err)
 	} else {
 		s.Equal(referral.StatusLeader, r.Status)
-		s.Equal(int64(86401), r.StatusDowngradeAt)
+		s.NotNil(r.StatusDowngradeAt)
+		s.Equal(genesis_time.Add(30*24*time.Hour), *r.StatusDowngradeAt)
 	}
 	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
 		panic(err)
@@ -950,7 +975,8 @@ func (s *Suite) TestStatusDowngrade() {
 		panic(err)
 	} else {
 		s.Equal(referral.StatusLeader, r.Status)
-		s.Equal(int64(86401), r.StatusDowngradeAt)
+		s.NotNil(r.StatusDowngradeAt)
+		s.Equal(genesis_time.Add(30*24*time.Hour), *r.StatusDowngradeAt)
 	}
 	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
 		panic(err)
@@ -959,13 +985,13 @@ func (s *Suite) TestStatusDowngrade() {
 	}
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(86400)
+	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesis_time.Add(30 * 24 * time.Hour))
 	s.nextBlock()
 	if r, err := s.get(addr); err != nil {
 		panic(err)
 	} else {
 		s.Equal(referral.StatusLucky, r.Status)
-		s.Equal(int64(-1), r.StatusDowngradeAt)
+		s.Nil(r.StatusDowngradeAt)
 	}
 	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
 		panic(err)
@@ -979,53 +1005,53 @@ func (s Suite) TestTransition() {
 	dest := app.DefaultGenesisUsers["user3"]
 	oldParent := app.DefaultGenesisUsers["user2"]
 
-	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
 		util.Uartrs(990_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 
-	s.NoError(s.k.AffirmTransition(s.ctx, subj), "affirm transition")
+	s.NoError(s.k.AffirmTransition(s.ctx, subj.String()), "affirm transition")
 	s.Equal(
 		util.Uartrs(990_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 
-	acc, err := s.k.GetParent(s.ctx, subj)
+	acc, err := s.k.GetParent(s.ctx, subj.String())
 	s.NoError(err, "get parent")
-	s.Equal(dest, acc, "new parent")
+	s.Equal(dest.String(), acc, "new parent")
 
-	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	accz, err := s.k.GetChildren(s.ctx, oldParent.String())
 	s.NoError(err, "get old parent's children")
 	s.Equal(
-		[]sdk.AccAddress{app.DefaultGenesisUsers["user5"]},
+		[]string{app.DefaultGenesisUsers["user5"].String()},
 		accz, "old parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, dest)
+	accz, err = s.k.GetChildren(s.ctx, dest.String())
 	s.NoError(err, "get new parent's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user6"],
-			app.DefaultGenesisUsers["user7"],
-			subj,
+		[]string{
+			app.DefaultGenesisUsers["user6"].String(),
+			app.DefaultGenesisUsers["user7"].String(),
+			subj.String(),
 		},
 		accz, "new parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, subj)
+	accz, err = s.k.GetChildren(s.ctx, subj.String())
 	s.NoError(err, "get subject's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user8"],
-			app.DefaultGenesisUsers["user9"],
+		[]string{
+			app.DefaultGenesisUsers["user8"].String(),
+			app.DefaultGenesisUsers["user9"].String(),
 		},
 		accz, "subject's children",
 	)
 
-	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	acc, err = s.k.GetPendingTransition(s.ctx, subj.String())
 	s.NoError(err, "get pending transition")
-	s.Nil(acc, "pending transition")
+	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
 		34_990_000000,
@@ -1033,7 +1059,7 @@ func (s Suite) TestTransition() {
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
@@ -1044,55 +1070,55 @@ func (s Suite) TestTransition_Decline() {
 	dest := app.DefaultGenesisUsers["user3"]
 	oldParent := app.DefaultGenesisUsers["user2"]
 
-	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
 		util.Uartrs(990_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 
-	s.NoError(s.k.CancelTransition(s.ctx, subj, false), "decline transition")
+	s.NoError(s.k.CancelTransition(s.ctx, subj.String(), false), "decline transition")
 	s.Equal(
 		util.Uartrs(990_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 
-	acc, err := s.k.GetParent(s.ctx, subj)
+	acc, err := s.k.GetParent(s.ctx, subj.String())
 	s.NoError(err, "get parent")
-	s.Equal(oldParent, acc, "new parent")
+	s.Equal(oldParent.String(), acc, "new parent")
 
-	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	accz, err := s.k.GetChildren(s.ctx, oldParent.String())
 	s.NoError(err, "get old parent's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			subj,
-			app.DefaultGenesisUsers["user5"],
+		[]string{
+			subj.String(),
+			app.DefaultGenesisUsers["user5"].String(),
 		},
 		accz, "old parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, dest)
+	accz, err = s.k.GetChildren(s.ctx, dest.String())
 	s.NoError(err, "get new parent's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user6"],
-			app.DefaultGenesisUsers["user7"],
+		[]string{
+			app.DefaultGenesisUsers["user6"].String(),
+			app.DefaultGenesisUsers["user7"].String(),
 		},
 		accz, "new parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, subj)
+	accz, err = s.k.GetChildren(s.ctx, subj.String())
 	s.NoError(err, "get subject's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user8"],
-			app.DefaultGenesisUsers["user9"],
+		[]string{
+			app.DefaultGenesisUsers["user8"].String(),
+			app.DefaultGenesisUsers["user9"].String(),
 		},
 		accz, "subject's children",
 	)
 
-	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	acc, err = s.k.GetPendingTransition(s.ctx, subj.String())
 	s.NoError(err, "get pending transition")
-	s.Nil(acc, "pending transition")
+	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
 		34_990_000000,
@@ -1100,21 +1126,22 @@ func (s Suite) TestTransition_Decline() {
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
 }
 
 func (s Suite) TestTransition_Timeout() {
+	genesisTime := s.ctx.BlockTime()
 	subj := app.DefaultGenesisUsers["user4"]
 	dest := app.DefaultGenesisUsers["user3"]
 	oldParent := app.DefaultGenesisUsers["user2"]
 
-	s.NoError(s.k.RequestTransition(s.ctx, subj, dest), "request transition")
+	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
 		util.Uartrs(990_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 
 	for i, n := range []sdk.Coins{
@@ -1123,7 +1150,7 @@ func (s Suite) TestTransition_Timeout() {
 		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND, // transition fee
 		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
 	} {
-		cz := s.accKeeper.GetAccount(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)]).GetCoins()
+		cz := s.bk.GetBalance(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
 		s.Equal(n, cz)
 	}
 	for i, n := range []int64{
@@ -1132,12 +1159,12 @@ func (s Suite) TestTransition_Timeout() {
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
 
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneDay)
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneDay).WithBlockTime(genesisTime.Add(24 * time.Hour))
 	s.nextBlock()
 	for i, n := range []sdk.Coins{
 		util.Uartrs(1_010_000000), // validator's award
@@ -1145,47 +1172,47 @@ func (s Suite) TestTransition_Timeout() {
 		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND,
 		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
 	} {
-		cz := s.accKeeper.GetAccount(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)]).GetCoins()
+		cz := s.bk.GetBalance(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
 		s.Equal(n, cz)
 	}
 
-	acc, err := s.k.GetParent(s.ctx, subj)
+	acc, err := s.k.GetParent(s.ctx, subj.String())
 	s.NoError(err, "get parent")
-	s.Equal(oldParent, acc, "new parent")
+	s.Equal(oldParent.String(), acc, "new parent")
 
-	accz, err := s.k.GetChildren(s.ctx, oldParent)
+	accz, err := s.k.GetChildren(s.ctx, oldParent.String())
 	s.NoError(err, "get old parent's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			subj,
-			app.DefaultGenesisUsers["user5"],
+		[]string{
+			subj.String(),
+			app.DefaultGenesisUsers["user5"].String(),
 		},
 		accz, "old parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, dest)
+	accz, err = s.k.GetChildren(s.ctx, dest.String())
 	s.NoError(err, "get new parent's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user6"],
-			app.DefaultGenesisUsers["user7"],
+		[]string{
+			app.DefaultGenesisUsers["user6"].String(),
+			app.DefaultGenesisUsers["user7"].String(),
 		},
 		accz, "new parent's children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, subj)
+	accz, err = s.k.GetChildren(s.ctx, subj.String())
 	s.NoError(err, "get subject's children")
 	s.Equal(
-		[]sdk.AccAddress{
-			app.DefaultGenesisUsers["user8"],
-			app.DefaultGenesisUsers["user9"],
+		[]string{
+			app.DefaultGenesisUsers["user8"].String(),
+			app.DefaultGenesisUsers["user9"].String(),
 		},
 		accz, "subject's children",
 	)
 
-	acc, err = s.k.GetPendingTransition(s.ctx, subj)
+	acc, err = s.k.GetPendingTransition(s.ctx, subj.String())
 	s.NoError(err, "get pending transition")
-	s.Nil(acc, "pending transition")
+	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
 		35_000_000000,
@@ -1193,7 +1220,7 @@ func (s Suite) TestTransition_Timeout() {
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
-		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)], 10)
+		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
 		s.NoError(err, "get coins of user%d", i+1)
 		s.Equal(sdk.NewInt(n), cz, "coins of user%d", i+1)
 	}
@@ -1204,7 +1231,7 @@ func (s Suite) TestTransition_Validate_Circle() {
 	dest := app.DefaultGenesisUsers["user5"]
 
 	s.EqualError(
-		s.k.RequestTransition(s.ctx, subj, dest),
+		s.k.RequestTransition(s.ctx, subj.String(), dest.String()),
 		"transition is invalid: cycles are not allowed",
 	)
 	s.Equal(
@@ -1212,7 +1239,7 @@ func (s Suite) TestTransition_Validate_Circle() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 }
 
@@ -1220,7 +1247,7 @@ func (s Suite) TestTransition_Validate_Self() {
 	subj := app.DefaultGenesisUsers["user2"]
 
 	s.EqualError(
-		s.k.RequestTransition(s.ctx, subj, subj),
+		s.k.RequestTransition(s.ctx, subj.String(), subj.String()),
 		"transition is invalid: subject cannot be their own referral",
 	)
 	s.Equal(
@@ -1228,7 +1255,7 @@ func (s Suite) TestTransition_Validate_Self() {
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
 		),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 }
 
@@ -1237,44 +1264,44 @@ func (s Suite) TestTransition_Validate_OldParent() {
 	oldParent := app.DefaultGenesisUsers["user2"]
 
 	s.EqualError(
-		s.k.RequestTransition(s.ctx, subj, oldParent),
+		s.k.RequestTransition(s.ctx, subj.String(), oldParent.String()),
 		"transition is invalid: destination address is already subject's referrer",
 	)
 	s.Equal(
 		util.Uartrs(1_000_000000),
-		s.app.GetAccountKeeper().GetAccount(s.ctx, subj).GetCoins(),
+		s.bk.GetBalance(s.ctx, subj),
 	)
 }
 
 func (s Suite) TestBanishment() {
 	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user2"]
+	user := app.DefaultGenesisUsers["user2"].String()
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt( 10_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
 
-	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999*30*time.Second))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5 * util.GBSize))
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
 	info, err := s.get(user)
 	s.NoError(err)
 	s.False(info.Active)
 	s.NotZero(len(info.Referrals))
-	s.Equal(types.Leader, info.Status)
+	s.Equal(types.STATUS_LEADER, info.Status)
 
-	s.ctx = s.ctx.WithBlockHeight(8999+2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second+2*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5 * util.GBSize))
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
 	info, err = s.get(user)
 	s.NoError(err)
 	s.False(info.Active)
 	s.Zero(len(info.Referrals))
-	s.Equal(types.Lucky, info.Status)
+	s.Equal(types.STATUS_LUCKY, info.Status)
 
-	s.ctx = s.ctx.WithBlockHeight(8999+3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second+3*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5 * util.GBSize))
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1282,18 +1309,216 @@ func (s Suite) TestBanishment() {
 	s.False(info.Active)
 	s.Zero(len(info.Referrals))
 	s.True(info.Banished)
-	s.Equal(types.Status(0), info.Status)
-	s.Equal(parent, info.Referrer)
+	s.Equal(types.STATUS_UNSPECIFIED, info.Status)
+	s.Equal(parent.String(), info.Referrer)
 
-	info, err = s.get(parent)
+	info, err = s.get(parent.String())
 	s.NotContains(info.Referrals, user)
 	s.NoError(err)
+}
+
+func (s Suite) TestBanishment_Undelegation() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user2"].String()
+	parent := app.DefaultGenesisUsers["user1"]
+
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err := s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.NotZero(len(info.Referrals))
+	s.Equal(types.STATUS_LEADER, info.Status)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.Zero(len(info.Referrals))
+	s.Equal(types.STATUS_LUCKY, info.Status)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.Zero(len(info.Referrals))
+	s.False(info.Banished)
+	s.Equal(types.STATUS_LUCKY, info.Status)
+	s.Equal(parent.String(), info.Referrer)
+	s.Nil(info.BanishmentAt)
+
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.NotNil(info.BanishmentAt)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 4*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 4*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.Zero(len(info.Referrals))
+	s.True(info.Banished)
+	s.Equal(types.STATUS_UNSPECIFIED, info.Status)
+	s.Equal(parent.String(), info.Referrer)
+}
+
+func (s Suite) TestBanishment_DelegationAfterCompression() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user2"].String()
+	parent := app.DefaultGenesisUsers["user1"]
+
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
+
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err := s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.NotZero(len(info.Referrals))
+	s.Equal(types.STATUS_LEADER, info.Status)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.Zero(len(info.Referrals))
+	s.Equal(types.STATUS_LUCKY, info.Status)
+	s.NotNil(info.BanishmentAt)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth + util.BlocksOneDay).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour + 24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.NoError(s.dk.Delegate(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(1_000_000000)))
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Active)
+	s.Zero(len(info.Referrals))
+	s.False(info.Banished)
+	s.Equal(types.STATUS_LUCKY, info.Status)
+	s.Equal(parent.String(), info.Referrer)
+	s.Nil(info.BanishmentAt)
+}
+
+func (s Suite) TestComeBack() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user2"].String()
+	parent := app.DefaultGenesisUsers["user1"]
+
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
+
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	info, err := s.get(user)
+	s.NoError(err)
+	s.True(info.Banished)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth + util.BlocksOneDay).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour + 24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.nextBlock()
+
+	s.NoError(s.pk.PayTariff(s.ctx, app.DefaultGenesisUsers["user2"], 5))
+
+	info, err = s.get(user)
+	s.NoError(err)
+	s.False(info.Banished)
+	s.Nil(info.BanishmentAt)
+	s.Equal(parent.String(), info.Referrer)
+	s.True(info.Active)
+
+	info, err = s.get(parent.String())
+	s.NoError(err)
+	s.Contains(info.Referrals, user)
+}
+
+func (s Suite) TestComeBack_BubbleUp() {
+	var (
+		genesisTime = s.ctx.BlockTime()
+
+		user1 = app.DefaultGenesisUsers["user1"]
+		user2 = app.DefaultGenesisUsers["user2"]
+		user4 = app.DefaultGenesisUsers["user4"]
+		user8 = app.DefaultGenesisUsers["user8"]
+	)
+
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user2, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user4, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.nextBlock()
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.nextBlock()
+
+	info, err := s.get(user8.String())
+	s.NoError(err)
+	s.True(info.Banished)
+	s.Equal(user4.String(), info.Referrer)
+
+	s.ctx = s.ctx.WithBlockHeight(9000 + 4*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 4*30*24*time.Hour))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.nextBlock()
+	s.NoError(s.pk.PayTariff(s.ctx, user8, 5))
+
+	info, err = s.get(user8.String())
+	s.NoError(err)
+	s.False(info.Banished)
+	s.Equal(user1.String(), info.Referrer)
+
+	info, err = s.get(user1.String())
+	s.NoError(err)
+	s.Contains(info.Referrals, user8.String())
+
+	info, err = s.get(user2.String())
+	s.NoError(err)
+	s.Zero(len(info.Referrals))
+
+	info, err = s.get(user4.String())
+	s.NoError(err)
+	s.Zero(len(info.Referrals))
 }
 
 type TransitionBorderlineSuite struct {
 	BaseSuite
 
-	accounts map[string]sdk.AccAddress
+	accounts map[string]string
 }
 
 func (s *TransitionBorderlineSuite) SetupTest() {
@@ -1309,15 +1534,15 @@ func (s *TransitionBorderlineSuite) SetupTest() {
 	}
 	s.setupTest(data)
 
-	s.accounts = map[string]sdk.AccAddress{
-		"1":     accAddr("artr1qq9gvskgjkwfkqexeapwps0cnqj6pxkz4nevre"),
-		"1.1":   accAddr("artr1qqxwvzmhjsrwa9fuyafu2jcxcrv2fclwrpy33g"),
-		"1.1.1": accAddr("artr1qqvnckqa5yqaps2v9wfeqpzkum4cmexcmr38kj"),
-		"1.1.2": accAddr("artr1pg635yjdpg62pjvsxfz5xyhxcxk2ss4lkepp7x"),
-		"2":     accAddr("artr1sxwwflxyj2wl0l3ltl83kn7sxvrkfalymmhvf0"),
-		"2.1":   accAddr("artr1sxnhvuyuac9x52lmpduyf9uaz763nw0wwdu5qm"),
-		"2.1.1": accAddr("artr1sx48ywhy3yqyhf4h4yxc4n2ucz62xkzva3e7d8"),
-		"2.1.2": accAddr("artr13366fwedzhlu7l66kmrq3utq9x5y0f7f46yzj9"),
+	s.accounts = map[string]string{
+		"1":     "artr1qq9gvskgjkwfkqexeapwps0cnqj6pxkz4nevre",
+		"1.1":   "artr1qqxwvzmhjsrwa9fuyafu2jcxcrv2fclwrpy33g",
+		"1.1.1": "artr1qqvnckqa5yqaps2v9wfeqpzkum4cmexcmr38kj",
+		"1.1.2": "artr1pg635yjdpg62pjvsxfz5xyhxcxk2ss4lkepp7x",
+		"2":     "artr1sxwwflxyj2wl0l3ltl83kn7sxvrkfalymmhvf0",
+		"2.1":   "artr1sxnhvuyuac9x52lmpduyf9uaz763nw0wwdu5qm",
+		"2.1.1": "artr1sx48ywhy3yqyhf4h4yxc4n2ucz62xkzva3e7d8",
+		"2.1.2": "artr13366fwedzhlu7l66kmrq3utq9x5y0f7f46yzj9",
 	}
 }
 
@@ -1332,7 +1557,7 @@ func (s TransitionBorderlineSuite) TestAlmostUp() {
 	data, err = s.k.Get(s.ctx, s.accounts["2"])
 	s.NoError(err)
 	s.Equal(referral.StatusTopLeader, data.Status)
-	s.Equal(int64(-1), data.StatusDowngradeAt)
+	s.Nil(data.StatusDowngradeAt)
 }
 
 func (s TransitionBorderlineSuite) TestAlmostDown() {
@@ -1350,262 +1575,54 @@ func (s TransitionBorderlineSuite) TestAlmostDown() {
 	data, err = s.k.Get(s.ctx, s.accounts["1"])
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
-	s.Equal(int64(-1), data.StatusDowngradeAt)
-}
-
-func (s Suite) TestBanishment_Undelegation() {
-	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user2"]
-	parent := app.DefaultGenesisUsers["user1"]
-
-	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30 * time.Second))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err := s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.NotZero(len(info.Referrals))
-	s.Equal(types.Leader, info.Status)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.Zero(len(info.Referrals))
-	s.Equal(types.Lucky, info.Status)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.Zero(len(info.Referrals))
-	s.False(info.Banished)
-	s.Equal(types.Lucky, info.Status)
-	s.Equal(parent, info.Referrer)
-	s.Zero(info.BanishmentAt)
-
-	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(10_000_000000)))
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.NotNil(info.BanishmentAt)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 4*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second + 4*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.Zero(len(info.Referrals))
-	s.True(info.Banished)
-	s.Equal(types.Status(0), info.Status)
-	s.Equal(parent, info.Referrer)
-}
-
-func (s Suite) TestBanishment_DelegationAfterCompression() {
-	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user2"]
-	parent := app.DefaultGenesisUsers["user1"]
-
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
-
-	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30 * time.Second))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err := s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.NotZero(len(info.Referrals))
-	s.Equal(types.Leader, info.Status)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.Zero(len(info.Referrals))
-	s.Equal(types.Lucky, info.Status)
-	s.NotNil(info.BanishmentAt)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth + util.BlocksOneDay).WithBlockTime(genesisTime.Add(8999*30*time.Second + 2*30*24*time.Hour + 24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	s.NoError(s.dk.Delegate(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(1_000_000000)))
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(8999*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Active)
-	s.Zero(len(info.Referrals))
-	s.False(info.Banished)
-	s.Equal(types.Lucky, info.Status)
-	s.Equal(parent, info.Referrer)
-	s.Zero(info.BanishmentAt)
-}
-
-func (s Suite) TestComeBack() {
-	user := app.DefaultGenesisUsers["user2"]
-	parent := app.DefaultGenesisUsers["user1"]
-
-	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(10_000_000000)))
-
-	s.ctx = s.ctx.WithBlockHeight(8999)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err := s.get(user)
-	s.NoError(err)
-	s.True(info.Banished)
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
-	s.nextBlock()
-
-	s.NoError(s.pk.PayForSubscription(s.ctx, app.DefaultGenesisUsers["user2"], 5*util.GBSize))
-
-	info, err = s.get(user)
-	s.NoError(err)
-	s.False(info.Banished)
-	s.Zero(info.BanishmentAt)
-	s.Equal(parent, info.Referrer)
-	s.True(info.Active)
-
-	info, err = s.get(parent)
-	s.NoError(err)
-	s.Contains(info.Referrals, user)
-}
-
-func (s Suite) TestComeBack_BubbleUp() {
-	var (
-		user1 = app.DefaultGenesisUsers["user1"]
-		user2 = app.DefaultGenesisUsers["user2"]
-		user4 = app.DefaultGenesisUsers["user4"]
-		user8 = app.DefaultGenesisUsers["user8"]
-	)
-
-	s.ctx = s.ctx.WithBlockHeight(8999)
-	s.NoError(s.pk.PayForSubscription(s.ctx, user1, 5*util.GBSize))
-	s.NoError(s.pk.PayForSubscription(s.ctx, user2, 5*util.GBSize))
-	s.NoError(s.pk.PayForSubscription(s.ctx, user4, 5*util.GBSize))
-	s.nextBlock()
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, user1, 5*util.GBSize))
-	s.NoError(s.pk.PayForSubscription(s.ctx, user4, 5*util.GBSize))
-	s.nextBlock()
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, user1, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err := s.get(user8)
-	s.NoError(err)
-	s.False(info.Banished)
-	s.Equal(user4.String(), info.Referrer.String())
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, user1, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user8)
-	s.NoError(err)
-	s.True(info.Banished)
-	s.Equal(user4.String(), info.Referrer.String())
-
-	info, err = s.get(user4)
-	s.NoError(err)
-	s.False(info.Active)
-	s.True(info.RegistrationClosed(s.ctx))
-
-	s.ctx = s.ctx.WithBlockHeight(8999 + 4*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, user1, 5*util.GBSize))
-	s.NoError(s.pk.PayForSubscription(s.ctx, user8, 5*util.GBSize))
-	s.nextBlock()
-
-	info, err = s.get(user4)
-	s.NoError(err)
-	s.False(info.Active)
-	s.True(info.RegistrationClosed(s.ctx))
-
-	info, err = s.get(user8)
-	s.NoError(err)
-	s.False(info.Banished)
-	s.Equal(user1, info.Referrer)
-
-	info, err = s.get(user1)
-	s.NoError(err)
-	s.Contains(info.Referrals, user8)
-
-	info, err = s.get(user2)
-	s.NoError(err)
-	s.Zero(len(info.Referrals))
-
-	info, err = s.get(user4)
-	s.NoError(err)
-	s.Zero(len(info.Referrals))
+	s.Nil(data.StatusDowngradeAt)
 }
 
 func (s Suite) TestComeBackViaDelegation() {
+	genesisTime := s.ctx.BlockTime()
 	user := app.DefaultGenesisUsers["user2"]
 	parent := app.DefaultGenesisUsers["user1"]
 
 	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(10_000_000000)))
 
-	s.ctx = s.ctx.WithBlockHeight(8999)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
+	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
-	s.ctx = s.ctx.WithBlockHeight(8999 + 2*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 2*util.BlocksOneMonth).
+		WithBlockTime(genesisTime.Add((8999 + 2*util.BlocksOneMonth) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 3*util.BlocksOneMonth).
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
-	info, err := s.get(user)
+	info, err := s.get(user.String())
 	s.NoError(err)
 	s.True(info.Banished)
 
-	s.ctx = s.ctx.WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay)
-	s.NoError(s.pk.PayForSubscription(s.ctx, parent, 5*util.GBSize))
+	s.ctx = s.ctx.
+		WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay).
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth + util.BlocksOneDay) * 30*time.Second))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
-	s.NoError(s.dk.Delegate(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(25_000000)))
+	s.NoError(s.dk.Delegate(s.ctx, user, sdk.NewInt(25_000000)))
 
-	info, err = s.get(user)
+	info, err = s.get(user.String())
 	s.NoError(err)
 	s.False(info.Banished)
-	s.Zero(info.BanishmentAt)
-	s.Equal(parent, info.Referrer)
+	s.Nil(info.BanishmentAt)
+	s.Equal(parent.String(), info.Referrer)
 	s.False(info.Active)
 
-	info, err = s.get(parent)
+	info, err = s.get(parent.String())
 	s.NoError(err)
-	s.Contains(info.Referrals, user)
+	s.Contains(info.Referrals, user.String())
 }
 
 type StatusUpgradeSuite struct {
@@ -1619,7 +1636,6 @@ func (s *StatusUpgradeSuite) SetupTest() {
 			s.FailNow("panic on setup", e)
 		}
 	}()
-
 	data, err := ioutil.ReadFile("test-genesis-status-upgrade.json")
 	if err != nil {
 		panic(err)
@@ -1632,71 +1648,75 @@ func (s *StatusUpgradeSuite) SetupTest() {
 }
 
 func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
+	genesisTime := s.ctx.BlockTime()
 	root := app.DefaultGenesisUsers["user15"]
 
 	var (
 		status types.Status
 		err    error
-		data   types.R
+		data   types.Info
 	)
 
-	status, err = s.k.GetStatus(s.ctx, root)
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusChampion, status)
 
 	// Jump to next level
-	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))))
-	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusBusinessman, status)
 
 	// Jump several levels at once
-	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_000_000_000000)))))
-	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusHero, status)
 
 	// Step back
-	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))))
-	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusHero, status)
 
-	data, err = s.get(root)
+	data, err = s.get(root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
-	s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
+	s.NotNil(data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(30*24*time.Hour), *data.StatusDowngradeAt)
 
 	// Jump to the top (downgrade should be cancelled)
-	s.NoError(s.app.GetBankKeeper().SetCoins(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))))
-	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))))
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, status)
-	data, err = s.get(root)
+	data, err = s.get(root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, data.Status)
-	s.Equal(int64(-1), data.StatusDowngradeAt)
+	s.Nil(data.StatusDowngradeAt)
 
 	// Loose one of teams - should fall to the bottom
-	s.NoError(s.k.SetActive(s.ctx, s.heads[2], false))
-	status, err = s.k.GetStatus(s.ctx, root)
+	s.NoError(s.k.SetActive(s.ctx, s.heads[2].String(), false, true))
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, status)
-	data, err = s.get(root)
+	data, err = s.get(root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, data.Status)
-	s.Equal(int64(1+referral.StatusDowngradeAfter), data.StatusDowngradeAt)
+	s.NotNil(data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(30*24*time.Hour), *data.StatusDowngradeAt)
 
 	// One month later ...
-	s.ctx = s.ctx.WithBlockHeight(referral.StatusDowngradeAfter)
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 30*2880 - 1).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour - 30*time.Second))
 	s.nextBlock()
-	status, err = s.k.GetStatus(s.ctx, root)
+	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusHero, status)
-	data, err = s.get(root)
+	data, err = s.get(root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
-	s.Equal(int64(1+2*referral.StatusDowngradeAfter), data.StatusDowngradeAt)
+	s.NotNil(data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(2*30*24*time.Hour), *data.StatusDowngradeAt)
 }
 
 type Status3x3Suite struct {
@@ -1717,10 +1737,11 @@ func (s *Status3x3Suite) SetupTest() {
 }
 
 func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
-	var (
-		root, _   = sdk.AccAddressFromBech32("artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg")
-		neck00, _ = sdk.AccAddressFromBech32("artr18mrcvv6qkmkx5uyjxy4lpl5fh7w08wgf2acuwt")
-		neck02, _ = sdk.AccAddressFromBech32("artr1d8gc7e2mftlcgjgejtluw9uqem88jzj4yydxnw")
+	genesisTime := s.ctx.BlockTime()
+	const (
+		root   = "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
+		neck00 = "artr18mrcvv6qkmkx5uyjxy4lpl5fh7w08wgf2acuwt"
+		neck02 = "artr1d8gc7e2mftlcgjgejtluw9uqem88jzj4yydxnw"
 	)
 
 	var (
@@ -1750,14 +1771,14 @@ func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
 	s.False(check.Overall)
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(86400)
+	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesisTime.Add(30 * 24 * time.Hour))
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root)
 	s.NoError(err)
 	s.Equal(referral.StatusMaster, status)
 
 	// Two months later
-	s.ctx = s.ctx.WithBlockHeight(172800)
+	s.ctx = s.ctx.WithBlockHeight(172800).WithBlockTime(genesisTime.Add(2 * 30 * 24 * time.Hour))
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root)
 	s.NoError(err)
@@ -1767,44 +1788,54 @@ func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
 type StatusBonusSuite struct {
 	BaseSuite
 
-	bk bank.Keeper
+	pk profileK.Keeper
 }
 
 func (s *StatusBonusSuite) SetupTest() {
+	defer func() {
+		if e := recover(); e != nil {
+			s.FailNow("panic on setup", e)
+		}
+	}()
 	data, err := ioutil.ReadFile("test-genesis-status-bonus.json")
 	if err != nil {
 		panic(err)
 	}
 	s.setupTest(json.RawMessage(data))
-	s.bk = s.app.GetBankKeeper()
+
+	s.pk = s.app.GetProfileKeeper()
 }
 
 func (s *StatusBonusSuite) TestStatusBonus() {
+	genesisTime := s.ctx.BlockTime()
 	lvl5 := app.DefaultGenesisUsers["user14"]
 	lvl7 := app.DefaultGenesisUsers["user15"]
-	topR := s.k.GetParams(s.ctx).CompanyAccounts.TopReferrer
+	topR, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.TopReferrer)
 	s.nextBlock()
 
 	var (
 		status types.Status
 		err    error
 	)
-	status, err = s.k.GetStatus(s.ctx, lvl7)
+	status, err = s.k.GetStatus(s.ctx, lvl7.String())
 	s.NoError(err)
 	s.Equal(referral.StatusTopLeader, status)
 
-	status, err = s.k.GetStatus(s.ctx, lvl5)
+	status, err = s.k.GetStatus(s.ctx, lvl5.String())
 	s.NoError(err)
 	s.Equal(referral.StatusBusinessman, status)
 
-	err = s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, app.DefaultGenesisUsers["user1"], 5*util.GBSize)
+	err = s.pk.PayTariff(s.ctx, app.DefaultGenesisUsers["user1"], 5)
 	s.NoError(err)
-	course, price, _, _, _, _ := s.app.GetSubscriptionKeeper().GetPrices(s.ctx)
-	payment := int64(course * price)
+	pz := s.pk.GetParams(s.ctx)
+	course := pz.TokenRate
+	price := int64(pz.SubscriptionPrice)
+	payment := course.MulInt64(price).Int64()
 	total := util.Percent(5).MulInt64(payment - util.CalculateFee(sdk.NewInt(payment)).Int64()).Int64()
 
+	statusBonuses, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses)
 	s.Equal(total,
-		s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64(),
+		s.bk.GetBalance(s.ctx, statusBonuses).AmountOf(util.ConfigMainDenom).Int64(),
 		"commission from subscription",
 	)
 
@@ -1812,17 +1843,17 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 	toLevel7 := total/5*2 + total/10
 	toTopRef := total / 5 * 2
 
-	b0level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	b0level7 := s.bk.GetCoins(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
-	b0topRef := s.bk.GetCoins(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
+	b0level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b0level7 := s.bk.GetBalance(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
+	b0topRef := s.bk.GetBalance(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
 
 	// On the week end
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1)
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(7 * 24 * time.Hour - 30 * time.Second))
 	s.nextBlock()
 
-	b1level5 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	b1level7 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
-	b1topRef := s.app.GetBankKeeper().GetCoins(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
+	b1level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b1level7 := s.bk.GetBalance(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
+	b1topRef := s.bk.GetBalance(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
 
 	s.Equal(b0level5+toLevel5, b1level5, "Level 5: %d + %d", b0level5, toLevel5)
 	s.Equal(b0level7+toLevel7, b1level7, "Level 7: %d + %d", b0level7, toLevel7)
@@ -1830,86 +1861,79 @@ func (s *StatusBonusSuite) TestStatusBonus() {
 }
 
 func (s *StatusBonusSuite) TestStatusBonus_AfterDowngrade() {
+	genesisTime := s.ctx.BlockTime()
 	lvl5 := app.DefaultGenesisUsers["user14"]
 	somebody := app.DefaultGenesisUsers["user1"]
+	sbacc, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses)
 	s.nextBlock()
 
-	status, err := s.k.GetStatus(s.ctx, lvl5)
+	status, err := s.k.GetStatus(s.ctx, lvl5.String())
 	s.NoError(err)
 	s.Equal(referral.StatusBusinessman, status)
-	b0level5 := s.app.GetBankKeeper().GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b0level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
 
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
-	total := s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
+	total := s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
 	s.NotZero(total)
 	toLevel5 := total / 10
 
 	// On the week end
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1)
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(7*24*time.Hour - 30*time.Second))
 	s.nextBlock()
-	b1level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b1level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
 	s.Equal(b0level5+toLevel5, b1level5, "Week 1: %d + %d", b0level5, toLevel5)
 
 	// Fail status requirements
 	s.NoError(s.bk.SendCoins(s.ctx, lvl5, somebody, util.Uartrs(100_000_000000)))
-	check, err := s.k.AreStatusRequirementsFulfilled(s.ctx, lvl5, referral.StatusBusinessman)
+	check, err := s.k.AreStatusRequirementsFulfilled(s.ctx, lvl5.String(), referral.StatusBusinessman)
 	s.NoError(err)
 	s.False(check.Overall)
 	s.nextBlock()
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
-	total = s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
+	total = s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
 	s.NotZero(total)
 	toLevel5 = total / 10
 
-	s.ctx = s.ctx.WithBlockHeight(2*util.BlocksOneWeek - 1)
+	s.ctx = s.ctx.WithBlockHeight(2*util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(2*7*24*time.Hour - 30*time.Second))
 	s.nextBlock()
-	b2level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	b2level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
 	s.Equal(b1level5-100_000_000000+toLevel5, b2level5, "Week 2: %d + %d", b1level5-100_000_000000, toLevel5)
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek + util.BlocksOneMonth - 1)
+	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek + util.BlocksOneMonth - 1).WithBlockTime(genesisTime.Add(37*24*time.Hour - 30*time.Second))
 	s.nextBlock()
-	status, err = s.k.GetStatus(s.ctx, lvl5)
+	status, err = s.k.GetStatus(s.ctx, lvl5.String())
 	s.NoError(err)
 	s.Equal(referral.StatusChampion, status)
 
-	s.NoError(s.app.GetSubscriptionKeeper().PayForSubscription(s.ctx, somebody, 5*util.GBSize))
-	total = s.bk.GetCoins(s.ctx, s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses).AmountOf(util.ConfigMainDenom).Int64()
+	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
+	total = s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
 	s.NotZero(total)
-	s.ctx = s.ctx.WithBlockHeight(5*util.BlocksOneWeek - 1)
+	s.ctx = s.ctx.WithBlockHeight(6*util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(6*7*24*time.Hour - 30*time.Second))
 	s.nextBlock()
-	b5level5 := s.bk.GetCoins(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	s.Equal(b2level5, b5level5, "Week 5: %d + 0", b2level5)
+	b5level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
+	s.Equal(b2level5, b5level5, "Week 6: %d + 0", b2level5)
 }
 
 // ----- private functions ------------
 
 func (s *BaseSuite) setBalance(acc sdk.AccAddress, coins sdk.Coins) error {
-	item := s.accKeeper.GetAccount(s.ctx, acc)
-	if item == nil {
-		item = s.accKeeper.NewAccountWithAddress(s.ctx, acc)
-	}
-	err := item.SetCoins(coins)
-	if err != nil {
-		return err
-	}
-	s.accKeeper.SetAccount(s.ctx, item)
-	return nil
+	return s.bk.SetBalance(s.ctx, acc, coins)
 }
 
-func (s *BaseSuite) get(acc sdk.AccAddress) (types.R, error) {
+func (s *BaseSuite) get(acc string) (types.Info, error) {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
 	valueBytes := store.Get(keyBytes)
-	var value types.R
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(valueBytes, &value)
+	var value types.Info
+	err := s.cdc.UnmarshalBinaryBare(valueBytes, &value)
 	return value, err
 }
 
-func (s *BaseSuite) set(acc sdk.AccAddress, value types.R) error {
+func (s *BaseSuite) set(acc string, value types.Info) error {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
-	valueBytes, err := s.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err := s.cdc.MarshalBinaryBare(&value)
 	if err != nil {
 		return err
 	}
@@ -1917,33 +1941,33 @@ func (s *BaseSuite) set(acc sdk.AccAddress, value types.R) error {
 	return nil
 }
 
-func (s *BaseSuite) update(acc sdk.AccAddress, callback func(*types.R)) error {
+func (s *BaseSuite) update(acc string, callback func(*types.Info)) error {
 	store := s.ctx.KVStore(s.storeKey)
 	keyBytes := []byte(acc)
 	valueBytes := store.Get(keyBytes)
-	var value types.R
-	err := s.cdc.UnmarshalBinaryLengthPrefixed(valueBytes, &value)
+	var value types.Info
+	err := s.cdc.UnmarshalBinaryBare(valueBytes, &value)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot unmarshal value")
 	}
 	callback(&value)
-	valueBytes, err = s.cdc.MarshalBinaryLengthPrefixed(value)
+	valueBytes, err = s.cdc.MarshalBinaryBare(&value)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot marshal value")
 	}
 	store.Set(keyBytes, valueBytes)
 	return nil
 }
 
 var bbHeader = abci.RequestBeginBlock{
-	Header: abci.Header{
+	Header: tmproto.Header{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
 	},
 }
 
 func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1)
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
 	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
 	return ebr, bbr
 }
