@@ -7,14 +7,14 @@ First of all, you can download the Artery Network application for Windows and ma
 [our site](https://artery-network.io). It is probably what you want. If you are using another OS or just interested 
 what's under the hood, you can start your full node by yourself following these steps.     
 
-0. Make you sure you have [Go](https://golang.org/) 1.15+ installed.
-0. Download this repo and checkout 1.3.5 version with ```
-git clone https://github.com/arterynetwork/artr.git -b 1.3.5```
-0. Build and install the daemon and the CLI client with `make all`
-0. (Optional) Look around with `artrd --help` and `artrcli --help`
+0. Make you sure you have [Docker](https://www.docker.com/) installed.
+0. Download this repo and checkout 2.0.0 version with ```
+git clone https://github.com/arterynetwork/artr.git -b 2.0.0```
+0. Build the application with `make build-all`
+0. Copy a built binary from the `builds` directory to somewhere your OS could find it (i.e. some directory in a `$PATH`)
+0. (Optional) Look around with `artrd --help`
 0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name you like.
-0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from 
-https://artery-network.io/.well-known/genesis1.3.5.json
+0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from https://artery.network/.well-known/genesis/artery_network-8/genesis.json 
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
             peristent_peers = ""
@@ -26,15 +26,15 @@ https://artery-network.io/.well-known/genesis1.3.5.json
             timeout_prevote_delta = "500ms"
             timeout_precommit = "1s"
             timeout_precommit_delta = "500ms"
-            timeout_commit = "30s"
+            timeout_commit = "14s"
 
-0. (Optional) Download the latest blockchain data snapshot and place it to the `$HOME/.artrd/data` directory. An actual path can be found in https://blocks.artery-network.io/latest.json
+0. (Optional) Download the latest blockchain data snapshot and place it to the `$HOME/.artrd/data` directory. An actual path can be found in https://blocks.artery.network/latest.json
 0. Start your node with `artrd start`
 0. The node will download and replay blocks, it may take a while. When it reaches a moment of software upgrade, a 
-message like `UPGRADE "x.x.x" NEEDED at height yyyy` appears and the daemon stops.
-0. Checkout specified version and repeat steps 2 and 8.
+message like `UPGRADE "x.x.x" NEEDED ...` appears and the daemon stops.
+0. Checkout a specified version and repeat steps 2, 3 and 9 -- 11.
 0. When the node reaches the current blockchain height (you can refer with the 
-[blockchain explorer](https://artery-network.io/blockchain) to be sure), it is ready. Now you can use the `artrcli` 
+[blockchain explorer](https://artery-network.io/blockchain) to be sure), it is ready. Now you can use the `artrd` 
 command to send transactions.
 
 ### Upgrade Manager
@@ -50,6 +50,9 @@ downloaded one with it.
 
 ## How to Become a Validator
 
-To become a validator, one must have at least Leader status and 10k+ ARTR total team delegation. If you are not using 
-[Artery Node](https://artery-network.io/node) application, you can activate validation via CLI:
-```artrcli tx noding on $(artrd tendermint show-validator) --from [your_key_name]``` 
+To become a validator, one must have at least Champion status (can be further changed by voting) and 10k+ ARTR total team delegation. If you are not using 
+[Artery Network](https://artery-network.io) application, you can activate validation via CLI:
+```
+artrd keys add -i --recover <your-key_name>
+artrd tx noding on <your_key_name> $(artrd tendermint show-validator)
+``` 
