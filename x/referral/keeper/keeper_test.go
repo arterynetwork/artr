@@ -1021,32 +1021,44 @@ func (s Suite) TestTransition() {
 	s.NoError(err, "get parent")
 	s.Equal(dest.String(), acc, "new parent")
 
-	accz, err := s.k.GetChildren(s.ctx, oldParent.String())
-	s.NoError(err, "get old parent's children")
+	info, err := s.k.Get(s.ctx, oldParent.String())
+	s.NoError(err, "get old parent info")
 	s.Equal(
 		[]string{app.DefaultGenesisUsers["user5"].String()},
-		accz, "old parent's children",
+		info.Referrals, "old parent's children",
+	)
+	s.Equal(
+		[]string{app.DefaultGenesisUsers["user5"].String()},
+		info.ActiveReferrals, "old parent's active children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, dest.String())
-	s.NoError(err, "get new parent's children")
+	info, err = s.k.Get(s.ctx, dest.String())
+	s.NoError(err, "get new parent info")
 	s.Equal(
 		[]string{
 			app.DefaultGenesisUsers["user6"].String(),
 			app.DefaultGenesisUsers["user7"].String(),
 			subj.String(),
 		},
-		accz, "new parent's children",
+		info.Referrals, "new parent's children",
+	)
+	s.Equal(
+		[]string{
+			app.DefaultGenesisUsers["user6"].String(),
+			app.DefaultGenesisUsers["user7"].String(),
+			subj.String(),
+		},
+		info.ActiveReferrals, "new parent's active children",
 	)
 
-	accz, err = s.k.GetChildren(s.ctx, subj.String())
-	s.NoError(err, "get subject's children")
+	info, err = s.k.Get(s.ctx, subj.String())
+	s.NoError(err, "get subject info")
 	s.Equal(
 		[]string{
 			app.DefaultGenesisUsers["user8"].String(),
 			app.DefaultGenesisUsers["user9"].String(),
 		},
-		accz, "subject's children",
+		info.Referrals, "subject's children",
 	)
 
 	acc, err = s.k.GetPendingTransition(s.ctx, subj.String())

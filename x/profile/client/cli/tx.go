@@ -437,16 +437,14 @@ func cmdSetRate() *cobra.Command {
 			}
 			sender := clientCtx.GetFromAddress()
 
-			var traffic uint32
-			if n, err := strconv.ParseUint(args[1], 0, 32); err != nil {
+			var value util.Fraction
+			if value, err = util.ParseFraction(args[1]); err != nil {
 				return errors.Wrap(err, "cannot parse value")
-			} else {
-				traffic = uint32(n)
 			}
 
-			msg := &types.MsgBuyVpn{
-				Address:      sender.String(),
-				ExtraTraffic: traffic,
+			msg := &types.MsgSetRate{
+				Sender: sender.String(),
+				Value:  value,
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err

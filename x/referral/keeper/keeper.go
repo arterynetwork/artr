@@ -878,6 +878,10 @@ func (k Keeper) AffirmTransition(ctx sdk.Context, subject string) error {
 		}
 		value.Referrals[idx] = value.Referrals[len(value.Referrals)-1]
 		value.Referrals = value.Referrals[:len(value.Referrals)-1]
+		util.RemoveStringFast(&value.Referrals, subject)
+		if r.Active {
+			util.RemoveStringFast(&value.ActiveReferrals, subject)
+		}
 
 		for i := 1; i <= 10; i++ {
 			value.Coins[i] = value.Coins[i].Sub(r.Coins[i-1])
@@ -893,6 +897,9 @@ func (k Keeper) AffirmTransition(ctx sdk.Context, subject string) error {
 
 	if err = bu.update(newParent, true, func(value *types.Info) error {
 		value.Referrals = append(value.Referrals, subject)
+		if r.Active {
+			value.ActiveReferrals = append(value.ActiveReferrals, subject)
+		}
 
 		for i := 1; i <= 10; i++ {
 			value.Coins[i] = value.Coins[i].Add(r.Coins[i-1])
