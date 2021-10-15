@@ -8,13 +8,13 @@ First of all, you can download the Artery Network application for Windows and ma
 what's under the hood, you can start your full node by yourself following these steps.     
 
 0. Make you sure you have [Docker](https://www.docker.com/) installed.
-0. Download this repo and checkout 2.0.0 version with ```
-git clone https://github.com/arterynetwork/artr.git -b 2.0.0```
+0. Download this repo and checkout 2.0.1 version with ```
+git clone https://github.com/arterynetwork/artr.git -b 2.0.1```
 0. Build the application with `make build-all`
 0. Copy a built binary from the `builds` directory to somewhere your OS could find it (i.e. some directory in a `$PATH`)
 0. (Optional) Look around with `artrd --help`
 0. Initialize your node with `artrd init [moniker]` where `[moniker]` is a name you like.
-0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from https://artery.network/.well-known/genesis/artery_network-8/genesis.json 
+0. Replace a just created genesis file (`$HOME/.artrd/config/genesis.json` by default) with one downloaded from https://artery.network/.well-known/genesis/artery_network-9/genesis.json 
 0. In the node configuration file (`$HOME/.artrd/config/config.toml` by default) set peers and consensus parameters:
 
             peristent_peers = ""
