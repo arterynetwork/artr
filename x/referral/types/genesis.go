@@ -63,8 +63,7 @@ func NewGenesisState(
 	topLevelAccounts []string,
 	otherAccounts []Refs,
 	banished []Banished,
-	neverPaid []string,
-	compressions []Compression,
+	compressions, banishment []Compression,
 	downgrades []Downgrade,
 	transitions []Transition,
 ) *GenesisState {
@@ -73,8 +72,8 @@ func NewGenesisState(
 		TopLevelAccounts: topLevelAccounts,
 		OtherAccounts:    otherAccounts,
 		BanishedAccounts: banished,
-		NeverPaid:        neverPaid,
 		Compressions:     compressions,
+		Banishment:       banishment,
 		Downgrades:       downgrades,
 		Transitions:      transitions,
 	}

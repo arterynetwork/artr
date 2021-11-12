@@ -361,6 +361,35 @@ func (s *Suite) TestGetAccumulation() {
 	)
 }
 
+func (s *Suite) TestDelegateAfterBanishment() {
+	rk := s.app.GetReferralKeeper()
+	user := app.DefaultGenesisUsers["user4"]
+
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4*24*time.Hour))
+	s.nextBlock()
+	r, err := rk.Get(s.ctx, user.String())
+	s.NoError(err)
+	s.False(r.Active)
+	s.NotNil(r.CompressionAt)
+
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 172800).WithBlockTime(s.ctx.BlockTime().Add(2*30*24*time.Hour))
+	s.nextBlock()
+	r, err = rk.Get(s.ctx, user.String())
+	s.NoError(err)
+	s.NotNil(r.BanishmentAt)
+
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 86400).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour))
+	s.nextBlock()
+	r, err = rk.Get(s.ctx, user.String())
+	s.NoError(err)
+	s.True(r.Banished)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
+	r,err = rk.Get(s.ctx, user.String())
+	s.NoError(err)
+	s.False(r.Banished)
+}
+
 var bbHeader = abci.RequestBeginBlock{
 	Header: tmproto.Header{
 		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),

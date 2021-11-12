@@ -73,6 +73,8 @@ func (s MsgServer) UpdateProfile(ctx context.Context, msg *types.MsgUpdateProfil
 			profile.Vpn = upd.GetBool()
 		case types.MsgUpdateProfile_Update_FIELD_NICKNAME:
 			profile.Nickname = upd.GetString_()
+		case types.MsgUpdateProfile_Update_FIELD_IM_AUTO_PAY:
+			profile.AutoPayImExtra = upd.GetBool()
 		}
 	}
 
@@ -188,4 +190,34 @@ func (s MsgServer) SetRate(ctx context.Context, msg *types.MsgSetRate) (*types.M
 	k.SetParams(sdkCtx, p)
 	util.TagTx(sdkCtx, types.ModuleName, msg)
 	return &types.MsgSetRateResponse{}, nil
+}
+
+func (s MsgServer) BuyImExtraStorage(ctx context.Context, msg *types.MsgBuyImExtraStorage) (*types.MsgBuyImExtraStorageResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	k := Keeper(s)
+	if err := k.BuyImStorage(sdkCtx, msg.GetAddress(), msg.ExtraStorage); err != nil {
+		return nil, err
+	}
+	util.TagTx(sdkCtx, types.ModuleName, msg)
+	return &types.MsgBuyImExtraStorageResponse{}, nil
+}
+
+func (s MsgServer) GiveUpImExtra(ctx context.Context, msg *types.MsgGiveUpImExtra) (*types.MsgGiveUpImExtraResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	k := Keeper(s)
+	if err := k.GiveImStorageUp(sdkCtx, msg.GetAddress(), msg.Amount); err != nil {
+		return nil, err
+	}
+	util.TagTx(sdkCtx, types.ModuleName, msg)
+	return &types.MsgGiveUpImExtraResponse{}, nil
+}
+
+func (s MsgServer) ProlongImExtra(ctx context.Context, msg *types.MsgProlongImExtra) (*types.MsgProlongImExtraResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	k := Keeper(s)
+	if err := k.ProlongImExtra(sdkCtx, msg.GetAddress()); err != nil {
+		return nil, err
+	}
+	util.TagTx(sdkCtx, types.ModuleName, msg)
+	return &types.MsgProlongImExtraResponse{}, nil
 }

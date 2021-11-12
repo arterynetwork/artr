@@ -50,6 +50,7 @@ type ReferralKeeper interface {
 
 type ScheduleKeeper interface {
 	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
+	Delete(ctx sdk.Context, time time.Time, event string, payload []byte)
 
 	OneMonth(ctx sdk.Context) time.Duration
 }

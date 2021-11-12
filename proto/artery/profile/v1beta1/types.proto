@@ -61,4 +61,21 @@ message Profile {
     (gogoproto.jsontag)  = "vpn_current,omitempty",
     (gogoproto.moretags) = "yaml:\"vpn_current,omitempty\""
   ];
+
+  // ImLimitExtra - IM space limit over the default 5GB, in gigabytes.
+  uint64 im_limit_extra = 12 [
+    (gogoproto.jsontag)  = "im_limit_extra,omitempty",
+    (gogoproto.moretags) = "yaml:\"im_limit_extra,omitempty\""
+  ];
+  // ExtraImUntil - when IM extra space expires. An account has extra IM space if and only if it's a momemt in the future.
+  google.protobuf.Timestamp extra_im_until = 13 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "extra_im_until,omitempty",
+    (gogoproto.moretags) = "yaml:\"extra_im_until,omitempty\""
+  ];
+  bool auto_pay_im_extra = 14 [
+    (gogoproto.jsontag)  = "auto_pay_im_extra,omitempty",
+    (gogoproto.moretags) = "yaml:\"auto_pay_im_extra,omitempty\""
+  ];
 }

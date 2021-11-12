@@ -20,6 +20,9 @@ var (
 	_ sdk.Msg = &MsgGiveStorageUp{}
 	_ sdk.Msg = &MsgBuyVpn{}
 	_ sdk.Msg = &MsgSetRate{}
+	_ sdk.Msg = &MsgBuyImExtraStorage{}
+	_ sdk.Msg = &MsgGiveUpImExtra{}
+	_ sdk.Msg = &MsgProlongImExtra{}
 )
 
 const (
@@ -32,6 +35,9 @@ const (
 	GiveStorageUpConst     = "give_storage_up"
 	BuyVpnConst            = "buy_vpn"
 	SetRateConst           = "set_rate"
+	BuyImExtraStorageConst = "buy_im_extra"
+	GiveUpImExtraConst     = "give_up_im_extra"
+	ProlongImExtraConst    = "prolong_im_extra"
 
 	ForbiddenNicknameCharacters = " */:'\"=[],."
 )
@@ -41,15 +47,6 @@ func NewMsgCreateAccount(creator sdk.AccAddress, account sdk.AccAddress, referre
 		Creator:  creator.String(),
 		Address:  account.String(),
 		Referrer: referrer.String(),
-	}
-}
-
-func NewMsgCreateAccountWithProfile(creator sdk.AccAddress, account sdk.AccAddress, referrer sdk.AccAddress, profile Profile) MsgCreateAccount {
-	return MsgCreateAccount{
-		Creator:  creator.String(),
-		Address:  account.String(),
-		Referrer: referrer.String(),
-		Profile:  &profile,
 	}
 }
 
@@ -374,7 +371,7 @@ func (msg *MsgGiveStorageUp) GetSignBytes() []byte {
 }
 
 func (msg MsgGiveStorageUp) GetSigners() []sdk.AccAddress {
-	panic("implement me")
+	return []sdk.AccAddress{msg.GetAccAddress()}
 }
 
 func (msg MsgGiveStorageUp) GetAccAddress() sdk.AccAddress {
@@ -447,6 +444,105 @@ func (msg MsgSetRate) GetSigners() []sdk.AccAddress {
 
 func (msg MsgSetRate) GetSender() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(msg.Sender)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (MsgBuyImExtraStorage) Route() string { return RouterKey }
+
+func (MsgBuyImExtraStorage) Type() string { return BuyImExtraStorageConst }
+
+func (msg MsgBuyImExtraStorage) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Address); err != nil {
+		return errors.Wrap(err, "invalid address")
+	}
+	if msg.ExtraStorage <= 0 {
+		return errors.New("extra_storage must be positive")
+	}
+	return nil
+}
+
+func (msg *MsgBuyImExtraStorage) GetSignBytes() []byte {
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+func (msg MsgBuyImExtraStorage) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.GetAddress()}
+}
+
+func (msg MsgBuyImExtraStorage) GetAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(msg.Address)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (MsgGiveUpImExtra) Route() string { return RouterKey }
+
+func (MsgGiveUpImExtra) Type() string { return GiveUpImExtraConst }
+
+func (msg MsgGiveUpImExtra) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Address); err != nil {
+		return errors.Wrap(err, "invalid address")
+	}
+	if msg.Amount < 0 {
+		return errors.New("amount must be non-negative")
+	}
+	return nil
+}
+
+func (msg *MsgGiveUpImExtra) GetSignBytes() []byte {
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+func (msg MsgGiveUpImExtra) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.GetAddress()}
+}
+
+func (msg MsgGiveUpImExtra) GetAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(msg.Address)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+func (MsgProlongImExtra) Route() string { return RouterKey }
+
+func (MsgProlongImExtra) Type() string { return ProlongImExtraConst }
+
+func (msg MsgProlongImExtra) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Address); err != nil {
+		return errors.Wrap(err, "invalid address")
+	}
+	return nil
+}
+
+func (msg *MsgProlongImExtra) GetSignBytes() []byte {
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+func (msg MsgProlongImExtra) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.GetAddress()}
+}
+
+func (msg MsgProlongImExtra) GetAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(msg.Address)
 	if err != nil {
 		panic(err)
 	}

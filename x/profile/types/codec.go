@@ -19,7 +19,9 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(MsgGiveStorageUp{}, "profile/GiveStorageUp", nil)
 	cdc.RegisterConcrete(MsgBuyVpn{}, "profile/BuyVpn", nil)
 	cdc.RegisterConcrete(MsgSetRate{}, "profile/SetRate", nil)
-
+	cdc.RegisterConcrete(MsgBuyImExtraStorage{}, "profile/BuyImExtraStorage", nil)
+	cdc.RegisterConcrete(MsgGiveUpImExtra{}, "profile/GiveUpImExtra", nil)
+	cdc.RegisterConcrete(MsgProlongImExtra{}, "profile/ProlongImExtra", nil)
 }
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
@@ -33,6 +35,9 @@ func RegisterInterfaces(registry types.InterfaceRegistry) {
 		&MsgGiveStorageUp{},
 		&MsgBuyVpn{},
 		&MsgSetRate{},
+		&MsgBuyImExtraStorage{},
+		&MsgGiveUpImExtra{},
+		&MsgProlongImExtra{},
 	)
 
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)

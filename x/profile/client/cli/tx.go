@@ -37,6 +37,9 @@ func NewTxCmd() *cobra.Command {
 		cmdBuyStorage(),
 		cmdGiveUpStorage(),
 		cmdBuyVpn(),
+		cmdBuyImExtra(),
+		cmdGiveUpImExtra(),
+		cmdProlongImExtra(),
 		cmdSetRate(),
 	)
 
@@ -104,7 +107,7 @@ func cmdCreateAccount() *cobra.Command {
 // cmdUpdateProfile will create a send tx and sign it with the given key.
 func cmdUpdateProfile() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "update <from_key_or_address> [nickname:<nickname>] [autopay:yes|no] [noding:yes|no] [storage:yes|no] [validator:yes|no] [vpn:yes|no]",
+		Use:     "update <from_key_or_address> [nickname:<nickname>] [autopay:yes|no] [noding:yes|no] [storage:yes|no] [validator:yes|no] [vpn:yes|no] [im_autopay:yes|no]",
 		Aliases: []string{"u"},
 		Short:   "Create and sign a set profile tx",
 		Args:    cobra.MinimumNArgs(2),
@@ -174,8 +177,14 @@ func cmdUpdateProfile() *cobra.Command {
 								Bool: com[1] == "yes",
 							},
 						})
+					case "im_autopay":
+						msg.Updates = append(msg.Updates, types.MsgUpdateProfile_Update{
+							Field: types.MsgUpdateProfile_Update_FIELD_IM_AUTO_PAY,
+							Value: &types.MsgUpdateProfile_Update_Bool{
+								Bool: com[1] == "yes",
+							},
+						})
 					}
-
 				}
 			}
 			if err := msg.ValidateBasic(); err != nil {
@@ -344,9 +353,9 @@ func cmdBuyStorage() *cobra.Command {
 
 func cmdGiveUpStorage() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "give_up_storage <from_key_or_address> <GBs>",
+		Use:     "give_up_storage <from_key_or_address> <new_amount>",
 		Aliases: []string{"give-up-storage", "gs"},
-		Short:   "Give up some of unused storage amount. No refunds",
+		Short:   "Give up some of unused storage amount. No refunds. The new_amount is a new amount, in GBs.",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := cmd.Flags().Set(flags.FlagFrom, args[0])
@@ -445,6 +454,115 @@ func cmdSetRate() *cobra.Command {
 			msg := &types.MsgSetRate{
 				Sender: sender.String(),
 				Value:  value,
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdBuyImExtra() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "buy-im-extra <from_key_or_address> <extra_GBs>",
+		Aliases: []string{"buy_im_extra", "bix"},
+		Short:   "Buy some additional IM storage space",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			sender := clientCtx.GetFromAddress()
+
+			var storage uint32
+			if n, err := strconv.ParseUint(args[1], 0, 32); err != nil {
+				return errors.Wrap(err, "cannot parse value")
+			} else {
+				storage = uint32(n)
+			}
+
+			msg := &types.MsgBuyImExtraStorage{
+				Address:      sender.String(),
+				ExtraStorage: storage,
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdGiveUpImExtra() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "give-up-im-extra <from_key_or_address> <new_amount>",
+		Aliases: []string{"give_up_im_extra", "gix"},
+		Short:   "Give up some of unused IM storage amount. No refunds. The new_amount arg is a new extra (i.e. over free 5 GB) amount, in GBs.",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			sender := clientCtx.GetFromAddress()
+
+			var storage uint32
+			if n, err := strconv.ParseUint(args[1], 0, 32); err != nil {
+				return errors.Wrap(err, "cannot parse value")
+			} else {
+				storage = uint32(n)
+			}
+
+			msg := &types.MsgGiveUpImExtra{
+				Address: sender.String(),
+				Amount:  storage,
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdProlongImExtra() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "prolong-im-extra <from_key_or_address>",
+		Aliases: []string{"prolong_im_extra", "pix"},
+		Short:   "Pay for one more month of extra IM storage space",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			sender := clientCtx.GetFromAddress()
+
+			msg := &types.MsgProlongImExtra{
+				Address: sender.String(),
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err

@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"testing"
@@ -164,6 +165,17 @@ func ScheduleDecoder(bz []byte) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%+v", sch), nil
+}
+
+func TimeDecoder(bz []byte) (string, error) {
+	if len(bz) != 8 {
+		return "", fmt.Errorf("wrong key length")
+	}
+	timestamp := binary.BigEndian.Uint64(bz)
+	if timestamp > math.MaxInt64 {
+		return "", fmt.Errorf("timestamp too big")
+	}
+	return fmt.Sprintf("%s", time.Unix(0, int64(timestamp)).String()), nil
 }
 
 func (app ArteryApp) CheckExportImport(t *testing.T, time time.Time, storeKeys []string, keyDecoders, valueDecoders map[string]Decoder, ignorePrefixes map[string][][]byte) {

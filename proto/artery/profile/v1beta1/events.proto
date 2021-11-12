@@ -46,3 +46,23 @@ message EventGiveUpStorage {
   uint64 new_limit = 2;
   uint64 used = 3;
 }
+
+message EventBuyExtraImStorage {
+  string address = 1;
+  uint64 new_limit = 2;
+  uint64 total = 4;
+  google.protobuf.Timestamp expire_at = 5 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = false
+  ];
+}
+
+message EventGiveUpImStorage {
+  string address = 1;
+  uint64 new_limit = 2;
+}
+
+message EventImAutoPayFailed {
+  string address = 1;
+  string error = 2;
+}

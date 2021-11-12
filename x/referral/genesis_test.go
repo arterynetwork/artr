@@ -100,6 +100,25 @@ func (s Suite) TestCompression() {
 	s.checkExportImport()
 }
 
+func (s Suite) TestAlreadyCompressed() {
+	user1 := app.DefaultGenesisUsers["user1"]
+
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4*24*time.Hour))
+	s.nextBlock()
+	info, err := s.k.Get(s.ctx, user1.String())
+	s.NoError(err)
+	s.False(info.Active)
+	s.NotNil(info.CompressionAt)
+
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight()+1).WithBlockTime(*info.CompressionAt)
+	s.nextBlock()
+	info, err = s.k.Get(s.ctx, user1.String())
+	s.NoError(err)
+	s.Nil(info.CompressionAt)
+
+	s.checkExportImport()
+}
+
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
 		CompanyAccounts: referral.CompanyAccounts{

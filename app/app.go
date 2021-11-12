@@ -319,6 +319,7 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(referral.CompressionHookName, app.referralKeeper.PerformCompression)
 	app.scheduleKeeper.AddHook(referral.TransitionTimeoutHookName, app.referralKeeper.PerformTransitionTimeout)
 	app.scheduleKeeper.AddHook(profileTypes.RefreshHookName, app.profileKeeper.HandleRenewHook)
+	app.scheduleKeeper.AddHook(profileTypes.RefreshImHookName, app.profileKeeper.HandleRenewImHook)
 	app.scheduleKeeper.AddHook(votingTypes.HookName, app.votingKeeper.ProcessSchedule)
 	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
 	app.scheduleKeeper.AddHook(earning.ContinueHookName, app.earningKeeper.MustPerformContinue)
@@ -332,6 +333,15 @@ func NewArteryApp(
 	app.referralKeeper.AddHook(referral.BanishedCallback, app.delegatingKeeper.OnBanished)
 
 	app.upgradeKeeper.SetUpgradeHandler("2.0.1", RecalculateActiveReferrals(app.referralKeeper))
+	app.upgradeKeeper.SetUpgradeHandler("2.1.0",
+		ScheduleBanishment(
+			app.referralKeeper,
+			app.bankKeeper,
+			keys[referral.StoreKey],
+			keys[scheduleTypes.StoreKey],
+			ec.Marshaler,
+		),
+	)
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

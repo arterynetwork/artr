@@ -24,6 +24,9 @@ enum Status {
 message Info {
   option (gogoproto.goproto_getters) = false;
 
+  reserved 21;
+  reserved "never_paid";
+
   // Status - account status (1 "Lucky" – 9 "Absolute Champion").
   Status status = 1 [
     (gogoproto.jsontag)  = "status",
@@ -113,11 +116,6 @@ message Info {
   bool banished = 19 [
     (gogoproto.jsontag)  = "banished,omitempty",
     (gogoproto.moretags) = "yaml:\"banished,omitempty\""
-  ];
-
-  bool never_paid = 21 [
-    (gogoproto.jsontag)  = "naver_paid,omitempty",
-    (gogoproto.moretags) = "yaml:\"never_paid,omitempty\""
   ];
 }
 

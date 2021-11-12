@@ -19,5 +19,6 @@ const (
 	// QuerierRoute to be used for querierer msgs
 	QuerierRoute = ModuleName
 
-	RefreshHookName = ModuleName + "/refresh"
+	RefreshHookName   = ModuleName + "/refresh"
+	RefreshImHookName = ModuleName + "/refresh-im"
 )

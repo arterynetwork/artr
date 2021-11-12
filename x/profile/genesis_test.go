@@ -16,6 +16,7 @@ import (
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/profile/keeper"
 	"github.com/arterynetwork/artr/x/profile/types"
+	scheduleT "github.com/arterynetwork/artr/x/schedule/types"
 )
 
 func TestProfileGenesis(t *testing.T) {
@@ -69,6 +70,12 @@ func (s Suite) TestFullData() {
 	s.checkExportImport()
 }
 
+func (s Suite) TestImStore() {
+	addr := app.DefaultGenesisUsers["user1"]
+	s.NoError(s.k.BuyImStorage(s.ctx, addr, 3))
+	s.checkExportImport()
+}
+
 func (s *Suite) TestParams() {
 	s.Panics(func() {
 		s.k.SetParams(s.ctx, types.Params{
@@ -110,18 +117,21 @@ func (s Suite) checkExportImport() {
 			types.AliasStoreKey,
 			types.CardStoreKey,
 			params.StoreKey,
+			scheduleT.StoreKey,
 		},
 		map[string]app.Decoder{
 			types.StoreKey:      app.DummyDecoder,
 			types.AliasStoreKey: app.DummyDecoder,
 			types.CardStoreKey:  app.Uint64Decoder,
 			params.StoreKey:     app.DummyDecoder,
+			scheduleT.StoreKey:  app.TimeDecoder,
 		},
 		map[string]app.Decoder{
 			types.StoreKey:      app.DummyDecoder,
 			types.AliasStoreKey: app.DummyDecoder,
 			types.CardStoreKey:  app.DummyDecoder,
 			params.StoreKey:     app.DummyDecoder,
+			scheduleT.StoreKey:  app.ScheduleDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)

@@ -42,6 +42,15 @@ func NewHandler(k keeper.Keeper) sdk.Handler {
 		case *types.MsgSetRate:
 			res, err := srv.SetRate(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgBuyImExtraStorage:
+			res, err := srv.BuyImExtraStorage(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgGiveUpImExtra:
+			res, err := srv.GiveUpImExtra(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgProlongImExtra:
+			res, err := srv.ProlongImExtra(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}

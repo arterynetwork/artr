@@ -185,7 +185,7 @@ func (k Keeper) AddTopLevelAccount(ctx sdk.Context, acc string) (err error) {
 }
 
 // GetTopLevelAccounts returns all accounts without parents and is supposed to be used during genesis export
-func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []string, banished []types.Banished, neverPaid []string, err error) {
+func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []string, banished []types.Banished, err error) {
 	store := ctx.KVStore(k.storeKey)
 	itr := store.Iterator(nil, nil)
 	defer itr.Close()
@@ -194,12 +194,9 @@ func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []stri
 		var record types.Info
 		err = k.cdc.UnmarshalBinaryBare(v, &record)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil,nil, err
 		}
 		addr := string(itr.Key())
-		if record.NeverPaid {
-			neverPaid = append(neverPaid, addr)
-		}
 		if record.Banished {
 			banished = append(banished, types.Banished{
 				Account:        addr,
@@ -209,15 +206,15 @@ func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []stri
 			topLevel = append(topLevel, addr)
 		}
 	}
-	return topLevel, banished, neverPaid,nil
+	return topLevel, banished, nil
 }
 
 // AppendChild adds a new account to the referral structure. The parent account should already exist and the child one
 // should not.
 func (k Keeper) AppendChild(ctx sdk.Context, parentAcc string, childAcc string) error {
-	return k.appendChild(ctx, parentAcc, childAcc, false)
+	return k.appendChild(ctx, parentAcc, childAcc, false, true)
 }
-func (k Keeper) appendChild(ctx sdk.Context, parentAcc string, childAcc string, skipActivityCheck bool) error {
+func (k Keeper) appendChild(ctx sdk.Context, parentAcc string, childAcc string, skipActivityCheck, setCompressionTime bool) error {
 	if parentAcc == "" {
 		return types.ErrParentNil
 	}
@@ -232,10 +229,12 @@ func (k Keeper) appendChild(ctx sdk.Context, parentAcc string, childAcc string, 
 		anc           = parentAcc
 		coins         = k.getBalance(ctx, childAcc)
 		delegated     = k.getDelegated(ctx, childAcc)
-		compressionAt = ctx.BlockTime().Add(k.CompressionPeriod(ctx))
 	)
 	newItem := types.NewInfo(parentAcc, coins, delegated)
-	newItem.CompressionAt = &compressionAt
+	if setCompressionTime {
+		compressionAt := ctx.BlockTime().Add(k.CompressionPeriod(ctx))
+		newItem.CompressionAt = &compressionAt
+	}
 	err := bu.set(childAcc, newItem)
 	if err != nil {
 		return sdkerrors.Wrap(err, "cannot set "+childAcc)
@@ -435,7 +434,7 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 		node     string
 		banished bool
 	)
-	err := bu.update(acc, true, func(value *types.Info) error {
+	if err := bu.update(acc, true, func(value *types.Info) error {
 		if value.IsEmpty() {
 			return types.ErrNotFound
 		}
@@ -527,10 +526,9 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 		value.Coins[0] = newBalance
 		value.Delegated[0] = newDelegated
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		if errors.Is(err, types.ErrNotFound) {
-			k.Logger(ctx).Error("account is out of the referral", "acc", acc)
+			k.Logger(ctx).Debug("account is out of the referral", "acc", acc)
 			return nil
 		} else {
 			k.Logger(ctx).Error("OnBalanceChanged hook failed", "acc", acc, "step", 0, "error", err)
@@ -544,7 +542,7 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 				break
 			}
 
-			if err = bu.update(node, true, func(value *types.Info) error {
+			if err := bu.update(node, true, func(value *types.Info) error {
 				value.Coins[i] = value.Coins[i].Add(dc)
 				value.Delegated[i] = value.Delegated[i].Add(dd)
 				if !dd.IsZero() {
@@ -560,7 +558,7 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 		}
 	}
 
-	if err = bu.commit(); err != nil {
+	if err := bu.commit(); err != nil {
 		k.Logger(ctx).Error("OnBalanceChanged hook failed", "acc", acc, "step", "commit", "error", err)
 		return err
 	}
@@ -591,9 +589,6 @@ func (k Keeper) SetActive(ctx sdk.Context, acc string, value, checkAncestorsForS
 			valueIsAlreadySet = true
 		} else {
 			x.Active = value
-			if value {
-				x.NeverPaid = false
-			}
 			delta(&x.ActiveRefCounts[0])
 			if compressionAt.IsZero() {
 				x.CompressionAt = nil
@@ -601,6 +596,10 @@ func (k Keeper) SetActive(ctx sdk.Context, acc string, value, checkAncestorsForS
 				x.CompressionAt = &compressionAt
 			}
 			parent = x.Referrer
+			if value && x.BanishmentAt != nil {
+				k.scheduleKeeper.Delete(ctx, *x.BanishmentAt, BanishHookName, []byte(acc))
+				x.BanishmentAt = nil
+			}
 		}
 		return nil
 	})
@@ -986,13 +985,20 @@ func (k Keeper) Banish(ctx sdk.Context, acc string) error {
 		d = value.Delegated[0]
 		banished = value.Banished
 
+		// Double-check, just in case
+		if value.Active {
+			return errors.New("must not banish: account is active")
+		}
+		if d.Int64() > k.bankKeeper.GetParams(ctx).DustDelegation {
+			return errors.New("must not banish: delegation")
+		}
+
 		value.Banished = true
 		// Purge account data
 		value.Status = types.STATUS_UNSPECIFIED
 		value.CompressionAt = nil
 		value.StatusDowngradeAt = nil
 		value.BanishmentAt = nil
-		value.NeverPaid = false
 
 		return nil
 	}); err != nil {

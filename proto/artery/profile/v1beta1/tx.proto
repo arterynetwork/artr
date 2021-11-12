@@ -16,6 +16,9 @@ service Msg {
   rpc GiveStorageUp(MsgGiveStorageUp) returns (MsgGiveStorageUpResponse);
   rpc BuyVpn(MsgBuyVpn) returns (MsgBuyVpnResponse);
   rpc SetRate(MsgSetRate) returns (MsgSetRateResponse);
+  rpc BuyImExtraStorage(MsgBuyImExtraStorage) returns (MsgBuyImExtraStorageResponse);
+  rpc GiveUpImExtra(MsgGiveUpImExtra) returns (MsgGiveUpImExtraResponse);
+  rpc ProlongImExtra(MsgProlongImExtra) returns (MsgProlongImExtraResponse);
 }
 
 message MsgUpdateProfile {
@@ -48,6 +51,7 @@ message MsgUpdateProfile {
       FIELD_VALIDATOR   = 5;
       FIELD_VPN         = 6;
       FIELD_NICKNAME    = 7;
+      FIELD_IM_AUTO_PAY = 8;
     }
   }
 }
@@ -156,6 +160,7 @@ message MsgGiveStorageUp {
     (gogoproto.jsontag)  = "address",
     (gogoproto.moretags) = "yaml:\"address\""
   ];
+  // Amount - a new (i.e. reduced) amount, GB
   uint32 amount = 2 [
     (gogoproto.jsontag)  = "amount",
     (gogoproto.moretags) = "yaml:\"amount\""
@@ -179,6 +184,51 @@ message MsgBuyVpn {
 }
 
 message MsgBuyVpnResponse {}
+
+message MsgBuyImExtraStorage {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  uint32 extra_storage = 2 [
+    (gogoproto.jsontag)  = "extra_storage",
+    (gogoproto.moretags) = "yaml:\"extra_storage\""
+  ];
+}
+
+message MsgBuyImExtraStorageResponse {}
+
+message MsgGiveUpImExtra {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+  // Amount - a new (i.e. reduced) extra (i.e. over free 5GB) amount, GB
+  uint32 amount = 2 [
+    (gogoproto.jsontag)  = "amount",
+    (gogoproto.moretags) = "yaml:\"amount\""
+  ];
+}
+
+message MsgGiveUpImExtraResponse {}
+
+message MsgProlongImExtra {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string address = 1 [
+    (gogoproto.jsontag)  = "address",
+    (gogoproto.moretags) = "yaml:\"address\""
+  ];
+}
+
+message MsgProlongImExtraResponse {}
 
 message MsgSetRate {
   option (gogoproto.equal)           = false;

@@ -16,8 +16,8 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		topLevel     []string
 		other        []types.Refs
 		banished     []types.Banished
-		neverPaid    []string
 		compressions []types.Compression
+		banishment   []types.Compression
 		downgrades   []types.Downgrade
 		transitions  []types.Transition
 
@@ -26,7 +26,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		nextLevel []types.Refs
 	)
 	params = k.GetParams(ctx)
-	topLevel, banished, neverPaid, err = k.GetTopLevelAndBanishedAccounts(ctx)
+	topLevel, banished, err = k.GetTopLevelAndBanishedAccounts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +38,9 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		}
 		if data.CompressionAt != nil {
 			compressions = append(compressions, *types.NewCompression(addr, *data.CompressionAt))
+		}
+		if data.BanishmentAt != nil {
+			banishment = append(banishment, *types.NewCompression(addr, *data.BanishmentAt))
 		}
 		if data.StatusDowngradeAt != nil {
 			downgrades = append(downgrades, *types.NewDowngrade(addr, data.Status, *data.StatusDowngradeAt))
@@ -70,6 +73,9 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 				if data.CompressionAt != nil {
 					compressions = append(compressions, *types.NewCompression(addr, *data.CompressionAt))
 				}
+				if data.BanishmentAt != nil {
+					banishment = append(banishment, *types.NewCompression(addr, *data.BanishmentAt))
+				}
 				if data.StatusDowngradeAt != nil {
 					downgrades = append(downgrades, *types.NewDowngrade(addr, data.Status, *data.StatusDowngradeAt))
 				}
@@ -91,7 +97,7 @@ func (k Keeper) ExportToGenesis(ctx sdk.Context) (*types.GenesisState, error) {
 		}
 	}
 
-	return types.NewGenesisState(params, topLevel, other, banished, neverPaid, compressions, downgrades, transitions), nil
+	return types.NewGenesisState(params, topLevel, other, banished, compressions, banishment, downgrades, transitions), nil
 }
 
 func (k Keeper) ImportFromGenesis(
@@ -99,46 +105,24 @@ func (k Keeper) ImportFromGenesis(
 	topLevel []string,
 	otherAccounts []types.Refs,
 	banished []types.Banished,
-	neverPaid []string,
-	compressions []types.Compression,
+	compressions, banishment []types.Compression,
 	downgrades []types.Downgrade,
 	transitions []types.Transition,
 ) error {
 	store := ctx.KVStore(k.storeKey)
-
-	neverPaidSet := make(map[string]bool, len(neverPaid))
-	for _, acc := range neverPaid {
-		neverPaidSet[acc] = true
-	}
 
 	k.Logger(ctx).Info("... top level accounts")
 	for _, acc := range topLevel {
 		if err := k.AddTopLevelAccount(ctx, acc); err != nil {
 			panic(errors.Wrapf(err, "cannot add %s", acc))
 		}
-		if !neverPaidSet[acc] {
-			key := []byte(acc)
-			var info types.Info
-			k.cdc.MustUnmarshalBinaryBare(store.Get(key), &info)
-			info.NeverPaid = false
-			store.Set(key, k.cdc.MustMarshalBinaryBare(&info))
-
-		}
 		k.Logger(ctx).Debug("account added", "acc", acc, "parent", nil)
 	}
 	k.Logger(ctx).Info("... other accounts")
 	for _, r := range otherAccounts {
 		for _, acc := range r.Referrals {
-			if err := k.appendChild(ctx, r.Referrer, acc, true); err != nil {
+			if err := k.appendChild(ctx, r.Referrer, acc, true, false); err != nil {
 				panic(errors.Wrapf(err, "cannot add %s", acc))
-			}
-			if !neverPaidSet[acc] {
-				key := []byte(acc)
-				var info types.Info
-				k.cdc.MustUnmarshalBinaryBare(store.Get(key), &info)
-				info.NeverPaid = false
-				store.Set(key, k.cdc.MustMarshalBinaryBare(&info))
-
 			}
 			k.Logger(ctx).Debug("account added", "acc", acc, "parent", r.Referrer)
 		}
@@ -154,7 +138,6 @@ func (k Keeper) ImportFromGenesis(
 					Coins:        []sdk.Int{k.getBalance(ctx, ba.Account)},
 					Delegated:    []sdk.Int{k.getDelegated(ctx, ba.Account)},
 					Banished:     true,
-					NeverPaid:    neverPaidSet[ba.Account],
 				}),
 			)
 		}
@@ -165,6 +148,15 @@ func (k Keeper) ImportFromGenesis(
 	for _, x := range compressions {
 		if err := bu.update(x.Account, false, func(value *types.Info) error {
 			value.CompressionAt = &x.Time
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	k.Logger(ctx).Info("... scheduled banishment")
+	for _, x := range banishment {
+		if err := bu.update(x.Account, false, func(value *types.Info) error {
+			value.BanishmentAt = &x.Time
 			return nil
 		}); err != nil {
 			return err

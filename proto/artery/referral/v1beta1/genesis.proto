@@ -12,6 +12,9 @@ option go_package = "github.com/arterynetwork/artr/x/referral/types";
 message GenesisState {
   option (gogoproto.goproto_getters) = false;
 
+  reserved 8;
+  reserved "never_paid";
+
   Params params = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "params",
@@ -34,6 +37,11 @@ message GenesisState {
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"compressions,omitempty\""
   ];
+  repeated Compression banishment = 9 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "banishment,omitempty",
+    (gogoproto.moretags) = "yaml:\"banishment,omitempty\""
+  ];
   repeated Downgrade downgrades = 5 [
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"downgrades,omitempty\""
@@ -41,10 +49,6 @@ message GenesisState {
   repeated Transition transitions = 6 [
     (gogoproto.nullable) = false,
     (gogoproto.moretags) = "yaml:\"transitions,omitempty\""
-  ];
-  repeated string never_paid = 8 [
-    (gogoproto.jsontag)  = "never_paid,omitempty",
-    (gogoproto.moretags) = "yaml:\"never_paid,omitempty\""
   ];
 }
 

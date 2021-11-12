@@ -197,6 +197,68 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 	return nil
 }
 
+func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32) error {
+	profile := k.GetProfile(ctx, addr)
+	timerSet := profile.IsExtraImStorageActive(ctx)
+
+	var tq util.Fraction
+	if timerSet {
+		tq = k.monthPart(ctx, *profile.ExtraImUntil)
+	} else {
+		tq = util.FractionInt(1)
+	}
+
+	p := k.GetParams(ctx)
+	storageFee := p.TokenRate.MulInt64(int64(extraGb) * int64(p.StorageGbPrice)).Mul(tq).Int64()
+	if storageFee <= 0 {
+		k.Logger(ctx).Error(
+			"free IM extra",
+			"extraGb", extraGb,
+			"GbPrice", p.StorageGbPrice,
+			"rate", p.TokenRate,
+			"monthPart", tq.String(),
+			"extraImUntil", profile.ExtraImUntil.String(),
+			"now", ctx.BlockTime().String(),
+		)
+		panic("free IM extra")
+	}
+	total := util.Uartrs(storageFee)
+
+	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+		return errors.Wrap(err, "cannot pay up tx fee")
+	} else {
+		total = total.Sub(txFee)
+	}
+
+	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
+		return errors.Wrap(err, "cannot pay up fee")
+	}
+
+	if timerSet {
+		profile.ImLimitExtra += uint64(extraGb)
+	} else {
+		profile.ImLimitExtra = uint64(extraGb);
+
+		until := ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
+		profile.ExtraImUntil = &until
+		k.scheduleRenewIm(ctx, addr, until)
+	}
+	if err := k.SetProfile(ctx, addr, *profile); err != nil {
+		return errors.Wrap(err, "cannot write profile")
+	}
+
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventBuyExtraImStorage{
+			Address:  addr.String(),
+			NewLimit: profile.ImLimitTotal(ctx),
+			Total:    total.AmountOf(util.ConfigMainDenom).Uint64(),
+			ExpireAt: *profile.ExtraImUntil,
+		},
+	); err != nil { panic(err) }
+
+	return nil
+}
+
 func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error {
 	profile := k.GetProfile(ctx, addr)
 	if !profile.IsActive(ctx) {
@@ -246,6 +308,9 @@ func (k Keeper) GiveStorageUp(ctx sdk.Context, addr sdk.AccAddress, amountGb uin
 	if newLimit < profile.StorageCurrent {
 		return errors.Errorf("resulting limit less than current consumption (%d < %d)", newLimit, profile.StorageCurrent)
 	}
+	if newLimit >= profile.StorageLimit {
+		return errors.Errorf("new limit greater than or equal current one (%d ≥ %d)", newLimit, profile.StorageLimit)
+	}
 	profile.StorageLimit = newLimit
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot write profile")
@@ -257,6 +322,43 @@ func (k Keeper) GiveStorageUp(ctx sdk.Context, addr sdk.AccAddress, amountGb uin
 			Used:     profile.StorageCurrent,
 		},
 	); err != nil { panic(err) }
+	return nil
+}
+
+func (k Keeper) GiveImStorageUp(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32) error {
+	profile := k.GetProfile(ctx, addr)
+
+	current := profile.ImLimitExtra
+	if !profile.IsExtraImStorageActive(ctx) { current = 0 }
+	if uint64(extraGb) >= current {
+		return errors.Errorf("new value greater than or equal previous one (%d ≥ %d)", extraGb, current)
+	}
+
+	profile.ImLimitExtra = uint64(extraGb)
+	if extraGb == 0 {
+		k.scheduleKeeper.Delete(ctx, *profile.ExtraImUntil, types.RefreshImHookName, addr.Bytes())
+		profile.ExtraImUntil = nil
+	}
+	if err := k.SetProfile(ctx, addr, *profile); err != nil {
+		return errors.Wrap(err, "cannot write profile")
+	}
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventGiveUpImStorage{
+			Address:  addr.String(),
+			NewLimit: profile.ImLimitTotal(ctx),
+		},
+	); err != nil { panic(err) }
+	return nil
+}
+
+func (k Keeper) ProlongImExtra(ctx sdk.Context, addr sdk.AccAddress) error {
+	profile := k.GetProfile(ctx, addr)
+	if err := k.prolongImExtra(ctx, addr, profile); err != nil {
+		return err
+	}
+	if err := k.SetProfile(ctx, addr, *profile); err != nil {
+		panic(err)
+	}
 	return nil
 }
 
@@ -289,6 +391,10 @@ func (k Keeper) scheduleRenew(ctx sdk.Context, addr sdk.AccAddress, time time.Ti
 	k.scheduleKeeper.ScheduleTask(ctx, time, types.RefreshHookName, addr.Bytes())
 }
 
+func (k Keeper) scheduleRenewIm(ctx sdk.Context, addr sdk.AccAddress, time time.Time) {
+	k.scheduleKeeper.ScheduleTask(ctx, time, types.RefreshImHookName, addr.Bytes())
+}
+
 func (k Keeper) resetLimits(p types.Params, profile *types.Profile) {
 	baseVpn := uint64(p.BaseVpnGb) * util.GBSize
 	if profile.VpnCurrent > baseVpn {
@@ -307,6 +413,12 @@ func (k Keeper) resetLimits(p types.Params, profile *types.Profile) {
 
 func (k Keeper) HandleRenewHook(ctx sdk.Context, data []byte, time time.Time) {
 	if err := k.monthlyRoutine(ctx, data, time); err != nil {
+		panic(err)
+	}
+}
+
+func (k Keeper) HandleRenewImHook(ctx sdk.Context, data []byte, _ time.Time) {
+	if err := k.monthlyImRoutine(ctx, data); err != nil {
 		panic(err)
 	}
 }
@@ -349,6 +461,84 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 			); err != nil { panic(err) }
 		}
 	}
+
+	return nil
+}
+
+func (k Keeper) monthlyImRoutine(ctx sdk.Context, addr sdk.AccAddress) error {
+	profile := k.GetProfile(ctx, addr)
+	var err error
+
+	if profile.AutoPayImExtra {
+		err = k.prolongImExtra(ctx, addr, profile);
+		if err != nil {
+			k.Logger(ctx).Error("IM store autopay failed", "addr", addr.String(), "err", err)
+		}
+	} else {
+		err = errors.Errorf("disabled by user")
+	}
+
+	if err != nil {
+		profile.ImLimitExtra   = 0
+		profile.ExtraImUntil   = nil
+		profile.AutoPayImExtra = false
+
+		if err := ctx.EventManager().EmitTypedEvent(
+			&types.EventImAutoPayFailed{
+				Address: addr.String(),
+				Error:   err.Error(),
+			},
+		); err != nil { panic(err) }
+	}
+
+	if err = k.SetProfile(ctx, addr, *profile); err != nil {
+		return errors.Wrap(err, "cannot write profile")
+	}
+
+	return nil
+}
+
+func (k Keeper) prolongImExtra(ctx sdk.Context, addr sdk.AccAddress, profile *types.Profile) error {
+	if profile.ImLimitExtra == 0 || profile.ExtraImUntil == nil {
+		return errors.Errorf("nothing to prolong")
+	}
+
+	p := k.GetParams(ctx)
+	storageFee := p.TokenRate.MulInt64(int64(profile.ImLimitExtra) * int64(p.StorageGbPrice)).Int64()
+	if storageFee <= 0 {
+		k.Logger(ctx).Error(
+			"free IM extra",
+			"extraGb", profile.ImLimitExtra,
+			"GbPrice", p.StorageGbPrice,
+			"rate", p.TokenRate,
+		)
+		panic("free IM extra")
+	}
+	total := util.Uartrs(storageFee)
+
+	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+		return errors.Wrap(err, "cannot pay up tx fee")
+	} else {
+		total = total.Sub(txFee)
+	}
+
+	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
+		return errors.Wrap(err, "cannot pay up fee")
+	}
+
+	t := profile.ExtraImUntil.Add(k.scheduleKeeper.OneMonth(ctx))
+	k.scheduleKeeper.Delete(ctx, *profile.ExtraImUntil, types.RefreshImHookName, addr.Bytes())
+	k.scheduleRenewIm(ctx, addr, t)
+	profile.ExtraImUntil = &t
+
+	if err := ctx.EventManager().EmitTypedEvent(
+		&types.EventBuyExtraImStorage{
+			Address:  addr.String(),
+			NewLimit: profile.ImLimitTotal(ctx),
+			Total:    total.AmountOf(util.ConfigMainDenom).Uint64(),
+			ExpireAt: t,
+		},
+	); err != nil { panic(err) }
 
 	return nil
 }
