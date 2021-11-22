@@ -12,10 +12,16 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
+	abci "github.com/tendermint/tendermint/abci/types"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
+	"github.com/arterynetwork/artr/util"
 	dt "github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/voting/keeper"
 	"github.com/arterynetwork/artr/x/voting/types"
 )
@@ -110,11 +116,72 @@ func (s *Suite) TestGovernment() {
 	s.checkExportImport()
 }
 
+func (s *Suite) TestParams() {
+	s.k.SetParams(s.ctx, types.NewParams(33, 42))
+	s.checkExportImport()
+}
+
+func (s *Suite) TestActivePoll_FullData() {
+	zero := util.FractionZero()
+	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
+		Author:   app.DefaultGenesisUsers["user1"].String(),
+		Name:     "Hamlet's dilemma",
+		Question: "To be or not to be? It's the question.",
+		Quorum:   &zero,
+		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
+	}))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), true))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user3"].String(), true))
+	s.checkExportImport()
+}
+
+func (s *Suite) TestActivePoll_Minimal() {
+	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
+		Author:   app.DefaultGenesisUsers["user1"].String(),
+		Name:     "Hamlet's dilemma",
+		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
+	}))
+	s.checkExportImport()
+}
+
+func (s *Suite) TestActivePoll_MinStatus() {
+	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
+		Author:   app.DefaultGenesisUsers["user1"].String(),
+		Name:     "Hamlet's dilemma",
+		Requirements: &types.Poll_MinStatus{MinStatus: referral.StatusChampion},
+	}))
+	s.checkExportImport()
+}
+
+func (s *Suite) TestPollHistory() {
+	zero := util.FractionZero()
+	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
+		Author:   app.DefaultGenesisUsers["user1"].String(),
+		Name:     "Hamlet's dilemma",
+		Question: "To be or not to be? It's the question.",
+		Quorum:   &zero,
+		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
+	}))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), true))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
+	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user3"].String(), true))
+
+	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(19*time.Hour)).WithBlockHeight(s.ctx.BlockHeight()+1)
+	s.nextBlock()
+
+	_, ok := s.k.GetCurrentPoll(s.ctx)
+	s.False(ok)
+
+	s.checkExportImport()
+}
+
 func (s Suite) checkExportImport() {
 	s.app.CheckExportImport(s.T(),
 		s.ctx.BlockTime(),
 		[]string{
 			types.StoreKey,
+			params.StoreKey,
 		},
 		map[string]app.Decoder{
 			types.StoreKey: func(bz []byte) (string, error) {
@@ -126,10 +193,23 @@ func (s Suite) checkExportImport() {
 				}
 				return "", fmt.Errorf("invalid format")
 			},
+			params.StoreKey: app.DummyDecoder,
 		},
 		map[string]app.Decoder{
-			types.StoreKey: app.DummyDecoder,
+			types.StoreKey:  app.DummyDecoder,
+			params.StoreKey: app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)
+}
+
+func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
+	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
+	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	})
+	return ebr, bbr
 }

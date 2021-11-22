@@ -21,6 +21,7 @@ const (
 // Parameter store keys
 var (
 	KeyParamVotingPeriod = []byte("VotingPeriod")
+	KeyParamPollPeriod   = []byte("PollPeriod")
 )
 
 // ParamKeyTable for voting module
@@ -29,9 +30,10 @@ func ParamKeyTable() params.KeyTable {
 }
 
 // NewParams creates a new Params object
-func NewParams(votingPeriod int32) Params {
+func NewParams(votingPeriod, pollPeriod int32) Params {
 	return Params{
 		VotingPeriod: votingPeriod,
+		PollPeriod:   pollPeriod,
 	}
 }
 
@@ -48,17 +50,21 @@ func (p Params) String() string {
 func (p *Params) ParamSetPairs() params.ParamSetPairs {
 	return params.ParamSetPairs{
 		params.NewParamSetPair(KeyParamVotingPeriod, &p.VotingPeriod, validateVotingPeriod),
+		params.NewParamSetPair(KeyParamPollPeriod, &p.PollPeriod, validateVotingPeriod),
 	}
 }
 
 // DefaultParams defines the parameters for this module
 func DefaultParams() Params {
-	return NewParams(DefaultVotingPeriod)
+	return NewParams(DefaultVotingPeriod, DefaultVotingPeriod)
 }
 
 func (p Params) Validate() error {
 	if err := validateVotingPeriod(p.VotingPeriod); err != nil {
 		return errors.Wrap(err, "invalid voting_period")
+	}
+	if err := validateVotingPeriod(p.PollPeriod); err != nil {
+		return errors.Wrap(err, "invalid poll_period")
 	}
 	return nil
 }

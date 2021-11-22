@@ -3,7 +3,9 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -28,6 +30,9 @@ func NewQueryCmd() *cobra.Command {
 		cmdGovernment(),
 		cmdCurrent(),
 		cmdHistory(),
+		util.LineBreak(),
+		cmdPoll(),
+		cmdPollHistory(),
 		util.LineBreak(),
 		cmdParams(),
 	)
@@ -135,6 +140,75 @@ func cmdParams() *cobra.Command {
 				return err
 			}
 			return util.PrintConsoleOutput(clientCtx, res.Params)
+		},
+	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdPoll() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "poll",
+		Short: "Query the current public poll and its status",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+			req := &types.PollRequest{}
+
+			res, err := queryClient.Poll(context.Background(), req)
+			if err != nil {
+				return err
+			}
+			return util.PrintConsoleOutput(clientCtx, res)
+		},
+	}
+	util.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdPollHistory() *cobra.Command{
+	cmd  := &cobra.Command{
+		Use:   "poll-history [limit [page]]",
+		Short: "List of completed polls",
+		Args:  cobra.MaximumNArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			var limit, page int32
+			if len(args) > 0 {
+				if i, err := strconv.Atoi(args[0]); err != nil {
+					return errors.Wrap(err, "cannot parse limit")
+				} else {
+					limit = int32(i)
+				}
+			}
+			if len(args) > 1 {
+				if i, err := strconv.Atoi(args[1]); err != nil {
+					return errors.Wrap(err, "cannot parse page")
+				} else {
+					page = int32(i)
+				}
+			}
+
+			if res, err := queryClient.PollHistory(
+				context.Background(),
+				&types.PollHistoryRequest{
+					Limit: limit,
+					Page:  page,
+				},
+			); err != nil {
+				return err
+			} else {
+				return util.PrintConsoleOutput(clientCtx, res)
+			}
 		},
 	}
 	util.AddQueryFlagsToCmd(cmd)

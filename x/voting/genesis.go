@@ -28,6 +28,7 @@ func InitGenesis(ctx sdk.Context, k keeper.Keeper, data types.GenesisState) {
 	for _, record := range data.History {
 		k.AddProposalHistoryRecord(ctx, record)
 	}
+	k.LoadPolls(ctx, data)
 }
 
 // ExportGenesis writes the current store values
@@ -39,7 +40,7 @@ func ExportGenesis(ctx sdk.Context, k keeper.Keeper) (data *types.GenesisState) 
 	if currentProposal = k.GetCurrentProposal(ctx); currentProposal != nil {
 		startBlock = k.GetStartBlock(ctx)
 	}
-	return types.NewGenesisState(
+	data = types.NewGenesisState(
 		k.GetParams(ctx),
 		k.GetGovernment(ctx),
 		currentProposal,
@@ -48,4 +49,13 @@ func ExportGenesis(ctx sdk.Context, k keeper.Keeper) (data *types.GenesisState) 
 		k.GetDisagreed(ctx),
 		k.GetHistory(ctx, math.MaxInt32, 1),
 	)
+	if poll, ok := k.GetCurrentPoll(ctx); ok {
+		data.CurrentPoll = &poll
+		if err := k.IterateThroughCurrentPollAnswers(ctx, func(acc string, ans bool) (stop bool) {
+			data.PollAnswers = append(data.PollAnswers, types.PollAnswer{Acc: acc, Ans: ans})
+			return false
+		}); err != nil { panic(err) }
+	}
+	data.PollHistory = k.GetPollHistoryAll(ctx)
+	return data
 }

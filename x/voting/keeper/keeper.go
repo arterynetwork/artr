@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -8,12 +9,16 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/store/cachekv"
+	"github.com/cosmos/cosmos-sdk/store/prefix"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
-	"github.com/tendermint/tendermint/libs/log"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/voting/types"
 )
 
@@ -199,7 +204,7 @@ func (k Keeper) GetStartBlock(ctx sdk.Context) int64 {
 func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed bool) {
 	k.Logger(ctx).Debug("EndProposal", "proposal", proposal, "agreed", agreed)
 	// Delete scheduled completion
-	k.scheduleKeeper.DeleteAll(ctx, *proposal.EndTime, types.HookName)
+	k.scheduleKeeper.DeleteAll(ctx, *proposal.EndTime, types.VoteHookName)
 
 	store := ctx.KVStore(k.storeKey)
 
@@ -339,7 +344,7 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 }
 
 func (k Keeper) ScheduleEnding(ctx sdk.Context, time time.Time) {
-	k.scheduleKeeper.ScheduleTask(ctx, time, types.HookName, nil)
+	k.scheduleKeeper.ScheduleTask(ctx, time, types.VoteHookName, nil)
 }
 
 func (k Keeper) ProcessSchedule(ctx sdk.Context, _ []byte, _ time.Time) {
@@ -463,4 +468,219 @@ func (k Keeper) Vote(ctx sdk.Context, voter sdk.AccAddress, agree bool) error {
 		k.EndProposal(ctx, *proposal, agree)
 	}
 	return nil
+}
+
+func (k Keeper) GetCurrentPoll(ctx sdk.Context) (poll types.Poll, ok bool) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	bz := store.Get(types.KeyPollCurrent)
+
+	if bz == nil { return types.Poll{}, false }
+
+	k.cdc.MustUnmarshalBinaryBare(bz, &poll)
+	return poll, true
+}
+
+func (k Keeper) GetPollStatus(ctx sdk.Context) (yes, no uint64) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	if bz := store.Get(types.KeyPollYesCount); bz != nil {
+		yes = binary.BigEndian.Uint64(bz)
+	}
+	if bz := store.Get(types.KeyPollNoCount); bz != nil {
+		no = binary.BigEndian.Uint64(bz)
+	}
+	return
+}
+
+func (k Keeper) StartPoll(ctx sdk.Context, poll types.Poll) error {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+
+	if store.Has(types.KeyPollCurrent) { return types.ErrOtherActive }
+	if !util.ContainsString(k.GetGovernment(ctx).Strings(), poll.Author) { return types.ErrSignerNotAllowed }
+
+	start := ctx.BlockTime()
+	end   := start.Add(time.Duration(k.GetParams(ctx).PollPeriod) * time.Hour)
+	k.scheduleKeeper.ScheduleTask(ctx, end, types.PollHookName, nil)
+	poll.StartTime = &start
+	poll.EndTime = &end
+
+	store.Set(types.KeyPollCurrent, k.cdc.MustMarshalBinaryBare(&poll))
+	return nil
+}
+
+func (k Keeper) Answer(ctx sdk.Context, acc string, yes bool) error {
+	poll, ok := k.GetCurrentPoll(ctx)
+	if !ok { return types.ErrNoActivePoll }
+
+	addr, err := sdk.AccAddressFromBech32(acc)
+	if err != nil { panic(errors.Wrap(err, "cannot parse acc address")) }
+
+	switch r := poll.Requirements.(type) {
+	case *types.Poll_CanValidate:
+		q, _, _, err := k.nodingKeeper.IsQualified(ctx, addr)
+		if err != nil { panic(errors.Wrap(err, "cannot check for qualification")) }
+		if !q { return types.ErrRespondentNotAllowed }
+	case *types.Poll_MinStatus:
+		info, err := k.referralKeeper.Get(ctx, acc)
+		if err != nil { panic(errors.Wrap(err, "cannot obtain referral info")) }
+		if info.Status < r.MinStatus { return types.ErrRespondentNotAllowed }
+	}
+
+	store    := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	ansStore := prefix.NewStore(store, types.KeyPollAnswers)
+	key   := []byte(acc)
+	if ansStore.Has(key) { return types.ErrAlreadyVoted }
+
+	var ans, countKey []byte
+	if yes {
+		ans      = types.ValueYes
+		countKey = types.KeyPollYesCount
+	} else {
+		ans      = types.ValueNo
+		countKey = types.KeyPollNoCount
+	}
+	ansStore.Set(key, ans)
+
+	var (
+		bz    []byte
+		value uint64
+	)
+	if bz = store.Get(countKey); bz != nil {
+		value = binary.BigEndian.Uint64(bz)
+	} else {
+		bz =  make([]byte, 8)
+	}
+	value += 1
+	binary.BigEndian.PutUint64(bz, value)
+	store.Set(countKey, bz)
+
+	return nil
+}
+
+func (k Keeper) EndPollHandler(ctx sdk.Context, _ []byte, _ time.Time) { k.EndPoll(ctx) }
+func (k Keeper) EndPoll(ctx sdk.Context) {
+	store := cachekv.NewStore(prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix))
+
+	var (
+		poll     types.Poll
+		yes, no  uint64
+		decision types.Decision
+	)
+	if bz := store.Get(types.KeyPollCurrent); bz != nil {
+		k.cdc.MustUnmarshalBinaryBare(bz, &poll)
+	} else {
+		panic(types.ErrNoActivePoll)
+	}
+	if bz := store.Get(types.KeyPollYesCount); bz != nil {
+		yes = binary.BigEndian.Uint64(bz)
+	}
+	if bz := store.Get(types.KeyPollNoCount); bz != nil {
+		no = binary.BigEndian.Uint64(bz)
+	}
+	if poll.Quorum != nil {
+		if yes != 0 && util.FractionInt(int64(yes)).GTE(poll.Quorum.Mul(util.FractionInt(int64(yes+no)))) {
+			decision = types.DECISION_POSITIVE
+		} else {
+			decision = types.DECISION_NEGATIVE
+		}
+	}
+
+	if err := ctx.EventManager().EmitTypedEvent(&(types.EventPollFinished{
+		Name:     poll.Name,
+		Yes:      yes,
+		No:       no,
+		Decision: decision,
+	})); err != nil {
+		panic(errors.Wrap(err, "cannot emit an event"))
+	}
+
+	historyKey := make([]byte, len(types.KeyPollHistory)+8)
+	copy(historyKey, types.KeyPollHistory)
+	binary.BigEndian.PutUint64(historyKey[len(types.KeyPollHistory):], uint64(poll.EndTime.Unix()))
+	store.Set(historyKey, k.cdc.MustMarshalBinaryBare(&types.PollHistoryItem{
+		Poll:     poll,
+		Yes:      yes,
+		No:       no,
+		Decision: decision,
+	}))
+
+	store.Delete(types.KeyPollCurrent)
+	store.Delete(types.KeyPollYesCount)
+	store.Delete(types.KeyPollNoCount)
+	it := sdk.KVStorePrefixIterator(store, types.KeyPollAnswers)
+	for ; it.Valid(); it.Next() {
+		store.Delete(it.Key())
+	}
+	it.Close()
+
+	store.Write()
+}
+
+func (k Keeper) GetPollHistoryAll(ctx sdk.Context) []types.PollHistoryItem {
+	return k.GetPollHistory(ctx, 0, 0)
+}
+func (k Keeper) GetPollHistory(ctx sdk.Context, limit int32, page int32) []types.PollHistoryItem {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	var (
+		it  sdk.Iterator
+		res []types.PollHistoryItem
+	)
+	if limit > 0 {
+		it  = sdk.KVStorePrefixIteratorPaginated(store, types.KeyPollHistory, uint(page), uint(limit))
+		res = make([]types.PollHistoryItem, 0, limit)
+	} else {
+		it  = sdk.KVStorePrefixIterator(store, types.KeyPollHistory)
+	}
+	for ; it.Valid(); it.Next() {
+		var item types.PollHistoryItem
+		k.cdc.MustUnmarshalBinaryBare(it.Value(), &item)
+		res = append(res, item)
+	}
+	it.Close()
+	return res
+}
+
+func (k Keeper) IterateThroughCurrentPollAnswers(ctx sdk.Context, callback func(acc string, ans bool)(stop bool)) (err error) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	if !store.Has(types.KeyPollCurrent) {
+		return types.ErrNoActivePoll
+	}
+
+	it := sdk.KVStorePrefixIterator(store, types.KeyPollAnswers)
+	defer func() {
+		it.Close()
+		if e := recover(); e != nil {
+			if er, ok := e.(error); ok {
+				err = errors.Wrap(er, "callback paniced")
+			} else {
+				err = errors.Errorf("callback paniced: %s", er)
+			}
+		}
+	}()
+
+	for ; it.Valid(); it.Next() {
+		acc := string(it.Key()[len(types.KeyPollAnswers):])
+		ans := bytes.Equal(it.Value(), types.ValueYes)
+		if stop := callback(acc, ans); stop {
+			return nil
+		}
+	}
+	return nil
+}
+
+func (k Keeper) LoadPolls(ctx sdk.Context, state types.GenesisState) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+
+	if state.CurrentPoll != nil {
+		store.Set(types.KeyPollCurrent, k.cdc.MustMarshalBinaryBare(state.CurrentPoll))
+		for _, ans := range state.PollAnswers {
+			if err := k.Answer(ctx, ans.Acc, ans.Ans); err != nil { panic(err) }
+		}
+	}
+
+	key := make([]byte, len(types.KeyPollHistory)+8)
+	copy(key, types.KeyPollHistory)
+	for _, item := range state.PollHistory {
+		binary.BigEndian.PutUint64(key[len(types.KeyPollHistory):], uint64(item.Poll.EndTime.Unix()))
+		store.Set(key, k.cdc.MustMarshalBinaryBare(&item))
+	}
 }

@@ -9,6 +9,8 @@ option go_package = "github.com/arterynetwork/artr/x/voting/types";
 service Msg {
   rpc Propose(MsgPropose) returns (MsgProposeResponse);
   rpc Vote(MsgVote) returns (MsgVoteResponse);
+  rpc StartPoll(MsgStartPoll) returns (MsgStartPollResponse);
+  rpc AnswerPoll(MsgAnswerPoll) returns (MsgAnswerPollResponse);
 }
 
 message MsgPropose {
@@ -36,3 +38,28 @@ message MsgVote {
 }
 
 message MsgVoteResponse {}
+
+message MsgStartPoll {
+  Poll poll = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "poll",
+    (gogoproto.moretags) = "yaml:\"poll\""
+  ];
+}
+
+message MsgStartPollResponse {}
+
+message MsgAnswerPoll {
+  option (gogoproto.goproto_getters) = false;
+
+  string respondent = 1 [
+    (gogoproto.jsontag)  = "respondent",
+    (gogoproto.moretags) = "yaml:\"respondent\""
+  ];
+  bool yes = 2 [
+    (gogoproto.jsontag)  = "yes",
+    (gogoproto.moretags) = "yaml:\"yes\""
+  ];
+}
+
+message MsgAnswerPollResponse {}

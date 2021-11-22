@@ -1382,8 +1382,12 @@
       "tasks": []
     },
     "voting": {
+      "government": [
+        "artr1cd4g3grtpslw799alf78w9gc2vqdnhrldc0tjc"
+      ],
       "params": {
-        "voting_period": 18
+        "voting_period": 18,
+        "poll_period": 18
       }
     }
   },

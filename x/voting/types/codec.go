@@ -13,6 +13,8 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	// Messages
 	cdc.RegisterConcrete(MsgPropose{}, ModuleName+"/CreateProposal", nil)
 	cdc.RegisterConcrete(MsgVote{}, ModuleName+"/ProposalVote", nil)
+	cdc.RegisterConcrete(MsgStartPoll{}, ModuleName+"/StartPoll", nil)
+	cdc.RegisterConcrete(MsgAnswerPoll{}, ModuleName+"/AnswerPoll", nil)
 	// Proposal Params
 	cdc.RegisterConcrete(PriceArgs{}, ModuleName+"/PriceArgs", nil)
 	cdc.RegisterConcrete(Proposal_Price{}, ModuleName+"/PriceArgsWrap", nil)
@@ -30,14 +32,17 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(Proposal_Count{}, ModuleName+"/CountArgsWrap", nil)
 	cdc.RegisterConcrete(StatusArgs{}, ModuleName+"/StatusArgs", nil)
 	cdc.RegisterConcrete(Proposal_Status{}, ModuleName+"/StatusArgsWrap", nil)
+	// Other
+	cdc.RegisterConcrete(Poll{}, ModuleName+"/Poll", nil)
 }
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgPropose{},
 		&MsgVote{},
+		&MsgStartPoll{},
+		&MsgAnswerPoll{},
 	)
-	//TODO: Do we need to register isProposal_Args implementations here?
 
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)
 }

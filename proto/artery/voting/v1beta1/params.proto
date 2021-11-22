@@ -14,4 +14,10 @@ message Params {
     (gogoproto.jsontag)  = "voting_period",
     (gogoproto.moretags) = "yaml:\"voting_period\""
   ];
+
+  // PollPeriod is a number of hours a poll finishes after
+  int32 poll_period = 2 [
+    (gogoproto.jsontag)  = "poll_period",
+    (gogoproto.moretags) = "yaml:\"poll_period\""
+  ];
 }

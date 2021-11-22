@@ -6,6 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "artery/voting/v1beta1/proposals.proto";
 import "artery/voting/v1beta1/args.proto";
 import "artery/noding/v1beta1/types.proto";
+import "artery/referral/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/voting/types";
 
@@ -116,4 +117,95 @@ message Government {
     (gogoproto.jsontag)  = "members",
     (gogoproto.moretags) = "yaml:\"members\""
   ];
+}
+
+// Poll is like Proposal, but it's specified by plain text and has no automatic decision execution engine encoded in the
+// blockchain. Also, a wider range of people can vote for/against it.
+message Poll {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+  option (gogoproto.equal)            = true;
+
+  // Name is a title of the poll. Optional.
+  string name = 1 [
+    (gogoproto.jsontag)  = "name,omitempty",
+    (gogoproto.moretags) = "yaml:\"name,omitempty\""
+  ];
+  // Author is the poll creator's SDK address.
+  string author = 2 [
+    (gogoproto.jsontag)  = "author",
+    (gogoproto.moretags) = "yaml:\"author\""
+  ];
+  // Question is the poll formulation.
+  string question = 3 [
+    (gogoproto.jsontag)  = "question",
+    (gogoproto.moretags) = "yaml:\"question\""
+  ];
+  // StartTime denotes when the poll was created.
+  // Set by the keeper itself, MUST be omitted in messages.
+  google.protobuf.Timestamp start_time = 4 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "start_time,omitempty",
+    (gogoproto.moretags) = "yaml:\"start_time,omitempty\""
+  ];
+  // EndTime is time when the poll is finished and votes are counted.
+  // Set by the kepper itself, MUST be omitted in messages.
+  google.protobuf.Timestamp end_time = 5 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "end_time,omitempty",
+    (gogoproto.moretags) = "yaml:\"end_time,omitempty\""
+  ];
+  // Quorum is the share of 'yes' from the total number of votes required for positive decision. Quorum 0 means that
+  // only 1 'yes' is sufficient. Optional. Should be omitted if the poll is totally informational and not intended for
+  // any decision making.
+  string quorum = 6 [
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.nullable)   = true,
+    (gogoproto.jsontag)    = "quorum,omitempty",
+    (gogoproto.moretags)   = "yaml:\"quorum,omitempty\""
+  ];
+  oneof requirements {
+    // CanValidate denotes that only those who can validate can answer the poll.
+    Unit can_validate = 7 [
+      (gogoproto.jsontag)  = "can_validate",
+      (gogoproto.moretags) = "yaml:\"can_validate\""
+    ];
+    // MinStatus is the minimal referral status required to answer the poll.
+    artery.referral.v1beta1.Status min_status = 8 [
+      (gogoproto.jsontag)  = "min_status",
+      (gogoproto.moretags) = "yaml:\"min_status\""
+    ];
+  }
+
+  message Unit {}
+}
+
+message PollHistoryItem {
+  Poll poll = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "poll,inline",
+    (gogoproto.moretags) = "yaml:\"poll,inline\""
+  ];
+  uint64 yes = 2 [
+    (gogoproto.jsontag)  = "yes",
+    (gogoproto.moretags) = "yaml:\"yes\""
+  ];
+  uint64 no = 3 [
+    (gogoproto.jsontag)  = "no",
+    (gogoproto.moretags) = "yaml:\"no\""
+  ];
+  Decision decision = 4 [
+    (gogoproto.jsontag)  = "decision,omitempty",
+    (gogoproto.moretags) = "yaml:\"decision,omitempty\""
+  ];
+}
+
+enum Decision {
+  option (gogoproto.goproto_enum_prefix) = false;
+
+  DECISION_UNSPECIFIED = 0;
+  DECISION_POSITIVE    = 1;
+  DECISION_NEGATIVE    = 2;
 }

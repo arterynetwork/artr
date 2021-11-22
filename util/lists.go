@@ -75,3 +75,12 @@ func MergeStringsSorted(arr1 []string, arr2 []string) []string {
 		}
 	}
 }
+
+func ContainsString(arr []string, item string) bool {
+	for _, s := range arr {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}

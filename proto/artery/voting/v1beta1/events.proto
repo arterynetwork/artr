@@ -1,7 +1,9 @@
 syntax="proto3";
 package artery.voting.v1beta1;
 
+import "gogoproto/gogo.proto";
 import "artery/voting/v1beta1/proposals.proto";
+import "artery/voting/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/voting/types";
 
@@ -19,4 +21,23 @@ message EventProposalVote {
 message EventVotingFinished {
   string name = 1;
   bool agreed = 2;
+}
+
+message EventPollFinished {
+  string name = 1 [
+    (gogoproto.jsontag)  = "name,omitempty",
+    (gogoproto.moretags) = "yaml:\"name,omitempty\""
+  ];
+  uint64 yes = 2 [
+    (gogoproto.jsontag)  = "yes,omitempty",
+    (gogoproto.moretags) = "yaml:\"yes,omitempty\""
+  ];
+  uint64 no = 3 [
+    (gogoproto.jsontag)  = "no,omitempty",
+    (gogoproto.moretags) = "yaml:\"no,omitempty\""
+  ];
+  Decision decision = 4 [
+    (gogoproto.jsontag)  = "decision,omitempty",
+    (gogoproto.moretags) = "yaml:\"decision,omitempty\""
+  ];
 }

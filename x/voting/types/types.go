@@ -1,11 +1,13 @@
 package types
 
 import (
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/pkg/errors"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/util"
+	referral "github.com/arterynetwork/artr/x/referral/types"
 )
 
 func (p Proposal) GetAuthor() sdk.AccAddress {
@@ -298,3 +300,55 @@ func (r ProposalHistoryRecord) Validate() error {
 	}
 	return nil
 }
+
+func NewPollValidators(author sdk.AccAddress, name, text string, quorum util.Fraction) Poll {
+	return Poll{
+		Name:         name,
+		Author:       author.String(),
+		Question:     text,
+		Quorum:       &quorum,
+		Requirements: &Poll_CanValidate{CanValidate: &Poll_Unit{}},
+	}
+}
+
+func NewPollStatus(author sdk.AccAddress, name, text string, quorum util.Fraction, status referral.Status) Poll {
+	return Poll{
+		Name:         name,
+		Author:       author.String(),
+		Question:     text,
+		Quorum:       &quorum,
+		Requirements: &Poll_MinStatus{MinStatus: status},
+	}
+}
+
+func (p Poll) String() string {
+	bz, err := yaml.Marshal(p)
+	if err != nil { panic(err) }
+	return string(bz)
+}
+
+func (p Poll) Validate() error {
+	if len(p.Name) + len(p.Question) == 0 {
+		return errors.New("neither name nor question specified")
+	}
+	if _, err := sdk.AccAddressFromBech32(p.Author); err != nil {
+		return  errors.Wrap(err, "cannot parse author")
+	}
+	if p.Quorum != nil && (p.Quorum.IsNegative() || p.Quorum.GT(util.FractionInt(1))) {
+		return errors.New("quorum must be nil or in [0; 1]")
+	}
+	switch r := p.Requirements.(type) {
+	case *Poll_CanValidate:
+		// pass
+	case *Poll_MinStatus:
+		if r.MinStatus < referral.MinimumStatus || r.MinStatus > referral.MaximumStatus {
+			return errors.New("min_status is out of range")
+		}
+	}
+	if p.StartTime != nil && p.EndTime != nil && !p.EndTime.After(*p.StartTime) {
+		return errors.New("start_time after end_time")
+	}
+	return nil
+}
+
+func (u *Poll_Unit) Equal(other *Poll_Unit) bool { return (u == nil) == (other == nil) }

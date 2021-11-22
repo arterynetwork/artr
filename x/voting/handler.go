@@ -21,6 +21,12 @@ func NewHandler(k keeper.Keeper) sdk.Handler {
 		case *types.MsgVote:
 			res, err := srv.Vote(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgStartPoll:
+			res, err := srv.StartPoll(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgAnswerPoll:
+			res, err := srv.AnswerPoll(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}

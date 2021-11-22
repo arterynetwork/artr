@@ -13,4 +13,6 @@ var (
 	ErrProposalGovernorExists    = sdkerrors.Register(ModuleName, 5, "candidate already in government list")
 	ErrProposalGovernorNotExists = sdkerrors.Register(ModuleName, 6, "candidate not in government list")
 	ErrProposalGovernorLast      = sdkerrors.Register(ModuleName, 7, "cannot remove the last governor")
+	ErrNoActivePoll              = sdkerrors.Register(ModuleName, 8, "no active poll")
+	ErrRespondentNotAllowed      = sdkerrors.Register(ModuleName, 9, "poll requirements don't match")
 )

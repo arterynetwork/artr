@@ -3,6 +3,9 @@ package keeper
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/x/voting/types"
@@ -69,4 +72,31 @@ func (qs QueryServer) Params(ctx context.Context, _ *types.ParamsRequest) (*type
 	return &types.ParamsResponse{
 		Params: data,
 	}, nil
+}
+
+func (qs QueryServer) Poll(ctx context.Context, _ *types.PollRequest) (*types.PollResponse, error) {
+	var (
+		sdkCtx = sdk.UnwrapSDKContext(ctx)
+		k      = Keeper(qs)
+	)
+	poll, ok := k.GetCurrentPoll(sdkCtx)
+	if !ok {
+		return nil, status.Error(codes.NotFound, "There is no active poll at the moment")
+	}
+	yes, no := k.GetPollStatus(sdkCtx)
+
+	return &types.PollResponse{
+		Poll: poll,
+		Yes:  yes,
+		No:   no,
+	}, nil
+}
+
+func (qs QueryServer) PollHistory(ctx context.Context, req *types.PollHistoryRequest) (*types.PollHistoryResponse, error) {
+	var (
+		sdkCtx = sdk.UnwrapSDKContext(ctx)
+		k      = Keeper(qs)
+	)
+	data := k.GetPollHistory(sdkCtx, req.Limit, req.Page)
+	return &types.PollHistoryResponse{History: data}, nil
 }

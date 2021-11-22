@@ -6,12 +6,16 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	params "github.com/cosmos/cosmos-sdk/x/params/types"
 	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
 	"github.com/arterynetwork/artr/x/bank"
+	"github.com/arterynetwork/artr/x/noding"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
 	scheduleT "github.com/arterynetwork/artr/x/schedule/types"
+	votingKeeper "github.com/arterynetwork/artr/x/voting/keeper"
+	votingTypes "github.com/arterynetwork/artr/x/voting/types"
 )
 
 func Chain(handlers ...upgrade.UpgradeHandler) upgrade.UpgradeHandler {
@@ -235,5 +239,43 @@ func ScheduleBanishment(rk referralK.Keeper, bk bank.Keeper, rKey, sKey sdk.Stor
 			ms.Write()
 		}
 		logger.Info("... ScheduleBanishment done!")
+	}
+}
+
+func InitPollPeriodParam(k votingKeeper.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitPollPeriodParam ...")
+
+		var pz votingTypes.Params
+		paramspace.Get(ctx, votingTypes.KeyParamVotingPeriod, &pz.VotingPeriod)
+		pz.PollPeriod = pz.VotingPeriod
+
+		k.SetParams(ctx, pz)
+		logger.Info("... InitPollPeriodParam done!", "params", pz)
+	}
+}
+
+func ForceOnStatusChangedCallback(k noding.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, plan upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting ForceOnStatusChangedCallback ...")
+
+		if validators, err := k.GetActiveValidatorList(ctx); err != nil {
+			logger.Error("Cannot get active validator list", "err", err)
+		} else {
+			for _, acc := range validators {
+				if ok, _, _, err := k.IsQualified(ctx, acc); err != nil {
+					logger.Error("Cannot check qualification", "err", err, "acc", acc)
+				} else if !ok {
+					logger.Info("... switching off validator", "acc", acc)
+					if err = k.SwitchOff(ctx, acc); err != nil {
+						logger.Error("Cannot switch off validator", "err", err, "acc", acc)
+					}
+				}
+			}
+		}
+
+		logger.Info("... ForceOnStatusChangedCallback done!")
 	}
 }

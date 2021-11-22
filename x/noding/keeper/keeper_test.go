@@ -449,6 +449,32 @@ func (s *Suite) TestDoubleJail() {
 	}
 }
 
+func (s *Suite) TestStatusDowngrade() {
+	proposerKey := sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey)
+	tmPubKey, _ := cryptocodec.ToTmProtoPublicKey(proposerKey)
+	validator := abci.Validator{Address: proposerKey.Address().Bytes(), Power: 15}
+	votes := []abci.VoteInfo{{Validator: validator, SignedLastBlock: true}}
+
+	rk := s.app.GetReferralKeeper()
+	user1 := app.DefaultGenesisUsers["user1"].String()
+	user2 := app.DefaultGenesisUsers["user2"].String()
+	user3 := app.DefaultGenesisUsers["user3"].String()
+
+	s.NoError(rk.RequestTransition(s.ctx, user2, user3))
+	s.NoError(rk.AffirmTransition(s.ctx, user2))
+	info, err := rk.Get(s.ctx, user1)
+	s.NoError(err)
+	s.NotNil(info.StatusDowngradeAt)
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(*info.StatusDowngradeAt)
+
+	ebr, _ := s.nextBlock(proposerKey, votes, nil)
+	s.Equal([]abci.ValidatorUpdate{}, ebr.ValidatorUpdates)
+
+	ebr, _ = s.nextBlock(proposerKey, votes, nil)
+	s.Equal([]abci.ValidatorUpdate{{PubKey: tmPubKey, Power: 0}}, ebr.ValidatorUpdates)
+
+}
+
 func (s *BaseSuite) TearDownTest() {
 	if s.cleanup != nil {
 		s.cleanup()

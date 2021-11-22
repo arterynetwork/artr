@@ -40,4 +40,33 @@ message GenesisState {
     (gogoproto.jsontag)  = "history,omitempty",
     (gogoproto.moretags) = "yaml:\"history,omitempty\""
   ];
+  Poll current_poll = 8 [
+    (gogoproto.nullable) = true,
+    (gogoproto.jsontag)  = "current_poll,omitempty",
+    (gogoproto.moretags) = "yaml:\"current_poll,omitempty\""
+  ];
+  repeated PollAnswer poll_answers = 9 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "poll_answers,omitempty",
+    (gogoproto.moretags) = "yaml:\"poll_answers,omitempty"
+  ];
+  repeated PollHistoryItem poll_history = 10 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "poll_history,omitempty",
+    (gogoproto.moretags) = "yaml:\"poll_history,omitempty\""
+  ];
+}
+
+message PollAnswer {
+  option (gogoproto.goproto_getters) = false;
+  option (gogoproto.equal)           = false;
+
+  string acc = 1 [
+    (gogoproto.jsontag)  = "acc",
+    (gogoproto.moretags) = "yaml:\"acc\""
+  ];
+  bool ans = 2 [
+    (gogoproto.jsontag)  = "ans",
+    (gogoproto.moretags) = "yaml:\"ans\""
+  ];
 }

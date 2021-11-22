@@ -21,6 +21,12 @@ service Query {
   rpc Params(ParamsRequest) returns (ParamsResponse) {
     option (google.api.http).get = "/artery/voting/v1beta1/params";
   }
+  rpc Poll(PollRequest) returns (PollResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/poll";
+  }
+  rpc PollHistory(PollHistoryRequest) returns (PollHistoryResponse) {
+    option (google.api.http).get = "/artery/voting/v1beta1/poll-history";
+  }
 }
 
 message HistoryRequest {
@@ -72,5 +78,42 @@ message ParamsResponse {
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "params",
     (gogoproto.moretags) = "yaml:\"params\""
+  ];
+}
+
+message PollRequest {}
+
+message PollResponse {
+  Poll poll = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "poll,omitempty",
+    (gogoproto.moretags) = "yaml:\"poll,omitempty\""
+  ];
+  uint64 yes = 2 [
+    (gogoproto.jsontag)  = "yes,omitempty",
+    (gogoproto.moretags) = "yaml:\"yes,omitempty\""
+  ];
+  uint64 no = 3 [
+    (gogoproto.jsontag)  = "no,omitempty",
+    (gogoproto.moretags) = "yaml:\"no,omitempty\""
+  ];
+}
+
+message PollHistoryRequest {
+  int32 limit = 1 [
+    (gogoproto.jsontag)  = "limit,omitempty",
+    (gogoproto.moretags) = "yaml:\"limit,omitempty\""
+  ];
+  int32 page  = 2 [
+    (gogoproto.jsontag)  = "page,omitempty",
+    (gogoproto.moretags) = "yaml:\"page,omitempty\""
+  ];
+}
+
+message PollHistoryResponse {
+  repeated PollHistoryItem history = 1 [
+    (gogoproto.nullable) = false,
+    (gogoproto.jsontag)  = "history,omitempty",
+    (gogoproto.moretags) = "yaml:\"history,omitempty\""
   ];
 }

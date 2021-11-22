@@ -66,4 +66,4 @@ update-swagger-docs: statik
 
 statik:
 	@echo "Installing statik..."
-	@(cd /tmp && export GO111MODULE=on && go get github.com/rakyll/statik@v0.1.7)
+	@(cd /tmp && export GO111MODULE=on && go install github.com/rakyll/statik@v0.1.7)

@@ -13,7 +13,8 @@ const (
 	// QuerierRoute to be used for querierer msgs
 	QuerierRoute = ModuleName
 
-	HookName = ModuleName + "/complete"
+	VoteHookName = ModuleName + "/complete"
+	PollHookName = ModuleName + "/poll"
 )
 
 var (
@@ -26,4 +27,14 @@ var (
 	KeyTotalDisagreed   = []byte("total_disagreed")
 	KeyStartBlock       = []byte("start_block")
 	KeyHistoryPrefix    = []byte("h")
+
+	KeyPollPrefix   = []byte("p/")
+	KeyPollCurrent  = []byte("q")
+	KeyPollAnswers  = []byte("a/")
+	KeyPollYesCount = []byte("y")
+	KeyPollNoCount  = []byte("n")
+	KeyPollHistory  = []byte("h/")
+
+	ValueYes = []byte("y")
+	ValueNo  = []byte("n")
 )

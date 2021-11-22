@@ -320,7 +320,8 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(referral.TransitionTimeoutHookName, app.referralKeeper.PerformTransitionTimeout)
 	app.scheduleKeeper.AddHook(profileTypes.RefreshHookName, app.profileKeeper.HandleRenewHook)
 	app.scheduleKeeper.AddHook(profileTypes.RefreshImHookName, app.profileKeeper.HandleRenewImHook)
-	app.scheduleKeeper.AddHook(votingTypes.HookName, app.votingKeeper.ProcessSchedule)
+	app.scheduleKeeper.AddHook(votingTypes.VoteHookName, app.votingKeeper.ProcessSchedule)
+	app.scheduleKeeper.AddHook(votingTypes.PollHookName, app.votingKeeper.EndPollHandler)
 	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
 	app.scheduleKeeper.AddHook(earning.ContinueHookName, app.earningKeeper.MustPerformContinue)
 	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
@@ -342,6 +343,10 @@ func NewArteryApp(
 			ec.Marshaler,
 		),
 	)
+	app.upgradeKeeper.SetUpgradeHandler("2.2.0", Chain(
+		InitPollPeriodParam(app.votingKeeper, app.subspaces[votingTypes.DefaultParamspace]),
+		ForceOnStatusChangedCallback(app.nodingKeeper),
+	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
@@ -393,8 +398,8 @@ func NewArteryApp(
 		bank.ModuleName,
 		profileTypes.ModuleName,
 		delegating.ModuleName,
-		votingTypes.ModuleName,
 		noding.ModuleName,
+		votingTypes.ModuleName,
 		earning.ModuleName,
 	)
 

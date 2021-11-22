@@ -9,9 +9,9 @@ import (
 
 	bank "github.com/arterynetwork/artr/x/bank/types"
 	"github.com/arterynetwork/artr/x/delegating"
-	"github.com/arterynetwork/artr/x/noding"
+	noding "github.com/arterynetwork/artr/x/noding/types"
 	profile "github.com/arterynetwork/artr/x/profile/types"
-	"github.com/arterynetwork/artr/x/referral"
+	referral "github.com/arterynetwork/artr/x/referral/types"
 )
 
 // ParamSubspace defines the expected Subspace interfacace
@@ -40,6 +40,8 @@ type NodingKeeper interface {
 	SetParams(ctx sdk.Context, params noding.Params)
 
 	GeneralAmnesty(ctx sdk.Context)
+
+	IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result bool, delegation sdk.Int, reason noding.Reason, err error)
 }
 
 type DelegatingKeeper interface {
@@ -50,6 +52,8 @@ type DelegatingKeeper interface {
 type ReferralKeeper interface {
 	GetParams(ctx sdk.Context) (params referral.Params)
 	SetParams(ctx sdk.Context, params referral.Params)
+
+	Get(ctx sdk.Context, acc string) (referral.Info, error)
 }
 
 type ProfileKeeper interface {

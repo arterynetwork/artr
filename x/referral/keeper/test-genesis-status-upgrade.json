@@ -102743,7 +102743,8 @@
         "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu"
       ],
       "params": {
-        "voting_period": 2160
+        "voting_period": 18,
+        "poll_period": 18
       }
     }
   },

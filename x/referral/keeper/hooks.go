@@ -102,6 +102,7 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc string) error {
 	if err != nil {
 		return err
 	}
+	bu.addCallback(StatusUpdatedCallback, acc)
 	if err := bu.commit(); err != nil {
 		return err
 	}
