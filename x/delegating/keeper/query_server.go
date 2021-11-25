@@ -34,10 +34,7 @@ func (q QueryServer) Revoking(ctx context.Context, request *types.RevokingReques
 	if request == nil {
 		return nil, status.Errorf(codes.InvalidArgument, "empty request")
 	}
-	res, err := q.k.GetRevoking(sdk.UnwrapSDKContext(ctx), request.GetAccAddress())
-	if err != nil {
-		return nil, err
-	}
+	res := q.k.GetRevoking(sdk.UnwrapSDKContext(ctx), request.GetAccAddress())
 	return &types.RevokingResponse{Revoking: res}, nil
 }
 
@@ -56,9 +53,6 @@ func (q QueryServer) Get(ctx context.Context, request *types.GetRequest) (*types
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "cannot parse account address: %s", request.AccAddress)
 	}
-	res, err := q.k.get(sdk.UnwrapSDKContext(ctx), addr)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
-	}
+	res := q.k.Get(sdk.UnwrapSDKContext(ctx), addr)
 	return &types.GetResponse{Data: res}, nil
 }

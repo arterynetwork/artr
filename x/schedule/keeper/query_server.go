@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -50,11 +51,11 @@ func (qs QueryServer) Get(ctx context.Context, req *types.GetRequest) (resp *typ
 	k := Keeper(qs)
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 
-	since, err := runtime.Timestamp(req.Since)
+	since, err := runtime.Timestamp(fmt.Sprintf(`"%s"`, req.Since))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "cannot parse Since time")
 	}
-	to, err := runtime.Timestamp(req.To)
+	to, err := runtime.Timestamp(fmt.Sprintf(`"%s"`, req.To))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "cannot parse To time")
 	}

@@ -44,6 +44,7 @@ proto: proto-clean proto-gen proto-swagger update-swagger-docs
 proto-clean:
 	find x -type f -iname *.pb.go -delete
 	find x -type f -iname *.pb.gw.go -delete
+	find util -type f -iname *.pb.go -delete
 
 proto-gen:
 	@echo "Generating Protobuf files"

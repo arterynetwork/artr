@@ -94,13 +94,11 @@ func (s Suite) checkExportImport() {
 		s.ctx.BlockTime(),
 		[]string{
 			delegating.MainStoreKey,
-			delegating.ClusterStoreKey,
 			schedule.StoreKey,
 			params.StoreKey,
 		},
 		map[string]app.Decoder{
 			delegating.MainStoreKey:    app.AccAddressDecoder,
-			delegating.ClusterStoreKey: app.DummyDecoder,
 			schedule.StoreKey:          app.Uint64Decoder,
 			params.StoreKey:            app.DummyDecoder,
 		},
@@ -112,7 +110,6 @@ func (s Suite) checkExportImport() {
 				}
 				return fmt.Sprintf("%+v", data), nil
 			},
-			delegating.ClusterStoreKey: app.DummyDecoder,
 			schedule.StoreKey:          app.ScheduleDecoder,
 			params.StoreKey:            app.DummyDecoder,
 		},

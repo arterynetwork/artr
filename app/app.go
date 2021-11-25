@@ -152,7 +152,6 @@ func NewArteryApp(
 		paramTypes.StoreKey, upgradeTypes.StoreKey,
 		profileTypes.StoreKey, profileTypes.AliasStoreKey, profileTypes.CardStoreKey,
 		scheduleTypes.StoreKey, referral.StoreKey, referral.IndexStoreKey, delegating.MainStoreKey,
-		delegating.ClusterStoreKey,
 		votingTypes.StoreKey, noding.StoreKey, noding.IdxStoreKey,
 		earning.StoreKey)
 
@@ -256,7 +255,6 @@ func NewArteryApp(
 	app.delegatingKeeper = delegating.NewKeeper(
 		ec.Marshaler,
 		keys[delegating.MainStoreKey],
-		keys[delegating.ClusterStoreKey],
 		app.subspaces[delegating.DefaultParamspace],
 		app.accountKeeper,
 		app.scheduleKeeper,
@@ -346,6 +344,18 @@ func NewArteryApp(
 	app.upgradeKeeper.SetUpgradeHandler("2.2.0", Chain(
 		InitPollPeriodParam(app.votingKeeper, app.subspaces[votingTypes.DefaultParamspace]),
 		ForceOnStatusChangedCallback(app.nodingKeeper),
+	))
+	app.upgradeKeeper.SetUpgradeHandler("2.2.1", Chain(
+		ForceGlobalDelegation(
+			app.referralKeeper,
+			app.bankKeeper,
+			app.delegatingKeeper,
+			app.scheduleKeeper,
+			keys[bank.StoreKey],
+			keys[delegating.MainStoreKey],
+			ec.Marshaler,
+		),
+		RefreshReferralStatuses(app.referralKeeper),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

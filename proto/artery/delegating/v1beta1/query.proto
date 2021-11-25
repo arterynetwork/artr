@@ -103,6 +103,13 @@ message AccumulationResponse {
   int64                     percent        = 3;
   int64                     total_uartrs   = 4;
   int64                     current_uartrs = 5;
+
+  string missed_part = 16 [
+    (gogoproto.nullable)   = true,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.jsontag)    = "missed_part,omitempty",
+    (gogoproto.moretags)   = "yaml:\"missed_part,omitempty\""
+  ];
 }
 
 message GetRequest {

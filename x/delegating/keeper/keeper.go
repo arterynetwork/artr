@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -20,7 +19,6 @@ import (
 // Keeper of the delegating store
 type Keeper struct {
 	mainStoreKey    sdk.StoreKey
-	clusterStoreKey sdk.StoreKey
 	cdc             codec.BinaryMarshaler
 	paramspace      types.ParamSubspace
 	accKeeper       types.AccountKeeper
@@ -32,13 +30,12 @@ type Keeper struct {
 
 // NewKeeper creates a delegating keeper
 func NewKeeper(
-	cdc codec.BinaryMarshaler, mainKey sdk.StoreKey, clusterKey sdk.StoreKey, paramspace types.ParamSubspace,
+	cdc codec.BinaryMarshaler, mainKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accountKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, profileKeeper types.ProfileKeeper,
 	bankKeeper types.BankKeeper, refKeeper referral.Keeper,
 ) Keeper {
 	keeper := Keeper{
 		mainStoreKey:    mainKey,
-		clusterStoreKey: clusterKey,
 		cdc:             cdc,
 		paramspace:      paramspace.WithKeyTable(types.ParamKeyTable()),
 		accKeeper:       accountKeeper,
@@ -172,10 +169,7 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 
 	if store.Has(byteKey) {
 		byteItem = store.Get(byteKey)
-		err = proto.Unmarshal(byteItem, &item)
-		if err != nil {
-			return err
-		}
+		k.cdc.MustUnmarshalBinaryBare(byteItem, &item)
 	} else {
 		item = types.NewRecord()
 	}
@@ -204,35 +198,28 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	return nil
 }
 
-func (k Keeper) GetRevoking(ctx sdk.Context, acc sdk.AccAddress) ([]types.RevokeRequest, error) {
-	data, err := k.get(ctx, acc)
-	if err != nil {
-		return nil, err
-	}
+func (k Keeper) GetRevoking(ctx sdk.Context, acc sdk.AccAddress) []types.RevokeRequest {
+	data := k.Get(ctx, acc)
 	if data == nil {
-		return nil, nil
+		return nil
 	}
 
-	return data.Requests, nil
+	return data.Requests
 }
 
-func (k Keeper) get(ctx sdk.Context, acc sdk.AccAddress) (*types.Record, error) {
+func (k Keeper) Get(ctx sdk.Context, acc sdk.AccAddress) *types.Record {
 	var (
 		store   = ctx.KVStore(k.mainStoreKey)
 		byteKey = []byte(acc)
 
 		data types.Record
-		err  error
 	)
 	if !store.Has(byteKey) {
-		return nil, nil
+		return nil
 	}
-	err = proto.Unmarshal(store.Get(byteKey), &data)
-	if err != nil {
-		return nil, err
-	}
+	k.cdc.MustUnmarshalBinaryBare(store.Get(byteKey), &data)
 
-	return &data, nil
+	return &data
 }
 
 func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.AccumulationResponse, error) {
@@ -260,12 +247,19 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
 
+	if item.MissedPart != nil {
+		missedTotal := item.MissedPart.Mul(paymentTotal)
+		paymentTotal = paymentTotal.Sub(missedTotal)
+		paymentCurrent = paymentCurrent.Sub(missedTotal)
+	}
+
 	result := types.AccumulationResponse{
 		Start:         periodStart,
 		End:           periodEnd,
 		Percent:       percent.MulInt64(100 * 30).Int64(),
 		TotalUartrs:   paymentTotal.Int64(),
 		CurrentUartrs: paymentCurrent.Int64(),
+		MissedPart:    item.MissedPart,
 	}
 	k.Logger(ctx).Debug("GetAccumulation", "result", result)
 	return &result, nil
@@ -398,6 +392,10 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment time.Time) {
 	if item.NextAccrue != nil {
 		dayPart := k.dayPart(ctx, *item.NextAccrue)
+		if item.MissedPart != nil {
+			dayPart = dayPart.Sub(*item.MissedPart)
+			item.MissedPart = nil
+		}
 		delegated, _ := k.getDelegated(ctx, acc)
 		interest := k.percent(ctx, delegated).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {

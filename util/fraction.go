@@ -165,6 +165,16 @@ func (x Fraction) BigInt() *big.Int { return (&big.Int{}).Quo(x.num, x.denom) }
 
 func (x Fraction) Int64() int64 { return x.BigInt().Int64() }
 
+func (x Fraction) Clone() Fraction {
+	if x.IsNullValue() {
+		return Fraction{}
+	}
+	return Fraction{
+		num:   (&big.Int{}).Set(x.num),
+		denom: (&big.Int{}).Set(x.denom),
+	}
+}
+
 func (x Fraction) Reduce() Fraction {
 	if x.denom.Sign() < 0 {
 		x.num.Neg(x.num)

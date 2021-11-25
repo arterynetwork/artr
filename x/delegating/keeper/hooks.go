@@ -80,7 +80,12 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 	if percent.IsZero() {
 		data.NextAccrue = nil
 	} else {
-		k.accrue(ctx, acc, sdk.NewInt(percent.MulInt64(delegated.Int64()).Int64()))
+		interest := percent.MulInt64(delegated.Int64()).Int64()
+		if data.MissedPart != nil {
+			interest -= data.MissedPart.MulInt64(interest).Int64()
+			data.MissedPart = nil
+		}
+		k.accrue(ctx, acc, sdk.NewInt(interest))
 		*data.NextAccrue = time.Add(k.scheduleKeeper.OneDay(ctx))
 		k.scheduleKeeper.ScheduleTask(ctx, *data.NextAccrue, types.AccrueHookName, acc)
 	}

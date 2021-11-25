@@ -23,6 +23,7 @@ buf breaking --against proto/proto-2.0.0-b.2.bin
 buf breaking --against proto/proto-2.0.0.bin
 buf breaking --against proto/proto-2.1.0.bin
 buf breaking --against proto/proto-2.2.0.bin
+buf breaking --against proto/proto-2.2.1.bin
 
 proto_dirs=$(find ./proto -path -prune -o -name '*.proto' -print0 | xargs -0 -n1 dirname | sort | uniq)
 for dir in $proto_dirs; do

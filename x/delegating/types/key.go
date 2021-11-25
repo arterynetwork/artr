@@ -6,7 +6,6 @@ const (
 
 	// MainStoreKey to be used when creating the KVStore
 	MainStoreKey    = ModuleName
-	ClusterStoreKey = MainStoreKey + "-clusters"
 
 	// RouterKey to be used for routing msgs
 	RouterKey = ModuleName

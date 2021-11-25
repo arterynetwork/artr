@@ -3,16 +3,22 @@ package app
 import (
 	"encoding/binary"
 	"strings"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	params "github.com/cosmos/cosmos-sdk/x/params/types"
 	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
+	bankT "github.com/arterynetwork/artr/x/bank/types"
+	delegatingK "github.com/arterynetwork/artr/x/delegating/keeper"
+	delegatingT "github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/arterynetwork/artr/x/noding"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
+	scheduleK "github.com/arterynetwork/artr/x/schedule/keeper"
 	scheduleT "github.com/arterynetwork/artr/x/schedule/types"
 	votingKeeper "github.com/arterynetwork/artr/x/voting/keeper"
 	votingTypes "github.com/arterynetwork/artr/x/voting/types"
@@ -277,5 +283,132 @@ func ForceOnStatusChangedCallback(k noding.Keeper) upgrade.UpgradeHandler {
 		}
 
 		logger.Info("... ForceOnStatusChangedCallback done!")
+	}
+}
+
+func ForceGlobalDelegation(rk referralK.Keeper, bk bank.Keeper, dk delegatingK.Keeper, sk scheduleK.Keeper, bKey, dKey sdk.StoreKey, cdc codec.BinaryMarshaler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, plan upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting ForceGlobalDelegation ...")
+		defer logger.Info("... ForceGlobalDelegation done!")
+
+		dMain   := sdk.NewInt(0)
+		dRevoke := sdk.NewInt(0)
+
+		oneDay := sk.OneDay(ctx)
+		t      := time.Unix(0, plan.Time.UnixNano()).Add(oneDay)
+
+		q      := util.FractionZero()
+		deltaT := -1 * time.Second
+		deltaQ := util.NewFraction(-deltaT.Nanoseconds(), oneDay.Nanoseconds()).Reduce()
+
+		bStore := ctx.KVStore(bKey)
+		key := make([]byte, len(bankT.BalancesPrefix) + AddrLen)
+		copy(key, bankT.BalancesPrefix)
+
+		rk.Iterate(ctx, func(bech32 string, r *referralT.Info) (changed, _ bool) {
+			if r.Banished { return }
+
+			empty := r.Coins[0].Equal(r.Delegated[0])
+			for i := 0; i <= 10; i++ {
+				if !r.Coins[i].Equal(r.Delegated[i]) {
+					r.Delegated[i] = r.Coins[i]
+					changed = true
+				}
+			}
+			if empty { return }
+
+			acc, err := sdk.AccAddressFromBech32(bech32)
+			if err != nil {
+				logger.Error("Cannot parse account address", "acc", bech32, "err", err)
+				return false, false
+			}
+
+			balance := bk.GetBalance(ctx, acc)
+
+			mainBal := balance.AmountOf(util.ConfigMainDenom)
+			if !mainBal.IsZero() {
+				balance = balance.
+					Sub(sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, mainBal))).
+					Add(sdk.NewCoin(util.ConfigDelegatedDenom, mainBal))
+			}
+
+			revokeBal := balance.AmountOf(util.ConfigRevokingDenom)
+			if !revokeBal.IsZero() {
+				balance = balance.
+					Sub(sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, revokeBal))).
+					Add(sdk.NewCoin(util.ConfigDelegatedDenom, revokeBal))
+			}
+
+			di := dk.Get(ctx, acc)
+			diChanged := false
+
+			if di == nil { di = &delegatingT.Record{} }
+
+			if len(di.Requests) != 0 {
+				for _, r := range di.Requests {
+					sk.Delete(ctx, r.Time, delegatingT.RevokeHookName, acc)
+				}
+				di.Requests = nil
+				diChanged = true
+			}
+			if di.NextAccrue != nil {
+				missedPart := util.NewFraction(mainBal.Int64() + revokeBal.Int64(), balance.AmountOf(util.ConfigDelegatedDenom).Int64()).Mul(util.NewFraction(plan.Time.Sub(di.NextAccrue.Add(-oneDay)).Nanoseconds(), oneDay.Nanoseconds()))
+				di.MissedPart = &missedPart
+				diChanged = true
+			} else if balance.AmountOf(util.ConfigDelegatedDenom).Int64() > bk.GetParams(ctx).DustDelegation {
+				t = t.Add(deltaT)
+				q = q.Add(deltaQ)
+
+				di.NextAccrue = &t
+				di.MissedPart = &q
+				diChanged = true
+				sk.ScheduleTask(ctx, t, delegatingT.AccrueHookName, acc)
+
+				if r.BanishmentAt != nil {
+					sk.Delete(ctx, *r.BanishmentAt, referralK.BanishHookName, []byte(bech32))
+					r.BanishmentAt = nil
+					changed = true
+				}
+			}
+			if diChanged {
+				if di.IsEmpty() {
+					ctx.KVStore(dKey).Delete(acc)
+				} else {
+					ctx.KVStore(dKey).Set(acc, cdc.MustMarshalBinaryBare(di))
+				}
+			}
+
+			copy(key[len(bankT.BalancesPrefix):], acc.Bytes())
+			bStore.Set(key, cdc.MustMarshalBinaryBare(&bankT.Balance{Coins: balance}))
+
+			dMain = dMain.Add(mainBal)
+			dRevoke = dRevoke.Add(revokeBal)
+			return
+		})
+
+		supply := bk.GetSupply(ctx)
+		supply.Deflate(sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, dMain),
+			sdk.NewCoin(util.ConfigRevokingDenom, dRevoke),
+		))
+		supply.Inflate(sdk.NewCoins(
+			sdk.NewCoin(util.ConfigDelegatedDenom, dMain.Add(dRevoke)),
+		))
+		bk.SetSupply(ctx, supply)
+
+		// Referral statuses must be refreshed after this
+	}
+}
+
+func RefreshReferralStatuses(rk referralK.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting RefreshReferralStatuses ...")
+		defer logger.Info("... RefreshReferralStatuses done!")
+
+		rk.Iterate(ctx, func(_ string, _ *referralT.Info) (changed, checkForStatusUpdate bool) {
+			return false, true
+		})
 	}
 }

@@ -55,6 +55,8 @@ func (s *Suite) TearDownTest() {
 	}
 }
 
+var TENTH = util.NewFraction(1, 10)
+
 func (s *Suite) TestDelegatingAndRevoking() {
 	genesis_time := s.ctx.BlockTime()
 	user := app.DefaultGenesisUsers["user4"]
@@ -74,14 +76,12 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(847450000))),
 		s.bk.GetBalance(s.ctx, user),
 	)
-	revoking, err := s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
 	s.Equal(
 		[]types.RevokeRequest{{
 			Time:   genesis_time.Add(14*24*time.Hour),
 			Amount: sdk.NewInt(847450000),
 		}},
-		revoking,
+		s.k.GetRevoking(s.ctx, user),
 	)
 
 	s.ctx = s.ctx.WithBlockHeight(14*2880 - 1).WithBlockTime(genesis_time.Add((14*2880 - 1) *30*time.Second))
@@ -90,9 +90,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(847450000))),
 		s.bk.GetBalance(s.ctx, user),
 	)
-	revoking, err = s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
-	s.Empty(revoking)
+	s.Empty(s.k.GetRevoking(s.ctx, user))
 }
 
 func (s *Suite) TestAccrueAfterRevoke() {
@@ -225,6 +223,83 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 }
 
+func (s *Suite) TestAccrue_MissedPart() {
+	user := app.DefaultGenesisUsers["user4"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.setMissedPart(user, TENTH)
+
+	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(5_338935)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000)),
+		),
+		s.bk.GetBalance(s.ctx, user),
+	)
+	s.Nil(s.k.Get(s.ctx, user).MissedPart)
+
+	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(11_271085)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000)),
+		),
+		s.bk.GetBalance(s.ctx, user),
+	)
+}
+
+func (s *Suite) TestAccrueOnRevoke_MissedPart() {
+	user := app.DefaultGenesisUsers["user4"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.setMissedPart(user, TENTH)
+
+	for t := 0; t < util.BlocksOneDay / 4; t++ { s.nextBlock() }
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(100_000000)))
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(889822)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(747_450000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(100_000000)),
+		),
+		s.bk.GetBalance(s.ctx, user),
+	)
+	s.Nil(s.k.Get(s.ctx, user).MissedPart)
+
+	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+
+	s.Equal(
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(6_121972)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(747_450000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(100_000000)),
+		),
+		s.bk.GetBalance(s.ctx, user),
+	)
+}
+
 func (s *Suite) TestMinDelegation() {
 	user := app.DefaultGenesisUsers["user4"]
 	s.ErrorIs(s.k.Delegate(s.ctx, user, sdk.NewInt(999)), types.ErrLessThanMinimum)
@@ -272,14 +347,14 @@ func (s *Suite) TestRevokePeriod() {
 
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(1_000000)))
 
-	rrz, err := s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
-	s.Equal(1, len(rrz))
 	s.Equal(
-		types.RevokeRequest{
-			Amount: sdk.NewInt(1_000000),
-			Time: genesisTime.Add(14 * 24 * time.Hour),
-		}, rrz[0],
+		[]types.RevokeRequest{
+			{
+				Amount: sdk.NewInt(1_000000),
+				Time: genesisTime.Add(14 * 24 * time.Hour),
+			},
+		},
+		s.k.GetRevoking(s.ctx, user),
 	)
 
 	s.nextBlock()
@@ -290,20 +365,16 @@ func (s *Suite) TestRevokePeriod() {
 
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(2_000000)))
 
-	rrz, err = s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
-	s.Equal(2, len(rrz))
 	s.Equal(
-		types.RevokeRequest{
-			Amount: sdk.NewInt(1_000000),
-			Time: genesisTime.Add(14 * 24 * time.Hour),
-		}, rrz[0],
-	)
-	s.Equal(
-		types.RevokeRequest{
-			Amount: sdk.NewInt(2_000000),
-			Time: genesisTime.Add(7 * 24 * time.Hour + time.Minute),
-		}, rrz[1],
+		[]types.RevokeRequest{
+			{
+				Amount: sdk.NewInt(1_000000),
+				Time: genesisTime.Add(14 * 24 * time.Hour),
+			}, {
+				Amount: sdk.NewInt(2_000000),
+				Time: genesisTime.Add(7 * 24 * time.Hour + time.Minute),
+			},
+		}, s.k.GetRevoking(s.ctx, user),
 	)
 
 	s.EqualValues(3_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
@@ -311,22 +382,19 @@ func (s *Suite) TestRevokePeriod() {
 	s.nextBlock()
 
 	s.EqualValues(1_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
-	rrz, err = s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
-	s.Equal(1, len(rrz))
 	s.Equal(
-		types.RevokeRequest{
-			Amount: sdk.NewInt(1_000000),
-			Time: genesisTime.Add(14 * 24 * time.Hour),
-		}, rrz[0],
+		[]types.RevokeRequest{
+			{
+				Amount: sdk.NewInt(1_000000),
+				Time: genesisTime.Add(14 * 24 * time.Hour),
+			},
+		}, s.k.GetRevoking(s.ctx, user),
 	)
 
 	s.ctx = s.ctx.WithBlockHeight(40_319).WithBlockTime(genesisTime.Add(40_319*30*time.Second))
 	s.nextBlock()
 	s.EqualValues(0, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
-	rrz, err = s.k.GetRevoking(s.ctx, user)
-	s.NoError(err)
-	s.Equal(0, len(rrz))
+	s.Empty(s.k.GetRevoking(s.ctx, user))
 }
 
 func (s *Suite) TestGetAccumulation() {
@@ -356,6 +424,40 @@ func (s *Suite) TestGetAccumulation() {
 			Percent:       21,
 			TotalUartrs:   5_932150,
 			CurrentUartrs: 2_541761,
+		},
+		*resp,
+	)
+}
+
+func (s *Suite) TestGetAccumulation_MissedPart() {
+	genesisTime := s.ctx.BlockTime()
+	user := app.DefaultGenesisUsers["user4"]
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000))),
+		s.bk.GetBalance(s.ctx, user),
+	)
+
+	s.setMissedPart(user, TENTH.Clone())
+	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) *30*time.Second))
+	s.nextBlock()
+
+	resp, err := s.k.GetAccumulation(s.ctx, user)
+	s.NoError(err)
+	s.NotNil(resp)
+	s.Equal(
+		types.AccumulationResponse{
+			Start:         genesisTime,
+			End:           genesisTime.Add(24*time.Hour),
+			Percent:       21,
+			TotalUartrs:   5_338935,
+			CurrentUartrs: 1_948546,
+			MissedPart:    &TENTH,
 		},
 		*resp,
 	)
@@ -401,4 +503,12 @@ func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
 	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
 	return ebr, bbr
+}
+
+func (s *Suite) setMissedPart(user sdk.AccAddress, value util.Fraction) {
+	store := s.ctx.KVStore(s.app.GetKeys()[delegating.MainStoreKey])
+	var data types.Record
+	s.cdc.MustUnmarshalBinaryBare(store.Get(user), &data)
+	data.MissedPart = &value
+	store.Set(user, s.cdc.MustMarshalBinaryBare(&data))
 }

@@ -9,7 +9,6 @@ const (
 	ModuleName        = types.ModuleName
 	RouterKey         = types.RouterKey
 	MainStoreKey      = types.MainStoreKey
-	ClusterStoreKey   = types.ClusterStoreKey
 	DefaultParamspace = types.DefaultParamspace
 	QuerierRoute      = types.QuerierRoute
 	RevokeHookName    = types.RevokeHookName

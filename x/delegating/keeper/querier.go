@@ -46,10 +46,7 @@ func queryRevoking(ctx sdk.Context, req abci.RequestQuery, k Keeper, legacyQueri
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidRequest, "cannot parse account address")
 	}
-	data, err := k.GetRevoking(ctx, acc)
-	if err != nil {
-		return nil, err
-	}
+	data := k.GetRevoking(ctx, acc)
 
 	res, err := codec.MarshalJSONIndent(legacyQuerierCdc, types.RevokingResponse{
 		Revoking: data,
