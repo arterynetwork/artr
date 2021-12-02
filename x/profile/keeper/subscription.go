@@ -84,12 +84,12 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		profile.ActiveUntil = &au
 		k.scheduleRenew(ctx, addr, au)
 		k.resetLimits(p, profile)
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventActivityChanged{
 				Address:   addr.String(),
 				ActiveNow: true,
 			},
-		); err != nil { panic(err) }
+		)
 	} else {
 		if storageB != profile.StorageLimit {
 			time := k.monthPart(ctx, *profile.ActiveUntil)
@@ -138,14 +138,14 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		return errors.Wrap(err, "cannot save profile")
 	}
 
-	if err := ctx.EventManager().EmitTypedEvents(
+	util.EmitEvents(ctx,
 		event,
 		&bankT.EventTransfer{
 			Sender:    addr.String(),
 			Recipient: k.accountKeeper.GetModuleAddress(auth.FeeCollectorName).String(),
 			Amount:    sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee)),
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -186,14 +186,14 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot write profile")
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventBuyStorage{
 			Address:  addr.String(),
 			NewLimit: profile.StorageLimit,
 			Used:     profile.StorageCurrent,
 			Total:    total.AmountOf(util.ConfigMainDenom).Uint64(),
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -247,14 +247,14 @@ func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint3
 		return errors.Wrap(err, "cannot write profile")
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventBuyExtraImStorage{
 			Address:  addr.String(),
 			NewLimit: profile.ImLimitTotal(ctx),
 			Total:    total.AmountOf(util.ConfigMainDenom).Uint64(),
 			ExpireAt: *profile.ExtraImUntil,
 		},
-	); err != nil { panic(err) }
+	)
 
 	return nil
 }
@@ -286,14 +286,14 @@ func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot write profile")
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventBuyVpn{
 			Address:  addr.String(),
 			NewLimit: profile.VpnLimit,
 			Used:     profile.VpnCurrent,
 			Total:    coins.AmountOf(util.ConfigMainDenom).Uint64(),
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -315,13 +315,13 @@ func (k Keeper) GiveStorageUp(ctx sdk.Context, addr sdk.AccAddress, amountGb uin
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot write profile")
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventGiveUpStorage{
 			Address:  addr.String(),
 			NewLimit: profile.StorageLimit,
 			Used:     profile.StorageCurrent,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -342,12 +342,12 @@ func (k Keeper) GiveImStorageUp(ctx sdk.Context, addr sdk.AccAddress, extraGb ui
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot write profile")
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventGiveUpImStorage{
 			Address:  addr.String(),
 			NewLimit: profile.ImLimitTotal(ctx),
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -438,7 +438,7 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 		if profile.AutoPay {
 			if err := k.PayTariff(ctx, addr, 0); err != nil {
 				defer k.referralKeeper.MustSetActive(ctx, addr.String(), false)
-				if err := ctx.EventManager().EmitTypedEvents(
+				util.EmitEvents(ctx,
 					&types.EventAutoPayFailed{
 						Address: addr.String(),
 						Error:   err.Error(),
@@ -447,18 +447,18 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 						Address:   addr.String(),
 						ActiveNow: false,
 					},
-				); err != nil { panic(err) }
+				)
 			} else {
 				k.scheduleRenew(ctx, addr, time.Add(k.scheduleKeeper.OneMonth(ctx)))
 			}
 		} else {
 			defer k.referralKeeper.MustSetActive(ctx, addr.String(), false)
-			if err := ctx.EventManager().EmitTypedEvent(
+			util.EmitEvent(ctx,
 				&types.EventActivityChanged{
 					Address:   addr.String(),
 					ActiveNow: false,
 				},
-			); err != nil { panic(err) }
+			)
 		}
 	}
 
@@ -483,12 +483,12 @@ func (k Keeper) monthlyImRoutine(ctx sdk.Context, addr sdk.AccAddress) error {
 		profile.ExtraImUntil   = nil
 		profile.AutoPayImExtra = false
 
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventImAutoPayFailed{
 				Address: addr.String(),
 				Error:   err.Error(),
 			},
-		); err != nil { panic(err) }
+		)
 	}
 
 	if err = k.SetProfile(ctx, addr, *profile); err != nil {
@@ -531,14 +531,14 @@ func (k Keeper) prolongImExtra(ctx sdk.Context, addr sdk.AccAddress, profile *ty
 	k.scheduleRenewIm(ctx, addr, t)
 	profile.ExtraImUntil = &t
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventBuyExtraImStorage{
 			Address:  addr.String(),
 			NewLimit: profile.ImLimitTotal(ctx),
 			Total:    total.AmountOf(util.ConfigMainDenom).Uint64(),
 			ExpireAt: t,
 		},
-	); err != nil { panic(err) }
+	)
 
 	return nil
 }

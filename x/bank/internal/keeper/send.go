@@ -8,6 +8,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank/types"
 )
 
@@ -91,13 +92,13 @@ func (keeper BaseSendKeeper) InputOutputCoins(ctx sdk.Context, inputs []types.In
 
 // SendCoins moves coins from one account to another
 func (keeper BaseSendKeeper) SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error {
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventTransfer{
 			Sender:    fromAddr.String(),
 			Recipient: toAddr.String(),
 			Amount:    amt,
 		},
-	); err != nil { panic(err) }
+	)
 
 	if err := keeper.SubtractCoins(ctx, fromAddr, amt); err != nil {
 		return err

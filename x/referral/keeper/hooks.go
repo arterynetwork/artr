@@ -1,11 +1,13 @@
 package keeper
 
 import (
-	"github.com/pkg/errors"
 	"time"
+
+	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
 
@@ -88,13 +90,13 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc string) error {
 		if value.StatusDowngradeAt == nil || value.StatusDowngradeAt.After(ctx.BlockTime()) { // the user fixed things up
 			return nil
 		}
-		if err := bu.ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(bu.ctx,
 			&types.EventStatusUpdated{
 				Address: acc,
 				Before:  value.Status,
 				After:   value.Status - 1,
 			},
-		); err != nil { panic(err) }
+		)
 		k.setStatus(ctx, value, value.Status-1, acc)
 		value.StatusDowngradeAt = nil
 		return nil

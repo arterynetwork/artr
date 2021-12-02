@@ -53,6 +53,23 @@ func (k BaseKeeper) Send(ctx context.Context, msg *types.MsgSend) (*types.MsgSen
 	return &types.MsgSendResponse{}, nil
 }
 
+func (k BaseKeeper) Burn(ctx context.Context, msg *types.MsgBurn) (*types.MsgBurnResponse, error) {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+
+	account, err := sdk.AccAddressFromBech32(msg.Account)
+	if err != nil {
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse account address")
+	}
+
+	err = k.BurnAccCoins(sdkCtx, account, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(int64(msg.Amount)))))
+	if err != nil {
+		return nil, err
+	}
+
+	util.TagTx(sdkCtx, types.ModuleName, msg)
+	return &types.MsgBurnResponse{}, nil
+}
+
 func logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }

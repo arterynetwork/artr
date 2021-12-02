@@ -171,7 +171,8 @@ func txCmd() *cobra.Command {
 	}
 
 	txCmd.AddCommand(
-		bankcmd.NewSendTxCmd(),
+		bankcmd.CmdSend(),
+		bankcmd.CmdBurn(),
 		flags.LineBreak,
 		authcmd.GetSignCommand(),
 		authcmd.GetMultiSignCommand(),

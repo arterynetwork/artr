@@ -14,11 +14,13 @@ import (
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterInterface((*exported.SupplyI)(nil), nil)
 	cdc.RegisterConcrete(&MsgSend{}, "artery/MsgSend", nil)
+	cdc.RegisterConcrete(&MsgBurn{}, "artery/MsgBurn", nil)
 }
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgSend{},
+		&MsgBurn{},
 	)
 
 	registry.RegisterInterface(

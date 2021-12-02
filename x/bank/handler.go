@@ -16,6 +16,9 @@ func NewHandler(srv types.MsgServer) sdk.Handler {
 		case *types.MsgSend:
 			res, err := srv.Send(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgBurn:
+			res, err := srv.Burn(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}

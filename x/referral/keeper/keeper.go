@@ -378,13 +378,13 @@ func (k Keeper) Compress(ctx sdk.Context, acc string) error {
 		}
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventCompression{
 			Address: acc,
 			Referrer: parent,
 			Referrals: children,
 		},
-	); err != nil { panic(err) }
+	)
 
 	if err := bu.commit(); err != nil {
 		return err
@@ -707,12 +707,12 @@ func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
 	// Map iteration order is not determined :-(
 	sort.Slice(outputs, func(i, j int) bool { return bytes.Compare(outputs[i].Address, outputs[j].Address) < 0 })
 	for _, out := range outputs {
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventStatusBonus{
 				Address: out.Address.String(),
 				Amount:  out.Coins.AmountOf(util.ConfigMainDenom).Uint64(),
 			},
-		); err != nil { panic(err) }
+		)
 	}
 
 	inputs := []bank.Input{bank.NewInput(sender, util.Uartrs(total))}
@@ -800,13 +800,13 @@ func (k Keeper) RequestTransition(ctx sdk.Context, subject, newParent string) er
 
 	k.scheduleKeeper.ScheduleTask(ctx, ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx)), TransitionTimeoutHookName, []byte(subject))
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventTransitionRequested{
 			Address: subject,
 			Before:  r.Referrer,
 			After:   newParent,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -832,14 +832,14 @@ func (k Keeper) CancelTransition(ctx sdk.Context, subject string, timeout bool) 
 	} else {
 		reason = types.REASON_DECLINED
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventTransitionDeclined{
 			Address: subject,
 			Before:  r.Referrer,
 			After:   value,
 			Reason:  reason,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -948,13 +948,13 @@ func (k Keeper) AffirmTransition(ctx sdk.Context, subject string) error {
 		panic(errors.Wrap(err, "cannot commit changes"))
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventTransitionPerformed{
 			Address: subject,
 			Before:  oldParent,
 			After:   newParent,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -1055,11 +1055,11 @@ func (k Keeper) Banish(ctx sdk.Context, acc string) error {
 		return errors.Wrap(err, "callback failed")
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventAccBanished{
 			Address: acc,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 

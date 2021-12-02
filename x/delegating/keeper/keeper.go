@@ -81,12 +81,12 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 
 	revoking = revoking.Add(uartrs)
 	if revoking.GTE(sdk.NewInt(100_000_000000)) {
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventMassiveRevoke{
 				Account: acc.String(),
 				Ucoins:  revoking.Uint64(),
 			},
-		); err != nil { panic(err) }
+		)
 	}
 
 	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
@@ -190,7 +190,7 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	}
 
 	event.Ucoins = delegation.Uint64()
-	if err := ctx.EventManager().EmitTypedEvent(&event); err != nil { panic(err) }
+	util.EmitEvent(ctx, &event)
 
 	bz := k.cdc.MustMarshalBinaryBare(&item)
 	store.Set(byteKey, bz)
@@ -353,12 +353,12 @@ func (k Keeper) undelegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) 
 	supply.Inflate(plusCoins)
 	k.bankKeeper.SetSupply(ctx, supply)
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventUndelegate{
 			Account: acc.String(),
 			Ucoins:  uartrs.Uint64(),
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -381,12 +381,12 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	if err := k.bankKeeper.AddCoins(ctx, acc, emission); err != nil {
 		panic(err)
 	}
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventAccrue{
 			Account: acc.String(),
 			Ucoins:  ucoins.Uint64(),
 		},
-	); err != nil { panic(err) }
+	)
 }
 
 func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment time.Time) {

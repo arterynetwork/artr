@@ -217,12 +217,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 	store.Delete(types.KeyDisagreedMembers)
 	store.Delete(types.KeyStartBlock)
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventVotingFinished{
 			Name:   proposal.Name,
 			Agreed: agreed,
 		},
-	); err != nil { panic(err) }
+	)
 
 	if agreed {
 		var err error
@@ -414,13 +414,13 @@ func (k Keeper) Propose(ctx sdk.Context, msg types.MsgPropose) error {
 	k.ScheduleEnding(ctx, endTime)
 	k.SetStartBlock(ctx)
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventProposalCreated{
 			Name:   proposal.Name,
 			Author: proposal.Author,
 			Type:   proposal.Type,
 		},
-	); err != nil { panic(err) }
+	)
 
 	if complete, agree := k.Validate(gov, agreed, disagreed); complete {
 		k.EndProposal(ctx, proposal, agree)
@@ -457,12 +457,12 @@ func (k Keeper) Vote(ctx sdk.Context, voter sdk.AccAddress, agree bool) error {
 		k.SetDisagreed(ctx, disagreed)
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventProposalVote{
 			Voter:  voter.String(),
 			Agreed: agree,
 		},
-	); err != nil { panic(err) }
+	)
 
 	if complete, agree := k.Validate(gov, agreed, disagreed); complete {
 		k.EndProposal(ctx, *proposal, agree)
@@ -584,14 +584,14 @@ func (k Keeper) EndPoll(ctx sdk.Context) {
 		}
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(&(types.EventPollFinished{
-		Name:     poll.Name,
-		Yes:      yes,
-		No:       no,
-		Decision: decision,
-	})); err != nil {
-		panic(errors.Wrap(err, "cannot emit an event"))
-	}
+	util.EmitEvent(ctx,
+		&types.EventPollFinished{
+			Name:     poll.Name,
+			Yes:      yes,
+			No:       no,
+			Decision: decision,
+		},
+	)
 
 	historyKey := make([]byte, len(types.KeyPollHistory)+8)
 	copy(historyKey, types.KeyPollHistory)

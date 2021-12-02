@@ -117,9 +117,9 @@ func (k Keeper) MustPerformContinue(ctx sdk.Context, _ []byte, _ time.Time) {
 }
 
 func (k Keeper) PerformStart(ctx sdk.Context) error {
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventStartPaying{},
-	); err != nil { panic(err) }
+	)
 	return k.proceed(ctx)
 }
 
@@ -202,18 +202,18 @@ func (k Keeper) proceed(ctx sdk.Context) error {
 		if err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.ModuleName, item.GetAccount(), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(vpnAmt+storageAmt)))); err != nil {
 			return err
 		}
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventEarn{
 				Address: item.Account,
 				Vpn:     uint64(vpnAmt),
 				Storage: uint64(storageAmt),
 			},
-		); err != nil { panic(err) }
+		)
 		k.delete(ctx, item.GetAccount())
 	}
 
 	if finished {
-		if err := ctx.EventManager().EmitTypedEvent(&types.EventFinishPaying{}); err != nil { panic(err) }
+		util.EmitEvent(ctx, &types.EventFinishPaying{})
 		k.SetState(ctx, types.NewStateUnlocked())
 	} else {
 		k.scheduleKeeper.ScheduleTask(ctx, ctx.BlockTime().Add(time.Nanosecond), types.ContinueHookName, nil)

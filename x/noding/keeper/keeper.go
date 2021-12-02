@@ -19,6 +19,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
@@ -245,12 +246,12 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 		return err
 	}
 
-	if err := ctx.EventManager().EmitTypedEvent(
+	util.EmitEvent(ctx,
 		&types.EventValidatorBanished{
 			Address: acc.String(),
 			Reason:  reason,
 		},
-	); err != nil { panic(err) }
+	)
 	return nil
 }
 
@@ -278,12 +279,12 @@ func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 		}
 		changed = true
 
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventValidatorBanished{
 				Address: acc.String(),
 				Reason:  reason,
 			},
-		); err != nil { panic(err) }
+		)
 		return nil
 	}
 
@@ -609,11 +610,11 @@ func (k Keeper) MarkStroke(ctx sdk.Context, acc sdk.AccAddress) error {
 					panic(err)
 				}
 			}
-			if err := ctx.EventManager().EmitTypedEvent(
+			util.EmitEvent(ctx,
 				&types.EventValidatorJailed{
 					Address: acc.String(),
 				},
-			); err != nil { panic(err) }
+			)
 		} else {
 			if d.LotteryNo != 0 {
 				if err := k.lotteryDownshift(ctx, acc, d); err != nil {
@@ -664,7 +665,7 @@ func (k Keeper) MarkByzantine(ctx sdk.Context, acc sdk.AccAddress, evidence abci
 			}
 			event.Banned = false
 		}
-		if err := ctx.EventManager().EmitTypedEvent(&event); err != nil { panic(err) }
+		util.EmitEvent(ctx, &event)
 		return true
 	})
 }
@@ -690,12 +691,12 @@ func (k Keeper) Unjail(ctx sdk.Context, acc sdk.AccAddress) error {
 	} else {
 		k.Logger(ctx).Info("banishing from validators", "acc", acc, "reason", reason)
 		data.Status = false
-		if err := ctx.EventManager().EmitTypedEvent(
+		util.EmitEvent(ctx,
 			&types.EventValidatorBanished{
 				Address: acc.String(),
 				Reason:  reason,
 			},
-		); err != nil { panic(err) }
+		)
 	}
 	err = k.set(ctx, acc, data)
 	if err != nil {

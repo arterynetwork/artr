@@ -48,7 +48,7 @@ proto-clean:
 
 proto-gen:
 	@echo "Generating Protobuf files"
-	"$(DOCKER)" run --rm -v "$(CURDIR):/workspace" -w /workspace tendermintdev/sdk-proto-gen \
+	"$(DOCKER)" run --rm -v "$(CURDIR):/workspace" -w /workspace tendermintdev/sdk-proto-gen:v0.2 \
 		sh ./scripts/protocgen.sh
 
 proto-swagger:

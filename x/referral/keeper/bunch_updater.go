@@ -12,6 +12,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
 )
 
@@ -146,21 +147,21 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 				downgradeAt := bu.ctx.BlockTime().Add(bu.StatusDowngradeAfter())
 				value.StatusDowngradeAt = &downgradeAt
 				bu.k.scheduleKeeper.ScheduleTask(bu.ctx, downgradeAt, StatusDowngradeHookName, []byte(acc))
-				if err := bu.ctx.EventManager().EmitTypedEvent(
+				util.EmitEvent(bu.ctx,
 					&types.EventStatusWillBeDowngraded{
 						Address: acc,
 						Time:    downgradeAt,
 					},
-				); err != nil { panic(err) }
+				)
 			}
 		} else {
 			if value.StatusDowngradeAt != nil {
 				value.StatusDowngradeAt = nil
-				if err := bu.ctx.EventManager().EmitTypedEvent(
+				util.EmitEvent(bu.ctx,
 					&types.EventStatusDowngradeCanceled{
 						Address: acc,
 					},
-				); err != nil { panic(err) }
+				)
 			}
 			var nextStatus = value.Status
 			for {
@@ -178,13 +179,13 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 				}
 			}
 			if nextStatus > value.Status {
-				if err := bu.ctx.EventManager().EmitTypedEvent(
+				util.EmitEvent(bu.ctx,
 					&types.EventStatusUpdated{
 						Address: acc,
 						Before:  value.Status,
 						After:   nextStatus,
 					},
-				); err != nil { panic(err) }
+				)
 				bu.k.setStatus(bu.ctx, &value, nextStatus, acc)
 				bu.addCallback(StatusUpdatedCallback, acc)
 			}

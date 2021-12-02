@@ -191,7 +191,16 @@ func (k BaseKeeper) BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins)
 		panic(sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "module account %s does not have permissions to burn tokens", moduleName))
 	}
 
-	err := k.SubtractCoins(ctx, acc.GetAddress(), amt)
+	if err := k.BurnAccCoins(ctx, acc.GetAddress(), amt); err != nil { return nil }
+
+	logger := k.Logger(ctx)
+	logger.Info("burned tokens from module account", "amount", amt.String(), "from", moduleName)
+
+	return nil
+}
+
+func (k BaseKeeper) BurnAccCoins(ctx sdk.Context, acc sdk.AccAddress, amt sdk.Coins) error {
+	err := k.SubtractCoins(ctx, acc, amt)
 	if err != nil {
 		return err
 	}
@@ -200,9 +209,6 @@ func (k BaseKeeper) BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins)
 	supply := k.GetSupply(ctx)
 	supply.Deflate(amt)
 	k.SetSupply(ctx, supply)
-
-	logger := k.Logger(ctx)
-	logger.Info("burned tokens from module account", "amount", amt.String(), "from", moduleName)
 
 	return nil
 }

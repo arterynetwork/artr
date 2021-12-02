@@ -10,6 +10,9 @@ option go_package = "github.com/arterynetwork/artr/x/bank/types";
 service Msg {
   // Send defines a method for sending coins from one account to another account.
   rpc Send(MsgSend) returns (MsgSendResponse);
+
+  // Burn is a method to burn coins (only free, not delegated ones) on sender's account.
+  rpc Burn(MsgBurn) returns (MsgBurnResponse);
 }
 
 // MsgSend represents a message to send coins from one account to another.
@@ -25,3 +28,23 @@ message MsgSend {
 
 // MsgSendResponse defines the Msg/Send response type.
 message MsgSendResponse {}
+
+// MsgBurn is a message to burn coins (only free, not delegated ones) on sender's account.
+message MsgBurn {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  // Account is a sender's SDK address.
+  string account = 1 [
+    (gogoproto.jsontag)  = "account",
+    (gogoproto.moretags) = "yaml:\"account\""
+  ];
+  // Amount is a coin amount to be burnt (in μARTRs).
+  uint64 amount = 2 [
+    (gogoproto.jsontag)  = "amount",
+    (gogoproto.moretags) = "yaml:\"amount\""
+  ];
+}
+
+// MsgBurnResponse defines response type for MsgBurn messages.
+message MsgBurnResponse {}
