@@ -37,22 +37,22 @@ var statusRequirements = map[types.Status]func(value types.Info, bu *bunchUpdate
 		return statusRequirementsXByX(value, bu, 3, 3)
 	},
 	types.STATUS_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_MASTER.LinesOpened(), 0, 15)
+		return statusRequirementsCore(value, bu, types.STATUS_MASTER.LinesOpened(), 0, 10)
 	},
 	types.STATUS_BUSINESSMAN: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_CHAMPION.LinesOpened(), 150_000, 60)
+		return statusRequirementsCore(value, bu, types.STATUS_CHAMPION.LinesOpened(), 150_000, 50)
 	},
 	types.STATUS_PROFESSIONAL: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_BUSINESSMAN.LinesOpened(), 300_000, 200)
+		return statusRequirementsCore(value, bu, types.STATUS_BUSINESSMAN.LinesOpened(), 300_000, 100)
 	},
 	types.STATUS_TOP_LEADER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_PROFESSIONAL.LinesOpened(), 1_000_000, 500)
+		return statusRequirementsCore(value, bu, types.STATUS_PROFESSIONAL.LinesOpened(), 1_000_000, 200)
 	},
 	types.STATUS_HERO: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_TOP_LEADER.LinesOpened(), 2_000_000, 1_000)
+		return statusRequirementsCore(value, bu, types.STATUS_TOP_LEADER.LinesOpened(), 2_000_000, 300)
 	},
 	types.STATUS_ABSOLUTE_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_HERO.LinesOpened(), 5_000_000, 2_000)
+		return statusRequirementsCore(value, bu, types.STATUS_HERO.LinesOpened(), 5_000_000, 400)
 	},
 }
 
