@@ -446,9 +446,9 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 		if !dd.IsZero() {
 			bu.addCallback(StakeChangedCallback, acc)
 
-			if !value.Active && (value.CompressionAt == nil || ctx.BlockTime().After(*value.CompressionAt)) {
+			if !value.Active {
 				if newDelegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
-					if !value.Banished && value.BanishmentAt == nil {
+					if !value.Banished && value.BanishmentAt == nil && (value.CompressionAt == nil || ctx.BlockTime().After(*value.CompressionAt)) {
 						k.scheduleBanishment(ctx, acc, value)
 					}
 				} else {
@@ -1086,6 +1086,7 @@ func (k Keeper) ComeBack(ctx sdk.Context, acc string) error {
 
 		value.Banished = false
 		value.BanishmentAt = nil
+		value.CompressionAt = nil
 		value.Status = types.STATUS_LUCKY
 
 		return nil

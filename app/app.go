@@ -359,6 +359,11 @@ func NewArteryApp(
 	))
 	app.upgradeKeeper.SetUpgradeHandler("2.3.0", NopUpgradeHandler)
 	app.upgradeKeeper.SetUpgradeHandler("2.3.1", RefreshReferralStatuses(app.referralKeeper))
+	app.upgradeKeeper.SetUpgradeHandler("2.3.2", Chain(
+		TransferFromTheBanished(app.scheduleKeeper, ec.Marshaler, keys[referral.StoreKey]),
+		UnbanishAccountsWithDelegation(app.bankKeeper, app.scheduleKeeper, ec.Marshaler, keys[referral.StoreKey]),
+		RefreshReferralStatuses(app.referralKeeper),
+	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.

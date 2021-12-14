@@ -2,10 +2,14 @@ package app
 
 import (
 	"encoding/binary"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	params "github.com/cosmos/cosmos-sdk/x/params/types"
 	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
@@ -410,5 +414,216 @@ func RefreshReferralStatuses(rk referralK.Keeper) upgrade.UpgradeHandler {
 		rk.Iterate(ctx, func(_ string, _ *referralT.Info) (changed, checkForStatusUpdate bool) {
 			return false, true
 		})
+	}
+}
+
+func UnbanishAccountsWithDelegation(bk bank.Keeper, sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting UnbanishAccountsWithDelegation ...")
+
+		store := cachekv.NewStore(ctx.KVStore(rKey))
+		get := func(acc string)referralT.Info {
+			bz := store.Get([]byte(acc))
+			if bz == nil { panic("not found") }
+			var r referralT.Info
+			cdc.MustUnmarshalBinaryBare(bz, &r)
+			return r
+		}
+		set := func(acc string, value referralT.Info) {
+			store.Set([]byte(acc), cdc.MustMarshalBinaryBare(&value))
+		}
+
+		it := store.Iterator(nil, nil)
+		defer func() {
+			if e := recover(); e != nil {
+				logger.Error("Panic during upgrade", "err", e)
+			}
+			if it != nil {
+				_ = it.Close()
+			}
+			logger.Info("... UnbanishAccountsWithDelegation done!")
+		}()
+
+		ddt := bk.GetParams(ctx).DustDelegation
+		logger.Debug(fmt.Sprintf("... dust delegation threshold = %d", ddt))
+
+		for ; it.Valid(); it.Next() {
+			acc := string(it.Key())
+			r := get(acc)
+
+			if !r.Banished { continue }
+			addr, err := sdk.AccAddressFromBech32(acc)
+			if err != nil { panic(errors.Wrap(err, "cannot parse address")) }
+
+			if d := bk.GetBalance(ctx, addr).AmountOf(util.ConfigDelegatedDenom).Int64(); d > ddt {
+				logger.Info("... unbanishing", "acc", acc, "delegation", d)
+
+				var parent string
+				var pi referralT.Info
+				for parent = r.Referrer; parent != ""; parent = pi.Referrer {
+					pi := get(parent)
+					if !pi.RegistrationClosed(ctx, sk) { break }
+				}
+
+				r.Referrer = parent
+				r.Banished = false
+				r.BanishmentAt = nil
+				r.CompressionAt = nil
+				r.Status = referralT.STATUS_LUCKY
+
+				set(acc, r)
+
+				empty := true
+				for i := 0; i <= 10; i++ {
+					if !r.Coins[i].IsZero() || !r.Delegated[i].IsZero() {
+						empty = false
+						break
+					}
+				}
+
+				if empty {
+					logger.Debug("... ... account is empty", "acc", acc, "parent", parent)
+					info := get(parent)
+					info.Referrals = append(info.Referrals, acc)
+					set(parent, info)
+				} else {
+					a := parent
+					for i := 1; i <= 10; i++ {
+						if a == "" {
+							break
+						}
+						info := get(a)
+						if i == 1 {
+							info.Referrals = append(info.Referrals, acc)
+						}
+						for j := i; j <= 10; j++ {
+							info.Coins[j] = info.Coins[j].Add(r.Coins[j-i])
+							info.Delegated[j] = info.Delegated[j].Add(r.Delegated[j-i])
+						}
+						logger.Debug("... ... ancestor affected", "acc", acc, "anc", a, "lvl", i, "d", "+")
+						set(a, info)
+						a = info.Referrer
+					}
+				}
+			} else if r.CompressionAt != nil {
+				logger.Info("... cleaning CompressionAt", "acc", acc, "was", r.CompressionAt.String())
+				r.CompressionAt = nil
+				set(acc, r)
+			}
+		}
+		_ = it.Close(); it = nil
+		store.Write()
+		// RefreshReferralStatuses must be called after this.
+	}
+}
+
+func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting TransferFromTheBanished ...")
+
+		store := cachekv.NewStore(ctx.KVStore(rKey))
+		get := func(acc string)referralT.Info {
+			bz := store.Get([]byte(acc))
+			if bz == nil { panic("not found") }
+			var r referralT.Info
+			cdc.MustUnmarshalBinaryBare(bz, &r)
+			return r
+		}
+		set := func(acc string, value referralT.Info) {
+			store.Set([]byte(acc), cdc.MustMarshalBinaryBare(&value))
+		}
+
+		it := store.Iterator(nil, nil)
+		defer func() {
+			if e := recover(); e != nil {
+				logger.Error("Panic during upgrade", "err", e)
+			}
+			if it != nil {
+				_ = it.Close()
+			}
+			logger.Info("... TransferFromTheBanished done!")
+		}()
+
+		for ; it.Valid(); it.Next() {
+			acc := string(it.Key())
+
+			var r referralT.Info
+			cdc.MustUnmarshalBinaryBare(it.Value(), &r)
+			if r.Banished || r.Referrer == "" { continue }
+
+			parent := r.Referrer
+			pi := get(parent)
+			if !pi.Banished { continue }
+
+			logger.Info("... parent is banished, moving account up ...", "acc", acc, "parent", parent)
+
+			for {
+				parent = pi.Referrer
+				if parent == "" { break }
+				pi = get(parent)
+				if !pi.RegistrationClosed(ctx, sk) { break }
+			}
+
+			empty := true
+			for i := 0; i <= 10; i++ {
+				if !r.Coins[i].IsZero() || !r.Delegated[i].IsZero() {
+					empty = false
+					break
+				}
+			}
+
+			if empty {
+				logger.Debug("... ... account is empty", "acc", acc, "former_parent", r.Referrer, "new_parent", parent)
+				info := get(r.Referrer)
+				util.RemoveStringPreserveOrder(&info.Referrals, acc)
+				set(r.Referrer, info)
+
+				info = get(parent)
+				info.Referrals = append(info.Referrals, acc)
+				set(parent, info)
+			} else {
+				a := r.Referrer
+				for i := 1; i <= 10; i++ {
+					if a == "" { break }
+					info := get(a)
+					if i == 1 {
+						util.RemoveStringPreserveOrder(&info.Referrals, acc)
+					}
+					for j := i; j <= 10; j++ {
+						info.Coins[j] = info.Coins[j].Sub(r.Coins[j-i])
+						info.Delegated[j] = info.Delegated[j].Sub(r.Delegated[j-i])
+					}
+					logger.Debug("... ... ancestor affected", "acc", acc, "anc", a, "lvl", i, "d", "-")
+					set(a, info)
+					a = info.Referrer
+				}
+
+				a = parent
+				for i := 1; i <= 10; i++ {
+					if a == "" { break }
+					info := get(a)
+					if i == 1 {
+						info.Referrals = append(info.Referrals, acc)
+					}
+					for j := i; j <= 10; j++ {
+						info.Coins[j] = info.Coins[j].Add(r.Coins[j-i])
+						info.Delegated[j] = info.Delegated[j].Add(r.Delegated[j-i])
+					}
+					logger.Debug("... ... ancestor affected", "acc", acc, "anc", a, "lvl", i, "d", "+")
+					set(a, info)
+					a = info.Referrer
+				}
+			}
+
+			r.Referrer = parent
+			set(acc, r)
+			logger.Info("... ... relocated", "acc", acc, "parent", parent)
+		}
+
+		_ = it.Close(); it = nil
+		store.Write()
+		// RefreshReferralStatuses must be called after this.
 	}
 }

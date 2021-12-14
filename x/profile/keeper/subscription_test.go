@@ -131,6 +131,39 @@ func (s *SSuite) TestPayTariffWhenItIsOver() {
 	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
 }
 
+func (s *SSuite) TestPayTariff_ExtraStorage() {
+	addr := app.DefaultGenesisUsers["user1"]
+	s.NoError(s.k.BuyStorage(s.ctx, addr, 13))
+	s.Equal(uint64((5+13) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	balance := s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64()
+
+	s.NoError(s.k.PayTariff(s.ctx, addr, 0))
+	s.Equal(uint64((5+13) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	s.EqualValues(
+		balance - (1990 + 13*10)*100000,
+		s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64(),
+	)
+}
+
+func (s *SSuite) TestBuyStorage_TiB() {
+	addr := app.DefaultGenesisUsers["user1"]
+	s.Equal(uint64(0), s.k.GetProfile(s.ctx, addr).StorageLimit)
+
+	s.NoError(s.k.BuyStorage(s.ctx, addr, 1024))
+
+	s.Equal(uint64((5+1024) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+}
+
+func (s *SSuite) TestBuyStorage_PiB() {
+	addr := app.DefaultGenesisUsers["user1"]
+	s.bk.AddCoins(s.ctx, addr, util.Uartrs(200_000_000000))
+	s.Equal(uint64(0), s.k.GetProfile(s.ctx, addr).StorageLimit)
+
+	s.NoError(s.k.BuyStorage(s.ctx, addr, 1048576))
+
+	s.Equal(uint64((5+1048576) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+}
+
 func (s *SSuite) TestGiveUpStorage_NegativeDelta() {
 	addr := app.DefaultGenesisUsers["user1"]
 	amount := s.k.GetProfile(s.ctx, addr).StorageLimit

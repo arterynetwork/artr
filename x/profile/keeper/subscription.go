@@ -156,6 +156,12 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 	}
 
 	p := k.GetParams(ctx)
+
+	baseAmount := uint64(p.BaseStorageGb) * util.GBSize
+	if profile.StorageLimit < baseAmount {
+		profile.StorageLimit = baseAmount
+	}
+
 	time := k.monthPart(ctx, *profile.ActiveUntil)
 	storageFee := p.TokenRate.MulInt64(int64(extraGb) * int64(p.StorageGbPrice)).Mul(time).Int64()
 

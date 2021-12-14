@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cosmos/cosmos-sdk/client"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral/types"
@@ -57,6 +58,9 @@ func getCmdInfo() *cobra.Command {
 			queryClient := types.NewQueryClient(clientCtx)
 
 			accAddress := args[0]
+			if _, err := sdk.AccAddressFromBech32(accAddress); err != nil {
+				return errors.Wrap(err, "cannot parse address")
+			}
 
 			res, err := queryClient.Get(
 				context.Background(),
@@ -91,6 +95,9 @@ func getCoinsCmd() *cobra.Command {
 			queryClient := types.NewQueryClient(clientCtx)
 
 			accAddress := args[0]
+			if _, err := sdk.AccAddressFromBech32(accAddress); err != nil {
+				return errors.Wrap(err, "cannot parse address")
+			}
 
 			var maxDepth uint32
 			if len(args) > 1 {
@@ -133,6 +140,9 @@ func getCheckStatusCmd() *cobra.Command {
 			queryClient := types.NewQueryClient(clientCtx)
 
 			accAddress := args[0]
+			if _, err := sdk.AccAddressFromBech32(accAddress); err != nil {
+				return errors.Wrap(err, "cannot parse address")
+			}
 
 			var status types.Status
 			if len(args) > 1 {
@@ -176,6 +186,12 @@ func getValidateTransitionCmd() *cobra.Command {
 
 			subject := args[0]
 			target := args[1]
+			if _, err := sdk.AccAddressFromBech32(subject); err != nil {
+				return errors.Wrap(err, "cannot parse subject address")
+			}
+			if _, err := sdk.AccAddressFromBech32(target); err != nil {
+				return errors.Wrap(err, "cannot parse destination address")
+			}
 
 			res, err := queryClient.ValidateTransition(
 				context.Background(),
