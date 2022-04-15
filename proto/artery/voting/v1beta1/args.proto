@@ -109,3 +109,14 @@ message PeriodArgs {
 
   uint32 days = 1;
 }
+
+message PortionArgs {
+  option (gogoproto.equal) = true;
+
+  string Fraction = 1 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.jsontag)    = "fraction",
+    (gogoproto.moretags)   = "yaml:\"fraction\""
+  ];
+}

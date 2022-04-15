@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -196,6 +196,15 @@ func (p Proposal) Validate() error {
 			if err := args.VotingPower.Validate(); err != nil {
 				return errors.Wrap(err, "invalid args")
 			}
+		}
+	case PROPOSAL_TYPE_VALIDATOR_BONUS:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_Portion expected")
+		}
+		if args, ok := p.Args.(*Proposal_Portion); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Portion expected", p.Args)
+		} else if q := args.Portion.Fraction; q.IsNullValue() || q.IsNegative() || q.GTE(util.FractionInt(1)) {
+			return errors.Errorf("invalid args: %s, should be in [0; 1)", q.String())
 		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)

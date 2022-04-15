@@ -12,8 +12,9 @@ import (
 func CalculateFee(amount sdk.Int) sdk.Int {
 	fee := amount.MulRaw(3).QuoRaw(1000)
 
-	if fee.GT(sdk.NewInt(10000000)) {
-		fee = sdk.NewInt(10000000)
+	maxFee := sdk.NewInt(10_000000)
+	if fee.GT(maxFee) {
+		fee = maxFee
 	}
 
 	return fee

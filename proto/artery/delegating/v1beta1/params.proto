@@ -19,6 +19,12 @@ message Params {
 
   // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
   uint32 revoke_period = 3;
+
+  // ValidatorBonus is an extra award that a validator gets while they's active (a delegation amount fraction).
+  string validator_bonus = 4 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
 }
 
 // Percentage - function from delegation size to delegation award percent

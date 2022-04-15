@@ -100,9 +100,19 @@ message AccumulationResponse {
 
   google.protobuf.Timestamp start          = 1 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
   google.protobuf.Timestamp end            = 2 [(gogoproto.stdtime) = true, (gogoproto.nullable) = false];
-  int64                     percent        = 3;
-  int64                     total_uartrs   = 4;
-  int64                     current_uartrs = 5;
+  // Percent - monthly percent used for calculation.
+  //
+  // DEPRECATED: May not be precise if the delegator takes an active validator bonus. Use PercentDaily instead.
+  int64  percent        = 3;
+  int64  total_uartrs   = 4;
+  int64  current_uartrs = 5;
+
+  // PercentDaily - percent actually being used for calculation.
+  // It is a 1/30 of a denoted value because it's for a day, not for a month.
+  string percent_daily  = 6 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
 
   string missed_part = 16 [
     (gogoproto.nullable)   = true,

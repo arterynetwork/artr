@@ -32,7 +32,7 @@ func (k BaseKeeper) Send(ctx context.Context, msg *types.MsgSend) (*types.MsgSen
 	}
 	minCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(k.GetMinSend(sdkCtx))))
 	if minCoins.IsAnyGT(msg.Amount) {
-		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "tying to send less then minimum coins")
+		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidCoins, "trying to send less then minimum coins")
 	}
 
 	fromAddress, err := sdk.AccAddressFromBech32(msg.FromAddress)

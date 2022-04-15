@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"strings"
@@ -625,5 +626,23 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 		_ = it.Close(); it = nil
 		store.Write()
 		// RefreshReferralStatuses must be called after this.
+	}
+}
+
+func InitValidatorBonusParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitValidatorBonusParam ...")
+
+		var pz delegatingT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, delegatingT.KeyValidatorBonus) {
+				pz.ValidatorBonus = delegatingT.DefaultValidatorBonus
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitValidatorBonusParam done!", "params", pz)
 	}
 }

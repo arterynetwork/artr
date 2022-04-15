@@ -76,7 +76,9 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 	}
 
 	delegated, _ := k.getDelegated(ctx, acc)
-	percent := k.percent(ctx, delegated)
+	active, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
+	if err != nil { panic(err) }
+	percent := k.percent(ctx, delegated, active)
 	if percent.IsZero() {
 		data.NextAccrue = nil
 	} else {

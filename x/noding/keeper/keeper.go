@@ -119,6 +119,24 @@ func (k Keeper) IsValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, erro
 	return record.IsActive(), nil
 }
 
+func (k Keeper) IsActiveValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) {
+	if !k.has(ctx, accAddr) {
+		return false, nil
+	}
+	record, err := k.Get(ctx, accAddr)
+	if err != nil {
+		return false, err
+	}
+	if !record.IsActive() {
+		return false, nil
+	}
+	pz := k.GetParams(ctx)
+	if ctx.BlockHeight() - record.UnjailAt < 6 * int64(pz.UnjailAfter) {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (k Keeper) IsBanned(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error) {
 	if !k.has(ctx, accAddr) {
 		return false, nil

@@ -333,6 +333,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p := k.nodingKeeper.GetParams(ctx)
 			p.VotingPower = *proposal.GetVotingPower()
 			k.nodingKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_VALIDATOR_BONUS:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.ValidatorBonus = proposal.GetPortion().Fraction
+			k.delegatingKeeper.SetParams(ctx, p)
+		default:
+			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}
 		if err != nil {
 			k.Logger(ctx).Error("could not apply voting result due to error",

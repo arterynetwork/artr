@@ -18,6 +18,7 @@ message EventUndelegate {
 message EventAccrue {
   string account = 1;
   uint64 ucoins = 2;
+  uint64 fee = 3;
 }
 
 message EventMassiveRevoke {

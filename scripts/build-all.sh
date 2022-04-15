@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 apk add --no-cache git make
+git config --global --add safe.directory /art-node
 cd /art-node
 rm -rf builds
 

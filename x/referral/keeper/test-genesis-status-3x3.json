@@ -808,7 +808,8 @@
           "ten_k_plus": "27",
           "thousand_plus": "24"
         },
-        "revoke_period": 14
+        "revoke_period": 14,
+        "validator_bonus": "0%"
       }
     },
     "earning": {

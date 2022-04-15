@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	params "github.com/cosmos/cosmos-sdk/x/params/types"

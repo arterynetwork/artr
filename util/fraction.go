@@ -3,7 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"math/big"
 	"regexp"
 	"strings"
@@ -58,12 +58,11 @@ func (x Fraction) MarshalYAML() (interface{}, error) {
 	return x.String(), nil
 }
 
-func (x *Fraction) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var s string
-	if err := unmarshal(&s); err != nil {
-		return err
+func (x *Fraction) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode && value.ShortTag() == "string" {
+		return x.unmarshalText(value.Value)
 	}
-	return x.unmarshalText(s)
+	return errors.Errorf("string expected, %s got", value.ShortTag())
 }
 
 func (x *Fraction) unmarshalText(s string) error {

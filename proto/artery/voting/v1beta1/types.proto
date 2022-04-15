@@ -72,6 +72,10 @@ message Proposal {
       (gogoproto.jsontag)  = "voting_power,omitempty",
       (gogoproto.moretags) = "yaml:\"voting_power,omitempty"
     ];
+    PortionArgs portion = 15 [
+      (gogoproto.jsontag)  = "portion,omitempty",
+      (gogoproto.moretags) = "yaml:\"portion,omitempty"
+    ];
   }
 }
 

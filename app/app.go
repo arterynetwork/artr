@@ -121,7 +121,7 @@ type ArteryApp struct {
 	referralKeeper   referral.Keeper
 	profileKeeper    profileKeeper.Keeper
 	scheduleKeeper   scheduleKeeper.Keeper
-	delegatingKeeper delegating.Keeper
+	delegatingKeeper *delegating.Keeper
 	votingKeeper     votingKeeper.Keeper
 	nodingKeeper     noding.Keeper
 	earningKeeper    earning.Keeper
@@ -304,6 +304,8 @@ func NewArteryApp(
 		app.bankKeeper,
 	)
 
+	app.delegatingKeeper.SetKeepers(app.nodingKeeper)
+
 	app.bankKeeper.AddHook("SetCoins", "update-referral",
 		func(ctx sdk.Context, addr sdk.AccAddress) error {
 			if err := app.referralKeeper.OnBalanceChanged(ctx, addr.String()); err != nil {
@@ -349,7 +351,7 @@ func NewArteryApp(
 		ForceGlobalDelegation(
 			app.referralKeeper,
 			app.bankKeeper,
-			app.delegatingKeeper,
+			*app.delegatingKeeper,
 			app.scheduleKeeper,
 			keys[bank.StoreKey],
 			keys[delegating.MainStoreKey],
@@ -365,6 +367,10 @@ func NewArteryApp(
 		RefreshReferralStatuses(app.referralKeeper),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.4.0",
+		InitValidatorBonusParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+	)
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
@@ -377,7 +383,7 @@ func NewArteryApp(
 			app.referralKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.bankKeeper,
 		),
 		delegating.NewAppModule(
-			app.delegatingKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.profileKeeper,
+			*app.delegatingKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.profileKeeper,
 			app.referralKeeper,
 		),
 		noding.NewAppModule(

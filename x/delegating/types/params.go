@@ -4,10 +4,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 // Default parameter namespace
@@ -22,12 +24,16 @@ const (
 	DefaultMinDelegate  = 1000
 	DefaultRevokePeriod = 14
 )
+var (
+	DefaultValidatorBonus = util.Percent(0)
+)
 
 // Parameter store keys
 var (
-	KeyPercentage   = []byte("Percentage")
-	KeyMinDelegate  = []byte("MinDelegate")
-	KeyRevokePeriod = []byte("RevokePeriod")
+	KeyPercentage     = []byte("Percentage")
+	KeyMinDelegate    = []byte("MinDelegate")
+	KeyRevokePeriod   = []byte("RevokePeriod")
+	KeyValidatorBonus = []byte("ValidatorBonus")
 )
 
 // ParamKeyTable for delegating module
@@ -52,11 +58,12 @@ func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32) *Params {
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction) *Params {
 	return &Params{
-		Percentage:   percentage,
-		MinDelegate:  minDelegate,
-		RevokePeriod: revokePeriod,
+		Percentage:     percentage,
+		MinDelegate:    minDelegate,
+		RevokePeriod:   revokePeriod,
+		ValidatorBonus: validatorBonus,
 	}
 }
 
@@ -66,6 +73,7 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
+		paramTypes.NewParamSetPair(KeyValidatorBonus, &p.ValidatorBonus, validateValidatorBonus),
 	}
 }
 
@@ -80,6 +88,7 @@ func DefaultParams() *Params {
 		),
 		DefaultMinDelegate,
 		DefaultRevokePeriod,
+		DefaultValidatorBonus,
 	)
 }
 
@@ -92,6 +101,9 @@ func (p Params) Validate() error {
 	}
 	if err := validateRevokePeriod(p.RevokePeriod); err != nil {
 		return errors.Wrap(err, "invalid RevokePeriod")
+	}
+	if err := validateValidatorBonus(p.ValidatorBonus); err != nil {
+		return errors.Wrap(err, "invalid ValidatorBonus")
 	}
 	return nil
 }
@@ -156,5 +168,13 @@ func validateRevokePeriod(i interface{}) error {
 	if rp < 1 {
 		return errors.New("RevokePeriod must be at least 1")
 	}
+	return nil
+}
+
+func validateValidatorBonus(i interface{}) error {
+	vb, ok := i.(util.Fraction)
+	if !ok { return errors.Errorf("invalid ValidatorBonus parameter type: %T", i) }
+	if vb.IsNullValue() { return errors.New("ValidatorBonus must be non-null") }
+	if vb.IsNegative() { return errors.New("ValidatorBonus must be non-negative") }
 	return nil
 }

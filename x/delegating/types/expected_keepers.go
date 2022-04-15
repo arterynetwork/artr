@@ -22,6 +22,8 @@ type ParamSubspace interface {
 
 type AccountKeeper interface {
 	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.AccountI
+	GetModuleAddress(moduleName string) sdk.AccAddress
+
 }
 
 type ScheduleKeeper interface {
@@ -52,4 +54,8 @@ type ProfileKeeper interface {
 
 type ReferralKeeper interface {
 	GetReferralFeesForDelegating(ctx sdk.Context, acc string) ([]referral.ReferralFee, error)
+}
+
+type NodingKeeper interface {
+	IsActiveValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error)
 }

@@ -64,6 +64,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
+		cmdSetValidatorBonus(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -1439,6 +1440,48 @@ func cmdSetVotingPower() *cobra.Command {
 					Type:   types.PROPOSAL_TYPE_VOTING_POWER,
 					Args: &types.Proposal_VotingPower{
 						VotingPower: &value,
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetValidatorBonus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-validator-bonus <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-validator-bonus 1% "Increase active validators' delegation award by 1%" ivan`,
+		Aliases: []string{"set_validator_bonus", "svb"},
+		Short:   "Propose to set active validators' delegation award bonus",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := util.ParseFraction(args[0])
+			if err != nil { return err }
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name: proposalName,
+					Type: types.PROPOSAL_TYPE_VALIDATOR_BONUS,
+					Args: &types.Proposal_Portion{
+						Portion: &types.PortionArgs{
+							Fraction: q,
+						},
 					},
 				},
 			}

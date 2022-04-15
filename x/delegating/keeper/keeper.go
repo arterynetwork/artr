@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
@@ -26,6 +28,7 @@ type Keeper struct {
 	scheduleKeeper  types.ScheduleKeeper
 	profileKeeper   types.ProfileKeeper
 	refKeeper       types.ReferralKeeper
+	nodingKeeper    types.NodingKeeper
 }
 
 // NewKeeper creates a delegating keeper
@@ -33,7 +36,7 @@ func NewKeeper(
 	cdc codec.BinaryMarshaler, mainKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accountKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, profileKeeper types.ProfileKeeper,
 	bankKeeper types.BankKeeper, refKeeper referral.Keeper,
-) Keeper {
+) *Keeper {
 	keeper := Keeper{
 		mainStoreKey:    mainKey,
 		cdc:             cdc,
@@ -43,8 +46,13 @@ func NewKeeper(
 		profileKeeper:   profileKeeper,
 		bankKeeper:      bankKeeper,
 		refKeeper:       refKeeper,
+		nodingKeeper:    nil, // must be set later
 	}
-	return keeper
+	return &keeper
+}
+
+func (k *Keeper) SetKeepers(nodingKeeper types.NodingKeeper) {
+	k.nodingKeeper = nodingKeeper
 }
 
 // Logger returns a module-specific logger.
@@ -243,7 +251,9 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 	dayPart := util.NewFraction(ctx.BlockTime().Sub(periodStart).Nanoseconds(), k.scheduleKeeper.OneDay(ctx).Nanoseconds()).Reduce()
 
 	delegated, _ := k.getDelegated(ctx, acc)
-	percent := k.percent(ctx, delegated)
+	active, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
+	if err != nil { panic(err) }
+	percent := k.percent(ctx, delegated, active)
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
 
@@ -257,6 +267,7 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 		Start:         periodStart,
 		End:           periodEnd,
 		Percent:       percent.MulInt64(100 * 30).Int64(),
+		PercentDaily:  percent,
 		TotalUartrs:   paymentTotal.Int64(),
 		CurrentUartrs: paymentCurrent.Int64(),
 		MissedPart:    item.MissedPart,
@@ -378,6 +389,17 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	supply.Inflate(emission)
 	k.bankKeeper.SetSupply(ctx, supply)
 
+	fee := util.CalculateFee(ucoins)
+	if !fee.IsZero() {
+		ucoins = ucoins.Sub(fee)
+		fee := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, fee))
+		emission = emission.Sub(fee)
+
+		if err := k.bankKeeper.AddCoins(ctx, k.accKeeper.GetModuleAddress(auth.FeeCollectorName), fee); err != nil {
+			panic(errors.Wrap(err, "cannot collect fee"))
+		}
+	}
+
 	if err := k.bankKeeper.AddCoins(ctx, acc, emission); err != nil {
 		panic(err)
 	}
@@ -385,6 +407,7 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 		&types.EventAccrue{
 			Account: acc.String(),
 			Ucoins:  ucoins.Uint64(),
+			Fee:     fee.Uint64(),
 		},
 	)
 }
@@ -397,7 +420,9 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 			item.MissedPart = nil
 		}
 		delegated, _ := k.getDelegated(ctx, acc)
-		interest := k.percent(ctx, delegated).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
+		active, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
+		if err != nil { panic(err) }
+		interest := k.percent(ctx, delegated, active).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {
 			k.accrue(ctx, acc, sdk.NewInt(interest))
 		}
@@ -406,7 +431,7 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 	item.NextAccrue = &nextPayment
 }
 
-func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
+func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, activeValidator bool) util.Fraction {
 	var (
 		params  = k.GetParams(ctx)
 		ladder  = params.Percentage
@@ -425,6 +450,9 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int) util.Fraction {
 		percent = util.Percent(int64(ladder.TenKPlus))
 	} else {
 		percent = util.Percent(int64(ladder.HundredKPlus))
+	}
+	if activeValidator {
+		percent = percent.Add(params.ValidatorBonus)
 	}
 	percent = percent.Div(util.NewFraction(30, 1)) // to days from months
 	return percent.Reduce()
