@@ -64,7 +64,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
-		cmdSetValidatorBonus(),
+		cmdSetValidatorPercent(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -272,8 +272,10 @@ func parseNetworkAward(args []string) (referral.NetworkAward, error) {
 		percent[i] = n
 	}
 
-	award := referral.NetworkAward{Company: percent[0]}
-	copy(award.Network[:], percent[1:])
+	award := referral.NetworkAward{
+		Company: percent[0],
+		Network: percent[1:],
+	}
 
 	return award, nil
 }
@@ -1453,12 +1455,12 @@ func cmdSetVotingPower() *cobra.Command {
 	return cmd
 }
 
-func cmdSetValidatorBonus() *cobra.Command {
+func cmdSetValidatorPercent() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "set-validator-bonus <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-validator-bonus 1% "Increase active validators' delegation award by 1%" ivan`,
-		Aliases: []string{"set_validator_bonus", "svb"},
-		Short:   "Propose to set active validators' delegation award bonus",
+		Use:     "set-validator-rate <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-validator-rate 15% "Set active validators' delegation award to 15%" ivan`,
+		Aliases: []string{"set_validator_rate", "svr"},
+		Short:   "Propose to set active validators' delegation award rate",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
@@ -1477,7 +1479,7 @@ func cmdSetValidatorBonus() *cobra.Command {
 				Proposal: types.Proposal{
 					Author: author,
 					Name: proposalName,
-					Type: types.PROPOSAL_TYPE_VALIDATOR_BONUS,
+					Type: types.PROPOSAL_TYPE_VALIDATOR,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,

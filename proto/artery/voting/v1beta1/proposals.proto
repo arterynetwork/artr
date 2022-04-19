@@ -76,5 +76,9 @@ enum ProposalType {
   // Разбивка voting power по процентилям
   PROPOSAL_TYPE_VOTING_POWER = 33;
   // PROPOSAL_TYPE_VALIDATOR_BONUS - Дополнительный процент с делегирования, который получают активные валидаторы
+  //
+  // DEPRECATED
   PROPOSAL_TYPE_VALIDATOR_BONUS = 34;
+  // PROPOSAL_TYPE_VALIDATOR - Процент с делегирования, который получают активные валидаторы
+  PROPOSAL_TYPE_VALIDATOR = 35;
 }

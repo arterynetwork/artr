@@ -48114,7 +48114,7 @@
           "thousand_plus": "24"
         },
         "revoke_period": 14,
-        "validator_bonus": "0%"
+        "validator": "15%"
       }
     },
     "earning": {

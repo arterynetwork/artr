@@ -334,9 +334,13 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.VotingPower = *proposal.GetVotingPower()
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_VALIDATOR_BONUS:
+			err = errors.New("parameter is deprecated")
+		case types.PROPOSAL_TYPE_VALIDATOR:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.ValidatorBonus = proposal.GetPortion().Fraction
-			k.delegatingKeeper.SetParams(ctx, p)
+			p.Validator = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
+			}
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}

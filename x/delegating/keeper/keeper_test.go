@@ -401,16 +401,16 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 	)
 }
 
-func (s *Suite) TestAccrue_ValidatorBonus() {
+func (s *Suite) TestAccrue_ValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
 	validator := app.DefaultGenesisUsers["user3"]
 
 	s.NoError(s.bk.SendCoins(s.ctx, app.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
 	s.nextBlock()
 
-	bonus := util.NewFraction(99, 1000)
+	vr := util.NewFraction(309, 1000)
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = bonus
+	pz.Validator = vr
 	s.k.SetParams(s.ctx, pz)
 
 	s.Equal(
@@ -603,7 +603,7 @@ func (s *Suite) TestGetAccumulation_MissedPart() {
 	)
 }
 
-func (s *Suite) TestGetAccumulation_ValidatorBonus() {
+func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
 	user      := app.DefaultGenesisUsers["user4"]
 	validator := app.DefaultGenesisUsers["user3"]
@@ -611,9 +611,9 @@ func (s *Suite) TestGetAccumulation_ValidatorBonus() {
 	s.NoError(s.bk.SendCoins(s.ctx, app.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
 	s.nextBlock()
 
-	bonus := util.NewFraction(99, 1000)
+	vr := util.NewFraction(309, 1000)
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = bonus
+	pz.Validator = vr
 	s.k.SetParams(s.ctx, pz)
 
 	s.Equal(
@@ -662,7 +662,7 @@ func (s *Suite) TestGetAccumulation_ValidatorBonus() {
 			Start:         genesisTime.Add(30*time.Second),
 			End:           genesisTime.Add(24*time.Hour +30*time.Second),
 			Percent:       30,
-			PercentDaily:  util.NewFraction(21, 30*100).Add(bonus.DivInt64(30)).Reduce(),
+			PercentDaily:  vr.DivInt64(30).Reduce(),
 			TotalUartrs:   8_728735,
 			CurrentUartrs: 3_740020,
 		},
@@ -699,7 +699,7 @@ func (s *Suite) TestDelegateAfterBanishment() {
 	s.False(r.Banished)
 }
 
-func (s *Suite) TestValidatorBonus() {
+func (s *Suite) TestValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
 	validator := app.DefaultGenesisUsers["user3"]
 	user := validator
@@ -712,7 +712,7 @@ func (s *Suite) TestValidatorBonus() {
 	)
 
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = util.Percent(9)
+	pz.Validator = util.Percent(30)
 	s.k.SetParams(s.ctx, pz)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -729,7 +729,7 @@ func (s *Suite) TestValidatorBonus() {
 	s.nextBlock()
 	s.Equal(
 		sdk.NewCoins(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(11_474500)), // 3 + 847.45 * ((21% + 9%) / 30)
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(11_474500)), // 3 + 847.45 * (30% / 30)
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000)),
 		),
 		s.bk.GetBalance(s.ctx, user).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),

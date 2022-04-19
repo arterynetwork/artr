@@ -86,7 +86,7 @@ func (s *Suite) TestParams() {
 		},
 		MinDelegate:  123456,
 		RevokePeriod: 28,
-		ValidatorBonus: util.Percent(13),
+		Validator:    util.Percent(100),
 	})
 }
 
@@ -99,9 +99,9 @@ func (s Suite) checkExportImport() {
 			params.StoreKey,
 		},
 		map[string]app.Decoder{
-			delegating.MainStoreKey:    app.AccAddressDecoder,
-			schedule.StoreKey:          app.Uint64Decoder,
-			params.StoreKey:            app.DummyDecoder,
+			delegating.MainStoreKey: app.AccAddressDecoder,
+			schedule.StoreKey:       app.Uint64Decoder,
+			params.StoreKey:         app.DummyDecoder,
 		},
 		map[string]app.Decoder{
 			delegating.MainStoreKey: func(bz []byte) (string, error) {
@@ -111,8 +111,8 @@ func (s Suite) checkExportImport() {
 				}
 				return fmt.Sprintf("%+v", data), nil
 			},
-			schedule.StoreKey:          app.ScheduleDecoder,
-			params.StoreKey:            app.DummyDecoder,
+			schedule.StoreKey: app.ScheduleDecoder,
+			params.StoreKey:   app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)

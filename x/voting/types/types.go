@@ -197,7 +197,10 @@ func (p Proposal) Validate() error {
 				return errors.Wrap(err, "invalid args")
 			}
 		}
-	case PROPOSAL_TYPE_VALIDATOR_BONUS:
+	case
+		PROPOSAL_TYPE_VALIDATOR_BONUS,
+		PROPOSAL_TYPE_VALIDATOR:
+
 		if p.Args == nil {
 			return errors.New("invalid args: nil, *Proposal_Portion expected")
 		}

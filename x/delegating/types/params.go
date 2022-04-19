@@ -25,15 +25,15 @@ const (
 	DefaultRevokePeriod = 14
 )
 var (
-	DefaultValidatorBonus = util.Percent(0)
+	DefaultValidator = util.Percent(15)
 )
 
 // Parameter store keys
 var (
-	KeyPercentage     = []byte("Percentage")
-	KeyMinDelegate    = []byte("MinDelegate")
-	KeyRevokePeriod   = []byte("RevokePeriod")
-	KeyValidatorBonus = []byte("ValidatorBonus")
+	KeyPercentage   = []byte("Percentage")
+	KeyMinDelegate  = []byte("MinDelegate")
+	KeyRevokePeriod = []byte("RevokePeriod")
+	KeyValidator    = []byte("Validator")
 )
 
 // ParamKeyTable for delegating module
@@ -58,12 +58,12 @@ func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction) *Params {
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validator util.Fraction) *Params {
 	return &Params{
-		Percentage:     percentage,
-		MinDelegate:    minDelegate,
-		RevokePeriod:   revokePeriod,
-		ValidatorBonus: validatorBonus,
+		Percentage:   percentage,
+		MinDelegate:  minDelegate,
+		RevokePeriod: revokePeriod,
+		Validator:    validator,
 	}
 }
 
@@ -73,7 +73,7 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyPercentage, &p.Percentage, validatePercentage),
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
-		paramTypes.NewParamSetPair(KeyValidatorBonus, &p.ValidatorBonus, validateValidatorBonus),
+		paramTypes.NewParamSetPair(KeyValidator, &p.Validator, validateValidator),
 	}
 }
 
@@ -88,7 +88,7 @@ func DefaultParams() *Params {
 		),
 		DefaultMinDelegate,
 		DefaultRevokePeriod,
-		DefaultValidatorBonus,
+		DefaultValidator,
 	)
 }
 
@@ -102,8 +102,11 @@ func (p Params) Validate() error {
 	if err := validateRevokePeriod(p.RevokePeriod); err != nil {
 		return errors.Wrap(err, "invalid RevokePeriod")
 	}
-	if err := validateValidatorBonus(p.ValidatorBonus); err != nil {
-		return errors.Wrap(err, "invalid ValidatorBonus")
+	if err := validateValidator(p.Validator); err != nil {
+		return errors.Wrap(err, "invalid Validator")
+	}
+	if p.Validator.LT(util.Percent(p.Percentage.HundredKPlus)) {
+		return errors.Errorf("Validators' percent must be greater or equal than the 100K+ one (%s < %d%%)", p.Validator, p.Percentage.HundredKPlus)
 	}
 	return nil
 }
@@ -171,10 +174,10 @@ func validateRevokePeriod(i interface{}) error {
 	return nil
 }
 
-func validateValidatorBonus(i interface{}) error {
+func validateValidator(i interface{}) error {
 	vb, ok := i.(util.Fraction)
-	if !ok { return errors.Errorf("invalid ValidatorBonus parameter type: %T", i) }
-	if vb.IsNullValue() { return errors.New("ValidatorBonus must be non-null") }
-	if vb.IsNegative() { return errors.New("ValidatorBonus must be non-negative") }
+	if !ok { return errors.Errorf("invalid Validator parameter type: %T", i) }
+	if vb.IsNullValue() { return errors.New("Validator must be non-null") }
+	if vb.IsNegative() { return errors.New("Validator must be non-negative") }
 	return nil
 }

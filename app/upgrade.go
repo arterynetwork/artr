@@ -629,20 +629,27 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 	}
 }
 
-func InitValidatorBonusParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitValidatorBonusParam() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitValidatorBonusParam ...")
+		logger.Info("Skipping InitValidatorBonusParam")
+	}
+}
+
+func InitValidatorParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitValidatorParam ...")
 
 		var pz delegatingT.Params
 		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyValidatorBonus) {
-				pz.ValidatorBonus = delegatingT.DefaultValidatorBonus
+			if bytes.Equal(pair.Key, delegatingT.KeyValidator) {
+				pz.Validator = delegatingT.DefaultValidator
 			} else {
 				paramspace.Get(ctx, pair.Key, pair.Value)
 			}
 		}
 		k.SetParams(ctx, pz)
-		logger.Info("... InitValidatorBonusParam done!", "params", pz)
+		logger.Info("... InitValidatorParam done!", "params", pz)
 	}
 }

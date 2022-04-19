@@ -367,8 +367,9 @@ func NewArteryApp(
 		RefreshReferralStatuses(app.referralKeeper),
 	))
 
-	app.upgradeKeeper.SetUpgradeHandler("2.4.0",
-		InitValidatorBonusParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+	app.upgradeKeeper.SetUpgradeHandler("2.4.0", InitValidatorBonusParam())
+	app.upgradeKeeper.SetUpgradeHandler("2.4.1",
+		InitValidatorParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
 	)
 
 	// NOTE: Any module instantiated in the module manager that is later modified

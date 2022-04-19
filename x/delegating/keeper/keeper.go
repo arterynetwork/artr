@@ -442,17 +442,16 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, activeValidator bool
 		return util.FractionZero()
 	}
 
-	if delegated.LT(sdk.NewInt(1_000_000000)) {
-		percent = util.Percent(int64(ladder.Minimal))
-	} else if delegated.LT(sdk.NewInt(10_000_000000)) {
-		percent = util.Percent(int64(ladder.ThousandPlus))
-	} else if delegated.LT(sdk.NewInt(100_000_000000)) {
-		percent = util.Percent(int64(ladder.TenKPlus))
-	} else {
-		percent = util.Percent(int64(ladder.HundredKPlus))
-	}
 	if activeValidator {
-		percent = percent.Add(params.ValidatorBonus)
+		percent = params.Validator
+	} else if delegated.LT(sdk.NewInt(1_000_000000)) {
+		percent = util.Percent(ladder.Minimal)
+	} else if delegated.LT(sdk.NewInt(10_000_000000)) {
+		percent = util.Percent(ladder.ThousandPlus)
+	} else if delegated.LT(sdk.NewInt(100_000_000000)) {
+		percent = util.Percent(ladder.TenKPlus)
+	} else {
+		percent = util.Percent(ladder.HundredKPlus)
 	}
 	percent = percent.Div(util.NewFraction(30, 1)) // to days from months
 	return percent.Reduce()
