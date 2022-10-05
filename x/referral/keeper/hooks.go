@@ -64,10 +64,6 @@ func (k Keeper) PerformBanish(ctx sdk.Context, data []byte, _ time.Time) {
 }
 
 func (k Keeper) PerformStatusBonus(ctx sdk.Context, _ []byte, t time.Time) {
-	k.scheduleKeeper.ScheduleTask(ctx, t.Add(k.scheduleKeeper.OneWeek(ctx)), StatusBonusHookName, nil)
-	if err := k.PayStatusBonus(ctx); err != nil {
-		k.Logger(ctx).Error("couldn't pay status bonus", "err", err)
-	}
 }
 
 func (k Keeper) callback(eventName string, ctx sdk.Context, acc string) error {

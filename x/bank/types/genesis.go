@@ -18,7 +18,7 @@ func NewGenesisState(params Params, balances []Balance, supply sdk.Coins) *Genes
 
 // DefaultGenesisState returns a default genesis state
 func DefaultGenesisState() *GenesisState {
-	return NewGenesisState(Params{MinSend: 1000}, nil, nil)
+	return NewGenesisState(DefaultParams(), nil, nil)
 }
 
 // ValidateGenesis performs basic validation of bank genesis data returning an

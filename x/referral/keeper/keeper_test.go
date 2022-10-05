@@ -35,7 +35,6 @@ func TestReferralKeeper(t *testing.T) {
 	suite.Run(t, new(TransitionBorderlineSuite))
 	suite.Run(t, new(StatusUpgradeSuite))
 	suite.Run(t, new(Status3x3Suite))
-	suite.Run(t, new(StatusBonusSuite))
 }
 
 type BaseSuite struct {
@@ -325,7 +324,7 @@ func (s *Suite) TestReferralFees() {
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForSubscription all newbies: no error")
-	s.Equal(7, len(res), "GetReferralFeesForSubscription all newbies: len")
+	s.Equal(4, len(res), "GetReferralFeesForSubscription all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
 		Ratio:       util.Percent(15),
@@ -336,24 +335,12 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFeesForSubscription all newbies: lvl 2")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(10),
+		Ratio:       util.Percent(25),
 	}, "GetReferralFeesForSubscription all newbies: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
 		Ratio:       util.Percent(44),
 	}, "GetReferralFeesForSubscription all newbies: \"top referrer\"")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.PromoBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all newbies: promo bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all newbies: leader bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.StatusBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all newbies: status bonus")
 
 	for i := 0; i < 12; i++ {
 		s.NoError(s.update(accounts[i], func(value *types.Info) {
@@ -411,7 +398,7 @@ func (s *Suite) TestReferralFees() {
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForSubscription all pros: no error")
-	s.Equal(14, len(res), "GetReferralFeesForSubscription all pros: len")
+	s.Equal(11, len(res), "GetReferralFeesForSubscription all pros: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
 		Ratio:       util.Percent(15),
@@ -454,20 +441,8 @@ func (s *Suite) TestReferralFees() {
 	}, "GetReferralFeesForSubscription all pros: lvl 10")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(10),
+		Ratio:       util.Percent(25),
 	}, "GetReferralFeesForSubscription all pros: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.PromoBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all pros: promo bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all pros: leader bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.StatusBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all pros: status bonus")
 
 	s.NoError(s.update(accounts[10], func(value *types.Info) {
 		value.Referrer = ""
@@ -491,31 +466,19 @@ func (s *Suite) TestReferralFees() {
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForSubscription short chain: no error")
-	s.Equal(6, len(res), "GetReferralFeesForSubscription short chain: len")
+	s.Equal(3, len(res), "GetReferralFeesForSubscription short chain: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
 		Ratio:       util.Percent(15),
 	}, "GetReferralFeesForSubscription short chain: lvl 1")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(10),
+		Ratio:       util.Percent(25),
 	}, "GetReferralFeesForSubscription short chain: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
 		Ratio:       util.Percent(54),
 	}, "GetReferralFeesForSubscription short chain: \"top referrer\"")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.PromoBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription short chain: promo bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription short chain: leader bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.StatusBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription short chain: status bonus")
 
 	s.NoError(s.update(accounts[11], func(value *types.Info) {
 		value.Referrer = ""
@@ -535,27 +498,15 @@ func (s *Suite) TestReferralFees() {
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForSubscription top account: no error")
-	s.Equal(5, len(res), "GetReferralFeesForSubscription top account: len")
+	s.Equal(2, len(res), "GetReferralFeesForSubscription top account: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(10),
+		Ratio:       util.Percent(25),
 	}, "GetReferralFeesForSubscription top account: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
 		Ratio:       util.Percent(69),
 	}, "GetReferralFeesForSubscription top account: \"top referrer\"")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.PromoBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription top account: promo bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.LeaderBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription top account: leader bonus")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.StatusBonuses,
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription top account: status bonus")
 }
 
 func (s *Suite) TestCompression() {
@@ -1795,136 +1746,6 @@ func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
 	status, err = s.k.GetStatus(s.ctx, root)
 	s.NoError(err)
 	s.Equal(referral.StatusLeader, status)
-}
-
-type StatusBonusSuite struct {
-	BaseSuite
-
-	pk profileK.Keeper
-}
-
-func (s *StatusBonusSuite) SetupTest() {
-	defer func() {
-		if e := recover(); e != nil {
-			s.FailNow("panic on setup", e)
-		}
-	}()
-	data, err := ioutil.ReadFile("test-genesis-status-bonus.json")
-	if err != nil {
-		panic(err)
-	}
-	s.setupTest(json.RawMessage(data))
-
-	s.pk = s.app.GetProfileKeeper()
-}
-
-func (s *StatusBonusSuite) TestStatusBonus() {
-	genesisTime := s.ctx.BlockTime()
-	lvl5 := app.DefaultGenesisUsers["user14"]
-	lvl7 := app.DefaultGenesisUsers["user15"]
-	topR, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.TopReferrer)
-	s.nextBlock()
-
-	var (
-		status types.Status
-		err    error
-	)
-	status, err = s.k.GetStatus(s.ctx, lvl7.String())
-	s.NoError(err)
-	s.Equal(referral.StatusTopLeader, status)
-
-	status, err = s.k.GetStatus(s.ctx, lvl5.String())
-	s.NoError(err)
-	s.Equal(referral.StatusBusinessman, status)
-
-	err = s.pk.PayTariff(s.ctx, app.DefaultGenesisUsers["user1"], 5)
-	s.NoError(err)
-	pz := s.pk.GetParams(s.ctx)
-	course := pz.TokenRate
-	price := int64(pz.SubscriptionPrice)
-	payment := course.MulInt64(price).Int64()
-	total := util.Percent(5).MulInt64(payment - util.CalculateFee(sdk.NewInt(payment)).Int64()).Int64()
-
-	statusBonuses, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses)
-	s.Equal(total,
-		s.bk.GetBalance(s.ctx, statusBonuses).AmountOf(util.ConfigMainDenom).Int64(),
-		"commission from subscription",
-	)
-
-	toLevel5 := total / 10
-	toLevel7 := total/5*2 + total/10
-	toTopRef := total / 5 * 2
-
-	b0level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	b0level7 := s.bk.GetBalance(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
-	b0topRef := s.bk.GetBalance(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
-
-	// On the week end
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(7 * 24 * time.Hour - 30 * time.Second))
-	s.nextBlock()
-
-	b1level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	b1level7 := s.bk.GetBalance(s.ctx, lvl7).AmountOf(util.ConfigMainDenom).Int64()
-	b1topRef := s.bk.GetBalance(s.ctx, topR).AmountOf(util.ConfigMainDenom).Int64()
-
-	s.Equal(b0level5+toLevel5, b1level5, "Level 5: %d + %d", b0level5, toLevel5)
-	s.Equal(b0level7+toLevel7, b1level7, "Level 7: %d + %d", b0level7, toLevel7)
-	s.Equal(b0topRef+toTopRef, b1topRef, "Top referrer: %d + %d", b0topRef, toTopRef)
-}
-
-func (s *StatusBonusSuite) TestStatusBonus_AfterDowngrade() {
-	genesisTime := s.ctx.BlockTime()
-	lvl5 := app.DefaultGenesisUsers["user14"]
-	somebody := app.DefaultGenesisUsers["user1"]
-	sbacc, _ := sdk.AccAddressFromBech32(s.k.GetParams(s.ctx).CompanyAccounts.StatusBonuses)
-	s.nextBlock()
-
-	status, err := s.k.GetStatus(s.ctx, lvl5.String())
-	s.NoError(err)
-	s.Equal(referral.StatusBusinessman, status)
-	b0level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-
-	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
-	total := s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
-	s.NotZero(total)
-	toLevel5 := total / 10
-
-	// On the week end
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(7*24*time.Hour - 30*time.Second))
-	s.nextBlock()
-	b1level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	s.Equal(b0level5+toLevel5, b1level5, "Week 1: %d + %d", b0level5, toLevel5)
-
-	// Fail status requirements
-	s.NoError(s.bk.SendCoins(s.ctx, lvl5, somebody, util.Uartrs(100_000_000000)))
-	check, err := s.k.AreStatusRequirementsFulfilled(s.ctx, lvl5.String(), referral.StatusBusinessman)
-	s.NoError(err)
-	s.False(check.Overall)
-	s.nextBlock()
-	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
-	total = s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
-	s.NotZero(total)
-	toLevel5 = total / 10
-
-	s.ctx = s.ctx.WithBlockHeight(2*util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(2*7*24*time.Hour - 30*time.Second))
-	s.nextBlock()
-	b2level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	s.Equal(b1level5-100_000_000000+toLevel5, b2level5, "Week 2: %d + %d", b1level5-100_000_000000, toLevel5)
-
-	// One month later
-	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneWeek + util.BlocksOneMonth - 1).WithBlockTime(genesisTime.Add(37*24*time.Hour - 30*time.Second))
-	s.nextBlock()
-	status, err = s.k.GetStatus(s.ctx, lvl5.String())
-	s.NoError(err)
-	s.Equal(referral.StatusChampion, status)
-
-	s.NoError(s.pk.PayTariff(s.ctx, somebody, 5))
-	total = s.bk.GetBalance(s.ctx, sbacc).AmountOf(util.ConfigMainDenom).Int64()
-	s.NotZero(total)
-	s.ctx = s.ctx.WithBlockHeight(6*util.BlocksOneWeek - 1).WithBlockTime(genesisTime.Add(6*7*24*time.Hour - 30*time.Second))
-	s.nextBlock()
-	b5level5 := s.bk.GetBalance(s.ctx, lvl5).AmountOf(util.ConfigMainDenom).Int64()
-	s.Equal(b2level5, b5level5, "Week 6: %d + 0", b2level5)
 }
 
 // ----- private functions ------------

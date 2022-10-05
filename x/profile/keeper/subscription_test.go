@@ -1,4 +1,4 @@
-//+build testing
+// +build testing
 
 package keeper_test
 

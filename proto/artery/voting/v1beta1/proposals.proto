@@ -81,4 +81,6 @@ enum ProposalType {
   PROPOSAL_TYPE_VALIDATOR_BONUS = 34;
   // PROPOSAL_TYPE_VALIDATOR - Процент с делегирования, который получают активные валидаторы
   PROPOSAL_TYPE_VALIDATOR = 35;
+  // Комиссия за перевод
+  PROPOSAL_TYPE_TRANSACTION_FEE = 36;
 }

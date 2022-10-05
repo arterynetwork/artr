@@ -40,8 +40,9 @@ func (k BaseKeeper) Send(ctx context.Context, msg *types.MsgSend) (*types.MsgSen
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse sender address")
 	}
 
-	_, err = util.PayTxFee(sdkCtx, k, logger(sdkCtx), fromAddress, msg.Amount)
+	_, err = k.PayTxFee(sdkCtx, fromAddress, msg.Amount)
 	if err != nil {
+		logger(sdkCtx).Error(err.Error())
 		return nil, err
 	}
 	err = k.SendCoins(sdkCtx, fromAddress, toAddress, msg.Amount)

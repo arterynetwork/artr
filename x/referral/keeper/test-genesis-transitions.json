@@ -28848,7 +28848,9 @@
           ]
         }
       ],
-      "params": {}
+      "params": {
+        "transaction_fee": "3/1000"
+      }
     },
     "auth": {
       "accounts": [
@@ -89932,9 +89934,6 @@
         "company_accounts": {
           "for_delegating": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
           "for_subscription": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "leader_bonuses": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "promo_bonuses": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "status_bonuses": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
           "top_referrer": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
         },
         "delegating_award": {
@@ -89953,7 +89952,7 @@
           ]
         },
         "subscription_award": {
-          "company": "10%",
+          "company": "25%",
           "network": [
             "15%",
             "10%",

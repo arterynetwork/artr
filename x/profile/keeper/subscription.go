@@ -43,7 +43,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	// NOTE: `tariffTotal` cannot be just assigned to `total` here, 'cause Int is a struct over a pointer.
 	total := sdk.NewIntFromBigInt(new(big.Int).Set(tariffTotal.BigInt()))
 
-	txFee := util.CalculateFee(tariffTotal)
+	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee)
 	tariffTotal = tariffTotal.Sub(txFee)
 
 	if refInfo, err := k.referralKeeper.Get(ctx, addr.String()); err != nil {
@@ -179,7 +179,8 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 	}
 	total := util.Uartrs(storageFee)
 
-	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+	if txFee, err := k.bankKeeper.PayTxFee(ctx, addr, total); err != nil {
+		k.Logger(ctx).Error(err.Error())
 		return errors.Wrap(err, "cannot pay up tx fee")
 	} else {
 		total = total.Sub(txFee)
@@ -230,7 +231,8 @@ func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint3
 	}
 	total := util.Uartrs(storageFee)
 
-	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+	if txFee, err := k.bankKeeper.PayTxFee(ctx, addr, total); err != nil {
+		k.Logger(ctx).Error(err.Error())
 		return errors.Wrap(err, "cannot pay up tx fee")
 	} else {
 		total = total.Sub(txFee)
@@ -279,7 +281,8 @@ func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error
 	}
 	coins := util.Uartrs(vpnFee)
 
-	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, coins); err != nil {
+	if txFee, err := k.bankKeeper.PayTxFee(ctx, addr, coins); err != nil {
+		k.Logger(ctx).Error(err.Error())
 		return errors.Wrap(err, "cannot pay up tx fee")
 	} else {
 		coins = coins.Sub(txFee)
@@ -522,7 +525,8 @@ func (k Keeper) prolongImExtra(ctx sdk.Context, addr sdk.AccAddress, profile *ty
 	}
 	total := util.Uartrs(storageFee)
 
-	if txFee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), addr, total); err != nil {
+	if txFee, err := k.bankKeeper.PayTxFee(ctx, addr, total); err != nil {
+		k.Logger(ctx).Error(err.Error())
 		return errors.Wrap(err, "cannot pay up tx fee")
 	} else {
 		total = total.Sub(txFee)

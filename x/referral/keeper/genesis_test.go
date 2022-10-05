@@ -71,9 +71,6 @@ func (s GenSuite) TestParams() {
 		CompanyAccounts: referral.CompanyAccounts{
 			TopReferrer:     app.DefaultGenesisUsers["user1"].String(),
 			ForSubscription: app.DefaultGenesisUsers["user2"].String(),
-			PromoBonuses:    app.DefaultGenesisUsers["user3"].String(),
-			StatusBonuses:   app.DefaultGenesisUsers["user4"].String(),
-			LeaderBonuses:   app.DefaultGenesisUsers["user5"].String(),
 			ForDelegating:   app.DefaultGenesisUsers["user6"].String(),
 		},
 		DelegatingAward: referral.NetworkAward{

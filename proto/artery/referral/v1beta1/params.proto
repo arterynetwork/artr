@@ -33,11 +33,11 @@ message Params {
 message CompanyAccounts {
   option (gogoproto.goproto_getters) = false;
 
+  reserved 3,4,5;
+  reserved "promo_bonuses","status_bonuses","leader_bonuses";
+
   string top_referrer     = 1 [(gogoproto.jsontag) = "top_referrer", (gogoproto.moretags) = "yaml:\"top_referrer\""];
   string for_subscription = 2 [(gogoproto.jsontag) = "for_subscription", (gogoproto.moretags) = "yaml:\"for_subscription\""];
-  string promo_bonuses    = 3 [(gogoproto.jsontag) = "promo_bonuses", (gogoproto.moretags) = "yaml:\"promo_bonuses\""];
-  string status_bonuses   = 4 [(gogoproto.jsontag) = "status_bonuses", (gogoproto.moretags) = "yaml:\"status_bonuses\""];
-  string leader_bonuses   = 5 [(gogoproto.jsontag) = "leader_bonuses", (gogoproto.moretags) = "yaml:\"leader_bonuses\""];
   string for_delegating   = 6 [(gogoproto.jsontag) = "for_delegating", (gogoproto.moretags) = "yaml:\"for_delegating\""];
 }
 

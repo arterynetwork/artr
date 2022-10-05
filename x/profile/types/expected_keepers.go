@@ -30,9 +30,14 @@ type AccountKeeper interface {
 }
 
 type BankKeeper interface {
+	GetParams(ctx sdk.Context) bank.Params
+
 	AddCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
 	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
 	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+
+	PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error)
+
 	InputOutputCoins(ctx sdk.Context, inputs []bank.Input, outputs []bank.Output) error
 }
 

@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -9,6 +10,7 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank/types"
 )
 
@@ -30,6 +32,8 @@ type Keeper = interface {
 	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
 	SendCoinsFromModuleToModule(ctx sdk.Context, senderModule, recipientModule string, amt sdk.Coins) error
 	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+
+	PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error)
 
 	MintCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
 	BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
@@ -136,6 +140,20 @@ func (k BaseKeeper) SendCoinsFromAccountToModule(
 	}
 
 	return k.SendCoins(ctx, senderAddr, recipientAcc.GetAddress(), amt)
+}
+
+func (k BaseKeeper) PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error) {
+	for _, c := range amt {
+		if !util.IsSendable(c.Denom) { panic(errors.Errorf("%s is not sendable", c.Denom)) }
+		fee = fee.Add(sdk.NewCoin(c.Denom, util.CalculateFee(c.Amount, k.GetParams(ctx).TransactionFee)))
+	}
+	if !fee.IsZero() {
+		err = errors.Wrapf(
+			k.SendCoinsFromAccountToModule(ctx, senderAddr, authtypes.FeeCollectorName, fee),
+			"cannot collect fee: accAddress=%s amount=%s fee=%s", senderAddr, amt, fee,
+		)
+	}
+	return fee, err
 }
 
 // MarshalSupply protobuf serializes a Supply interface

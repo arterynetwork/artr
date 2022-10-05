@@ -653,3 +653,75 @@ func InitValidatorParam(k delegatingK.Keeper, paramspace params.Subspace) upgrad
 		logger.Info("... InitValidatorParam done!", "params", pz)
 	}
 }
+
+func InitTransactionFeeParam(k bank.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitTransactionFeeParam ...")
+
+		var pz bankT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, bankT.ParamStoreKeyTransactionFee) {
+				pz.TransactionFee = bankT.DefaultTransactionFee
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitTransactionFeeParam done!", "params", pz)
+	}
+}
+
+func RemovePromoBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting RemovePromoBonuses ...")
+
+		var pz referralT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			paramspace.Get(ctx, pair.Key, pair.Value)
+
+			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
+				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... RemovePromoBonuses done!", "params", pz)
+	}
+}
+
+func RemoveStatusBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting RemoveStatusBonuses ...")
+
+		var pz referralT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			paramspace.Get(ctx, pair.Key, pair.Value)
+
+			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
+				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... RemoveStatusBonuses done!", "params", pz)
+	}
+}
+
+func RemoveLeaderBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting RemoveLeaderBonuses ...")
+
+		var pz referralT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			paramspace.Get(ctx, pair.Key, pair.Value)
+
+			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
+				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... RemoveLeaderBonuses done!", "params", pz)
+	}
+}

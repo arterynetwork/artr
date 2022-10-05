@@ -65,6 +65,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
 		cmdSetValidatorPercent(),
+		cmdSetTransactionFee(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -1480,6 +1481,48 @@ func cmdSetValidatorPercent() *cobra.Command {
 					Author: author,
 					Name: proposalName,
 					Type: types.PROPOSAL_TYPE_VALIDATOR,
+					Args: &types.Proposal_Portion{
+						Portion: &types.PortionArgs{
+							Fraction: q,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetTransactionFee() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-transaction-fee <amount> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-transaction-fee 3/1000 "Set fee of 0.3%" ivan`,
+		Aliases: []string{"set_transaction_fee", "stf"},
+		Short:   "Propose to change transaction fee",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := util.ParseFraction(args[0])
+			if err != nil { return err }
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name: proposalName,
+					Type: types.PROPOSAL_TYPE_TRANSACTION_FEE,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,

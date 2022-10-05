@@ -46,6 +46,8 @@ type BankKeeper interface {
 	SetSupply(ctx sdk.Context, supply bank.Supply)
 
 	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
+
+	PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error)
 }
 
 type ProfileKeeper interface {

@@ -17,6 +17,12 @@ message Params {
 
   // DustDelegation - delegations below OR EQUAL TO this value will be ignored as miniscule.
   int64 dust_delegation = 2;
+
+  // TransactionFee - share of transfer or payment for delegating amount but no more than 10artr, that goes to fee collector account, then paid to validator. Must be in range [0, 1).
+  string transaction_fee = 3 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
 }
 
 // Supply represents a struct that passively keeps track of the total supply

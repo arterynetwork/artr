@@ -124,9 +124,6 @@ func (s *Suite) TestParams() {
 		CompanyAccounts: referral.CompanyAccounts{
 			TopReferrer:     user(10),
 			ForSubscription: user(11),
-			PromoBonuses:    user(12),
-			StatusBonuses:   user(13),
-			LeaderBonuses:   user(14),
 			ForDelegating:   user(15),
 		},
 		DelegatingAward: referral.NetworkAward{

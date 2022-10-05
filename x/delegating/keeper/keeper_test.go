@@ -78,9 +78,9 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
 	)
 
-	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1000000000)))
+	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847450000))),
+		sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000))),
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Equal(
@@ -88,9 +88,9 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
 	)
 
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(847450000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(847_450000)))
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(847450000))),
+		sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(805_077500))),
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Equal(
@@ -100,7 +100,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	s.Equal(
 		[]types.RevokeRequest{{
 			Time:   genesis_time.Add(14*24*time.Hour),
-			Amount: sdk.NewInt(847450000),
+			Amount: sdk.NewInt(805_077500),
 		}},
 		s.k.GetRevoking(s.ctx, user),
 	)
@@ -108,7 +108,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	s.ctx = s.ctx.WithBlockHeight(14*2880 - 1).WithBlockTime(genesis_time.Add((14*2880 - 1) *30*time.Second))
 	s.nextBlock()
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(847450000))),
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(805_077500))),
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Equal(
@@ -143,7 +143,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
-			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(332_500000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -161,7 +161,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(3_471704)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
-			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(332_500000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -176,7 +176,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 
 	s.Equal(
 		sdk.NewCoins(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(398_603856)),
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(381_103856)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
@@ -192,7 +192,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 
 	s.Equal(
 		sdk.NewCoins(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(402_075560)),
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(384_575560)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
@@ -245,7 +245,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_957177)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
-			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(350_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(332_500000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -260,7 +260,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	}
 	s.Equal(
 		sdk.NewCoins(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_561033)), // 2.957,177 + 14 * ⌈3.482,150 * 99.7%⌉  + 350
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(384_061033)), // 2.957,177 + 14 * ⌈3.482,150 * 99.7%⌉  + 332,5
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
@@ -281,7 +281,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	}
 	s.Equal(
 		sdk.NewCoins(
-			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(401_561033)), // The same because accrue time has changed
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(384_061033)), // The same because accrue time has changed
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(497_450000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
@@ -375,7 +375,7 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(887153)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(747_450000)),
-			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(100_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(95_000000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -391,7 +391,7 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(6_103607)),
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(747_450000)),
-			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(100_000000)),
+			sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(95_000000)),
 		),
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -488,7 +488,7 @@ func (s *Suite) TestRevokePeriod() {
 	s.Equal(
 		[]types.RevokeRequest{
 			{
-				Amount: sdk.NewInt(1_000000),
+				Amount: sdk.NewInt(950000),
 				Time: genesisTime.Add(14 * 24 * time.Hour),
 			},
 		},
@@ -506,24 +506,24 @@ func (s *Suite) TestRevokePeriod() {
 	s.Equal(
 		[]types.RevokeRequest{
 			{
-				Amount: sdk.NewInt(1_000000),
+				Amount: sdk.NewInt(950000),
 				Time: genesisTime.Add(14 * 24 * time.Hour),
 			}, {
-				Amount: sdk.NewInt(2_000000),
+				Amount: sdk.NewInt(1_900000),
 				Time: genesisTime.Add(7 * 24 * time.Hour + time.Minute),
 			},
 		}, s.k.GetRevoking(s.ctx, user),
 	)
 
-	s.EqualValues(3_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	s.EqualValues(2_850000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
 	s.ctx = s.ctx.WithBlockHeight(20_161).WithBlockTime(genesisTime.Add(20_161*30*time.Second))
 	s.nextBlock()
 
-	s.EqualValues(1_000000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
+	s.EqualValues(950000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
 	s.Equal(
 		[]types.RevokeRequest{
 			{
-				Amount: sdk.NewInt(1_000000),
+				Amount: sdk.NewInt(950000),
 				Time: genesisTime.Add(14 * 24 * time.Hour),
 			},
 		}, s.k.GetRevoking(s.ctx, user),

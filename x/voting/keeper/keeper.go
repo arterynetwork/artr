@@ -341,6 +341,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			if err = p.Validate(); err == nil {
 				k.delegatingKeeper.SetParams(ctx, p)
 			}
+		case types.PROPOSAL_TYPE_TRANSACTION_FEE:
+			p := k.bankKeeper.GetParams(ctx)
+			p.TransactionFee = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.bankKeeper.SetParams(ctx, p)
+			}
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}

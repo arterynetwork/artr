@@ -74,9 +74,6 @@ func (ca CompanyAccounts) Contains(acc sdk.AccAddress) bool {
 	bech32 := acc.String()
 	return ca.TopReferrer == bech32 ||
 		ca.ForSubscription == bech32 ||
-		ca.PromoBonuses == bech32 ||
-		ca.StatusBonuses == bech32 ||
-		ca.LeaderBonuses == bech32 ||
 		ca.ForDelegating == bech32
 }
 
@@ -90,30 +87,6 @@ func (ca CompanyAccounts) GetTopReferrer() sdk.AccAddress {
 
 func (ca CompanyAccounts) GetForSubscription() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(ca.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
-func (ca CompanyAccounts) GetPromoBonuses() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(ca.PromoBonuses)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
-func (ca CompanyAccounts) GetStatusBonuses() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(ca.StatusBonuses)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
-func (ca CompanyAccounts) GetLeaderBonuses() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(ca.LeaderBonuses)
 	if err != nil {
 		panic(err)
 	}
@@ -182,15 +155,6 @@ func validateCompanyAccounts(i interface{}) error {
 	}
 	if _, err := sdk.AccAddressFromBech32(ca.ForSubscription); err != nil {
 		return errors.Wrap(err, "cannot parse for_subscription account address")
-	}
-	if _, err := sdk.AccAddressFromBech32(ca.PromoBonuses); err != nil {
-		return errors.Wrap(err, "cannot parse promo_bonuses account address")
-	}
-	if _, err := sdk.AccAddressFromBech32(ca.StatusBonuses); err != nil {
-		return errors.Wrap(err, "cannot parse status_bonuses account address")
-	}
-	if _, err := sdk.AccAddressFromBech32(ca.LeaderBonuses); err != nil {
-		return errors.Wrap(err, "cannot parse leader_bonuses account address")
 	}
 	if _, err := sdk.AccAddressFromBech32(ca.ForDelegating); err != nil {
 		return errors.Wrap(err, "cannot parse for_delegating account address")

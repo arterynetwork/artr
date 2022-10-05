@@ -1,9 +1,7 @@
 package keeper
 
 import (
-	"bytes"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -96,7 +94,7 @@ func (k Keeper) GetReferralFeesForSubscription(ctx sdk.Context, acc string) ([]t
 	k.paramspace.GetParamSet(ctx, &params)
 	ca := params.CompanyAccounts
 
-	fees, err := k.getReferralFeesCore(
+	return k.getReferralFeesCore(
 		ctx,
 		acc,
 		ca.ForSubscription,
@@ -104,20 +102,6 @@ func (k Keeper) GetReferralFeesForSubscription(ctx sdk.Context, acc string) ([]t
 		params.SubscriptionAward.Network,
 		ca.TopReferrer,
 	)
-	return append(fees,
-		types.ReferralFee{
-			Beneficiary: ca.PromoBonuses,
-			Ratio:       util.Percent(5),
-		},
-		types.ReferralFee{
-			Beneficiary: ca.StatusBonuses,
-			Ratio:       util.Percent(5),
-		},
-		types.ReferralFee{
-			Beneficiary: ca.LeaderBonuses,
-			Ratio:       util.Percent(5),
-		},
-	), err
 }
 
 // GetReferralFeesForDelegating returns a set of account-ratio pairs, describing what part of being delegated funds
@@ -653,73 +637,6 @@ func (k Keeper) MustSetActiveWithoutStatusUpdate(ctx sdk.Context, acc string, va
 	}
 }
 
-func (k Keeper) PayStatusBonus(ctx sdk.Context) error {
-	var (
-		ca     = k.GetParams(ctx).CompanyAccounts
-		sender = ca.GetStatusBonuses()
-		topRef = ca.GetTopReferrer()
-		amt    = k.bankKeeper.GetBalance(ctx, sender).AmountOf(util.ConfigMainDenom).Int64() / 5
-	)
-	if amt == 0 {
-		k.Logger(ctx).Debug("Nothing to pay")
-		return nil
-	}
-	var (
-		store           = ctx.KVStore(k.indexStoreKey)
-		receivers       = make([]sdk.AccAddress, 0)
-		outMap          = make(map[string]bank.Output)
-		total     int64 = 0
-	)
-
-	for status := types.STATUS_ABSOLUTE_CHAMPION; status >= types.STATUS_BUSINESSMAN; status-- {
-		it := sdk.KVStorePrefixIterator(store, []byte{uint8(status)})
-		for ; it.Valid(); it.Next() {
-			acc, err := sdk.AccAddressFromBech32(string(it.Key()[1:]))
-			if err != nil {
-				panic(err)
-			}
-			receivers = append(receivers, acc)
-		}
-		it.Close()
-		if len(receivers) == 0 {
-			setOrUpdate(outMap, topRef, amt)
-			total += amt
-		} else {
-			n := int64(len(receivers))
-			each := amt / n
-			if each == 0 {
-				break
-			}
-			total += each * n
-			for _, r := range receivers {
-				setOrUpdate(outMap, r, each)
-			}
-		}
-	}
-	if len(outMap) == 0 {
-		return nil
-	}
-
-	outputs := make([]bank.Output, 0, len(outMap))
-	for _, output := range outMap {
-		outputs = append(outputs, output)
-	}
-	// Map iteration order is not determined :-(
-	sort.Slice(outputs, func(i, j int) bool { return bytes.Compare(outputs[i].Address, outputs[j].Address) < 0 })
-	for _, out := range outputs {
-		util.EmitEvent(ctx,
-			&types.EventStatusBonus{
-				Address: out.Address.String(),
-				Amount:  out.Coins.AmountOf(util.ConfigMainDenom).Uint64(),
-			},
-		)
-	}
-
-	inputs := []bank.Input{bank.NewInput(sender, util.Uartrs(total))}
-	k.Logger(ctx).Debug("PayStatusBonus", "in", inputs, "out", outputs)
-	return k.bankKeeper.InputOutputCoins(ctx, inputs, outputs)
-}
-
 func (k Keeper) Iterate(ctx sdk.Context, callback func(acc string, r *types.Info) (changed, checkForStatusUpdate bool)) {
 	bu := newBunchUpdater(k, ctx)
 	store := ctx.KVStore(k.storeKey)
@@ -1155,7 +1072,10 @@ func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc string, companyAccount 
 		return nil, errors.Errorf("toAncestors param must have exactly 10 items (%d found)", len(toAncestors))
 	}
 	excess := util.Percent(0)
-	result := append(make([]types.ReferralFee, 0, 12), types.ReferralFee{Beneficiary: companyAccount, Ratio: toCompany})
+	result := make([]types.ReferralFee, 0, 12)
+	if !toCompany.IsZero() {
+		result = append(result, types.ReferralFee{Beneficiary: companyAccount, Ratio: toCompany})
+	}
 
 	ancestor, err := k.GetParent(ctx, acc)
 	if err != nil {
@@ -1185,7 +1105,9 @@ func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc string, companyAccount 
 			continue
 		}
 		if i < data.Status.LinesOpened() {
-			result = append(result, types.ReferralFee{Beneficiary: ancestor, Ratio: toAncestors[i]})
+			if !toAncestors[i].IsZero() {
+				result = append(result, types.ReferralFee{Beneficiary: ancestor, Ratio: toAncestors[i]})
+			}
 		} else {
 			excess = excess.Add(toAncestors[i])
 		}

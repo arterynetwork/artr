@@ -10,6 +10,11 @@ message EventDelegate {
   repeated uint64 commission_amount = 4;
 }
 
+message EventFreeze {
+  string account = 1;
+  uint64 ucoins = 2;
+}
+
 message EventUndelegate {
   string account = 1;
   uint64 ucoins = 2;

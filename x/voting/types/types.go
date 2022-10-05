@@ -199,7 +199,8 @@ func (p Proposal) Validate() error {
 		}
 	case
 		PROPOSAL_TYPE_VALIDATOR_BONUS,
-		PROPOSAL_TYPE_VALIDATOR:
+		PROPOSAL_TYPE_VALIDATOR,
+		PROPOSAL_TYPE_TRANSACTION_FEE:
 
 		if p.Args == nil {
 			return errors.New("invalid args: nil, *Proposal_Portion expected")

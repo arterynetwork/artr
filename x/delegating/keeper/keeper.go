@@ -99,7 +99,8 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 
 	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 	k.accruePart(ctx, acc, &item, nextPayment)
-	if err = k.freeze(ctx, acc, uartrs); err != nil {
+	uartrrs := uartrs.Sub(sdk.NewInt(util.Percent(5).MulInt64(uartrs.Int64()).Int64()))
+	if err = k.freeze(ctx, acc, uartrs, uartrrs); err != nil {
 		k.Logger(ctx).Error(err.Error())
 		return err
 	}
@@ -115,7 +116,7 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 	time := ctx.BlockTime().Add(period)
 	item.Requests = append(item.Requests, types.RevokeRequest{
 		Time:   time,
-		Amount: uartrs,
+		Amount: uartrrs,
 	})
 	store.Set(byteKey, k.cdc.MustMarshalBinaryBare(&item))
 	k.scheduleKeeper.ScheduleTask(ctx, time, types.RevokeHookName, byteKey)
@@ -127,8 +128,9 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		return types.ErrLessThanMinimum
 	}
 
-	fee, err := util.PayTxFee(ctx, k.bankKeeper, k.Logger(ctx), acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs)))
+	fee, err := k.bankKeeper.PayTxFee(ctx, acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, uartrs)))
 	if err != nil {
+		k.Logger(ctx).Error(err.Error())
 		return err
 	}
 	uartrs = uartrs.Sub(fee.AmountOf(util.ConfigMainDenom))
@@ -314,7 +316,7 @@ func (k Keeper) delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	return nil
 }
 
-func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) error {
+func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int, uartrrs sdk.Int) error {
 	if uartrds.IsZero() {
 		return nil
 	}
@@ -326,7 +328,7 @@ func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) err
 		return err
 	}
 
-	plusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, uartrds))
+	plusCoins := sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, uartrrs))
 	err = k.bankKeeper.AddCoins(ctx, acc, plusCoins)
 
 	if err != nil {
@@ -338,6 +340,12 @@ func (k Keeper) freeze(ctx sdk.Context, acc sdk.AccAddress, uartrds sdk.Int) err
 	supply.Inflate(plusCoins)
 	k.bankKeeper.SetSupply(ctx, supply)
 
+	util.EmitEvent(ctx,
+		&types.EventFreeze{
+			Account: acc.String(),
+			Ucoins:  uartrrs.Uint64(),
+		},
+	)
 	return nil
 }
 
@@ -389,7 +397,7 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	supply.Inflate(emission)
 	k.bankKeeper.SetSupply(ctx, supply)
 
-	fee := util.CalculateFee(ucoins)
+	fee := util.CalculateFee(ucoins, k.bankKeeper.GetParams(ctx).TransactionFee)
 	if !fee.IsZero() {
 		ucoins = ucoins.Sub(fee)
 		fee := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, fee))
