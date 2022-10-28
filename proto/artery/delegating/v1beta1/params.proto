@@ -28,6 +28,12 @@ message Params {
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
+
+  // BurnOnRevoke - share of revoke amount, that burns. Must be in range [0, 1).
+  string burn_on_revoke = 6 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
 }
 
 // Percentage - function from delegation size to delegation award percent

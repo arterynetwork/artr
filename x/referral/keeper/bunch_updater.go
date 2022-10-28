@@ -112,7 +112,7 @@ func (bu *bunchUpdater) get(acc string) (types.Info, error) {
 }
 
 func (bu bunchUpdater) StatusDowngradeAfter() time.Duration {
-	return bu.k.scheduleKeeper.OneMonth(bu.ctx)
+	return 2 * bu.k.scheduleKeeper.OneDay(bu.ctx)
 }
 
 func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback func(value *types.Info) error) (err error) {

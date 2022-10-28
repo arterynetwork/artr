@@ -25,7 +25,8 @@ const (
 	DefaultRevokePeriod = 14
 )
 var (
-	DefaultValidator = util.Percent(15)
+	DefaultValidator    = util.Percent(15)
+	DefaultBurnOnRevoke = util.Percent(5)
 )
 
 // Parameter store keys
@@ -34,6 +35,7 @@ var (
 	KeyMinDelegate  = []byte("MinDelegate")
 	KeyRevokePeriod = []byte("RevokePeriod")
 	KeyValidator    = []byte("Validator")
+	KeyBurnOnRevoke = []byte("BurnOnRevoke")
 )
 
 // ParamKeyTable for delegating module
@@ -58,12 +60,13 @@ func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validator util.Fraction) *Params {
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validator util.Fraction, burnOnRevoke util.Fraction) *Params {
 	return &Params{
 		Percentage:   percentage,
 		MinDelegate:  minDelegate,
 		RevokePeriod: revokePeriod,
 		Validator:    validator,
+		BurnOnRevoke: burnOnRevoke,
 	}
 }
 
@@ -74,6 +77,7 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
 		paramTypes.NewParamSetPair(KeyValidator, &p.Validator, validateValidator),
+		paramTypes.NewParamSetPair(KeyBurnOnRevoke, &p.BurnOnRevoke, validateBurnOnRevoke),
 	}
 }
 
@@ -89,6 +93,7 @@ func DefaultParams() *Params {
 		DefaultMinDelegate,
 		DefaultRevokePeriod,
 		DefaultValidator,
+		DefaultBurnOnRevoke,
 	)
 }
 
@@ -179,5 +184,19 @@ func validateValidator(i interface{}) error {
 	if !ok { return errors.Errorf("invalid Validator parameter type: %T", i) }
 	if vb.IsNullValue() { return errors.New("Validator must be non-null") }
 	if vb.IsNegative() { return errors.New("Validator must be non-negative") }
+	return nil
+}
+
+func validateBurnOnRevoke(i interface{}) error {
+	vb, ok := i.(util.Fraction)
+	if !ok {
+		return errors.Errorf("invalid BurnOnRevoke parameter type: %T", i)
+	}
+	if vb.GT(util.Percent(100)) {
+		return errors.New("BurnOnRevoke must be less than 100%")
+	}
+	if vb.IsNegative() {
+		return errors.New("BurnOnRevoke must be non-negative")
+	}
 	return nil
 }

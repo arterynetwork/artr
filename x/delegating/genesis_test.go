@@ -87,6 +87,7 @@ func (s *Suite) TestParams() {
 		MinDelegate:  123456,
 		RevokePeriod: 28,
 		Validator:    util.Percent(100),
+		BurnOnRevoke: util.Percent(50),
 	})
 }
 

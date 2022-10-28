@@ -912,7 +912,7 @@ func (s *Suite) TestStatusDowngrade() {
 	} else {
 		s.Equal(referral.StatusLeader, r.Status)
 		s.NotNil(r.StatusDowngradeAt)
-		s.Equal(genesis_time.Add(30*24*time.Hour), *r.StatusDowngradeAt)
+		s.Equal(genesis_time.Add(2*24*time.Hour), *r.StatusDowngradeAt)
 	}
 	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
 		panic(err)
@@ -927,7 +927,7 @@ func (s *Suite) TestStatusDowngrade() {
 	} else {
 		s.Equal(referral.StatusLeader, r.Status)
 		s.NotNil(r.StatusDowngradeAt)
-		s.Equal(genesis_time.Add(30*24*time.Hour), *r.StatusDowngradeAt)
+		s.Equal(genesis_time.Add(2*24*time.Hour), *r.StatusDowngradeAt)
 	}
 	if status, err := s.k.GetStatus(s.ctx, addr); err != nil {
 		panic(err)
@@ -936,7 +936,7 @@ func (s *Suite) TestStatusDowngrade() {
 	}
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesis_time.Add(30 * 24 * time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesis_time.Add(2 * 24 * time.Hour))
 	s.nextBlock()
 	if r, err := s.get(addr); err != nil {
 		panic(err)
@@ -1646,7 +1646,7 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
 	s.NotNil(data.StatusDowngradeAt)
-	s.Equal(genesisTime.Add(30*24*time.Hour), *data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(2*24*time.Hour), *data.StatusDowngradeAt)
 
 	// Jump to the top (downgrade should be cancelled)
 	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))))
@@ -1667,10 +1667,10 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, data.Status)
 	s.NotNil(data.StatusDowngradeAt)
-	s.Equal(genesisTime.Add(30*24*time.Hour), *data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(2*24*time.Hour), *data.StatusDowngradeAt)
 
 	// One month later ...
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 30*2880 - 1).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour - 30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 2*2880 - 1).WithBlockTime(s.ctx.BlockTime().Add(2*24*time.Hour - 30*time.Second))
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
@@ -1679,7 +1679,7 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.NoError(err)
 	s.Equal(referral.StatusHero, data.Status)
 	s.NotNil(data.StatusDowngradeAt)
-	s.Equal(genesisTime.Add(2*30*24*time.Hour), *data.StatusDowngradeAt)
+	s.Equal(genesisTime.Add(2*2*24*time.Hour), *data.StatusDowngradeAt)
 }
 
 type Status3x3Suite struct {
@@ -1734,14 +1734,14 @@ func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
 	s.False(check.Overall)
 
 	// One month later
-	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesisTime.Add(30 * 24 * time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(86400).WithBlockTime(genesisTime.Add(2 * 24 * time.Hour))
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root)
 	s.NoError(err)
 	s.Equal(referral.StatusMaster, status)
 
 	// Two months later
-	s.ctx = s.ctx.WithBlockHeight(172800).WithBlockTime(genesisTime.Add(2 * 30 * 24 * time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(172800).WithBlockTime(genesisTime.Add(2 * 2 * 24 * time.Hour))
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root)
 	s.NoError(err)

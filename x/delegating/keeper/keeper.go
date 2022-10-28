@@ -99,7 +99,7 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 
 	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 	k.accruePart(ctx, acc, &item, nextPayment)
-	uartrrs := uartrs.Sub(sdk.NewInt(util.Percent(5).MulInt64(uartrs.Int64()).Int64()))
+	uartrrs := uartrs.Sub(sdk.NewInt(k.GetParams(ctx).BurnOnRevoke.MulInt64(uartrs.Int64()).Int64()))
 	if err = k.freeze(ctx, acc, uartrs, uartrrs); err != nil {
 		k.Logger(ctx).Error(err.Error())
 		return err
@@ -253,9 +253,10 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 	dayPart := util.NewFraction(ctx.BlockTime().Sub(periodStart).Nanoseconds(), k.scheduleKeeper.OneDay(ctx).Nanoseconds()).Reduce()
 
 	delegated, _ := k.getDelegated(ctx, acc)
-	active, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
+	isActiveProfile := k.profileKeeper.GetProfile(ctx, acc).IsActive(ctx)
+	isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
 	if err != nil { panic(err) }
-	percent := k.percent(ctx, delegated, active)
+	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator)
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
 
@@ -428,9 +429,10 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 			item.MissedPart = nil
 		}
 		delegated, _ := k.getDelegated(ctx, acc)
-		active, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
+		isActiveProfile := k.profileKeeper.GetProfile(ctx, acc).IsActive(ctx)
+		isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
 		if err != nil { panic(err) }
-		interest := k.percent(ctx, delegated, active).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
+		interest := k.percent(ctx, delegated, isActiveProfile, isActiveValidator).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {
 			k.accrue(ctx, acc, sdk.NewInt(interest))
 		}
@@ -439,7 +441,7 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 	item.NextAccrue = &nextPayment
 }
 
-func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, activeValidator bool) util.Fraction {
+func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool, isActiveValidator bool) util.Fraction {
 	var (
 		params  = k.GetParams(ctx)
 		ladder  = params.Percentage
@@ -450,7 +452,7 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, activeValidator bool
 		return util.FractionZero()
 	}
 
-	if activeValidator {
+	if isActiveValidator {
 		percent = params.Validator
 	} else if delegated.LT(sdk.NewInt(1_000_000000)) {
 		percent = util.Percent(ladder.Minimal)
@@ -460,6 +462,9 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, activeValidator bool
 		percent = util.Percent(ladder.TenKPlus)
 	} else {
 		percent = util.Percent(ladder.HundredKPlus)
+	}
+	if isActiveProfile {
+		percent = percent.Add(util.Percent(1))
 	}
 	percent = percent.Div(util.NewFraction(30, 1)) // to days from months
 	return percent.Reduce()

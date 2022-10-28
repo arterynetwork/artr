@@ -83,4 +83,6 @@ enum ProposalType {
   PROPOSAL_TYPE_VALIDATOR = 35;
   // Комиссия за перевод
   PROPOSAL_TYPE_TRANSACTION_FEE = 36;
+  // Процент сжигаемый при разделегировании
+  PROPOSAL_TYPE_BURN_ON_REVOKE = 37;
 }

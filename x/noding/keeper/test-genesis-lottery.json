@@ -294,7 +294,8 @@
           "thousand_plus": "24"
         },
         "revoke_period": 14,
-        "validator": "15%"
+        "validator": "15%",
+        "burn_on_revoke": "5%"
       }
     },
     "earning": {

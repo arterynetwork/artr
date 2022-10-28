@@ -725,3 +725,100 @@ func RemoveLeaderBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade
 		logger.Info("... RemoveLeaderBonuses done!", "params", pz)
 	}
 }
+
+func InitBurnOnRevokeParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitBurnOnRevokeParam ...")
+
+		var pz delegatingT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, delegatingT.KeyBurnOnRevoke) {
+				pz.BurnOnRevoke = delegatingT.DefaultBurnOnRevoke
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitBurnOnRevokeParam done!", "params", pz)
+	}
+}
+
+func UpdateStatusDowngradeTasks(sk scheduleK.Keeper, rKey, sKey sdk.StoreKey, cdc codec.BinaryMarshaler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, plan upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting UpdateStatusDowngradeTasks ...")
+
+		{
+			var (
+				ms  = ctx.MultiStore().CacheMultiStore()
+				ctx = ctx.WithMultiStore(ms)
+
+				sStore = ctx.KVStore(sKey)
+				sIt    = sStore.Iterator(nil, nil)
+
+				rStore = ctx.KVStore(rKey)
+
+				newDowngradeTime = ctx.BlockTime().Add(2 * sk.OneDay(ctx))
+			)
+			logger.Info("... fixing schedule ...")
+			for ; sIt.Valid(); sIt.Next() {
+				var sch scheduleT.Schedule
+				cdc.MustUnmarshalBinaryBare(sIt.Value(), &sch)
+
+				changed := false
+				tasks := make([]scheduleT.Task, 0, len(sch.Tasks))
+
+				for _, task := range sch.Tasks {
+					taskUpdated := false
+					if task.HandlerName == referralK.StatusDowngradeHookName {
+						logger.Debug("find hook", "handlerName", task.HandlerName, "time", task.Time, "data", task.Data)
+						if task.Time.After(newDowngradeTime) {
+							task.Time = newDowngradeTime
+							taskUpdated = true
+							logger.Debug("update hook", "handlerName", task.HandlerName, "time", task.Time, "data", task.Data)
+						}
+					}
+					tasks = append(tasks, task)
+					if taskUpdated {
+						changed = true
+					}
+				}
+
+				if changed {
+					if len(tasks) == 0 {
+						sStore.Delete(sIt.Key())
+					} else {
+						sch.Tasks = tasks
+						sStore.Set(sIt.Key(), cdc.MustMarshalBinaryBare(&sch))
+					}
+				}
+			}
+			sIt.Close()
+
+			var (
+				rIt = rStore.Iterator(nil, nil)
+			)
+			logger.Info("... fixing referral ...")
+			for ; rIt.Valid(); rIt.Next() {
+				acc := string(rIt.Key())
+
+				var r referralT.Info
+				cdc.MustUnmarshalBinaryBare(rIt.Value(), &r)
+				if r.StatusDowngradeAt != nil {
+					logger.Debug("find referral StatusDowngradeAt", "acc", acc, "statusDowngradeAt", r.StatusDowngradeAt.String())
+					if r.StatusDowngradeAt.After(newDowngradeTime) {
+						r.StatusDowngradeAt = &newDowngradeTime
+						rStore.Set(rIt.Key(), cdc.MustMarshalBinaryBare(&r))
+						logger.Debug("update referral StatusDowngradeAt", "acc", acc, "statusDowngradeAt", r.StatusDowngradeAt.String())
+					}
+				}
+			}
+			rIt.Close()
+
+			logger.Debug("... persisting multistore ...")
+			ms.Write()
+		}
+		logger.Info("... UpdateStatusDowngradeTasks done!")
+	}
+}

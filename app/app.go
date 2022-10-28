@@ -379,6 +379,11 @@ func NewArteryApp(
 		RemoveLeaderBonuses(app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.4.3", Chain(
+		InitBurnOnRevokeParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		UpdateStatusDowngradeTasks(app.scheduleKeeper, keys[referral.StoreKey], keys[scheduleTypes.StoreKey], ec.Marshaler),
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(

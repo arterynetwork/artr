@@ -347,6 +347,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			if err = p.Validate(); err == nil {
 				k.bankKeeper.SetParams(ctx, p)
 			}
+		case types.PROPOSAL_TYPE_BURN_ON_REVOKE:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.BurnOnRevoke = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
+			}
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}
