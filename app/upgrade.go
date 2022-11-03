@@ -822,3 +822,97 @@ func UpdateStatusDowngradeTasks(sk scheduleK.Keeper, rKey, sKey sdk.StoreKey, cd
 		logger.Info("... UpdateStatusDowngradeTasks done!")
 	}
 }
+
+func InitMaxTransactionFeeParam(k bank.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitMaxTransactionFeeParam ...")
+
+		var pz bankT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, bankT.ParamStoreKeyMaxTransactionFee) {
+				pz.MaxTransactionFee = bankT.DefaultMaxTransactionFee
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitMaxTransactionFeeParam done!", "params", pz)
+	}
+}
+
+func FixStatusDowngradeTasks(sk scheduleK.Keeper, sKey sdk.StoreKey, cdc codec.BinaryMarshaler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, plan upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting UpdateStatusDowngradeTasks ...")
+
+		{
+			var (
+				ms  = ctx.MultiStore().CacheMultiStore()
+				ctx = ctx.WithMultiStore(ms)
+
+				sStore = ctx.KVStore(sKey)
+				sIt    = sStore.Iterator(nil, nil)
+
+				blockTime = ctx.BlockTime()
+
+				incorrectTasks = make([]scheduleT.Task, 0, 512)
+			)
+			logger.Info("... fixing schedule ...")
+			for ; sIt.Valid(); sIt.Next() {
+				var sch scheduleT.Schedule
+				cdc.MustUnmarshalBinaryBare(sIt.Value(), &sch)
+
+				changed := false
+				tasks := make([]scheduleT.Task, 0, len(sch.Tasks))
+
+				for _, task := range sch.Tasks {
+					taskDeleted := false
+					if task.HandlerName == referralK.StatusDowngradeHookName {
+						logger.Debug("find hook", "handlerName", task.HandlerName, "t", task.Time.String(), "data", task.Data)
+						if !bytes.Equal(sIt.Key(), scheduleK.Key(task.Time)) && task.Time.Before(blockTime) {
+							logger.Debug("need fix hook", "handlerName", task.HandlerName, "t", task.Time.String(), "data", task.Data)
+							taskDeleted = true
+						}
+					}
+					if taskDeleted {
+						incorrectTasks = append(incorrectTasks, task)
+						changed = true
+					} else {
+						tasks = append(tasks, task)
+					}
+				}
+
+				if changed {
+					if len(tasks) == 0 {
+						sStore.Delete(sIt.Key())
+					} else {
+						sch.Tasks = tasks
+						sStore.Set(sIt.Key(), cdc.MustMarshalBinaryBare(&sch))
+					}
+				}
+			}
+			sIt.Close()
+
+			var (
+				shiftInterval    = time.Duration(sk.GetParams(ctx).DayNanos * 15 / (24 * 60 * 60))
+				newDowngradeTime = ctx.BlockTime()
+			)
+			for _, task := range incorrectTasks {
+				newDowngradeTime = newDowngradeTime.Add(shiftInterval)
+				fixKey := scheduleK.Key(newDowngradeTime)
+				var fixSch scheduleT.Schedule
+				if err := cdc.UnmarshalBinaryBare(fixKey, &fixSch); err != nil {
+					logger.Debug("not found key by", "t", newDowngradeTime.String())
+				}
+				fixSch.Tasks = append(fixSch.Tasks, task)
+				sStore.Set(fixKey, cdc.MustMarshalBinaryBare(&fixSch))
+				logger.Debug("relocate hook", "handlerName", task.HandlerName, "t", task.Time.String(), "data", task.Data)
+			}
+
+			logger.Debug("... persisting multistore ...")
+			ms.Write()
+		}
+		logger.Info("... UpdateStatusDowngradeTasks done!")
+	}
+}

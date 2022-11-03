@@ -122,7 +122,8 @@ func (p Proposal) Validate() error {
 	case
 		PROPOSAL_TYPE_MIN_SEND,
 		PROPOSAL_TYPE_MIN_DELEGATE,
-		PROPOSAL_TYPE_DUST_DELEGATION:
+		PROPOSAL_TYPE_DUST_DELEGATION,
+		PROPOSAL_TYPE_MAX_TRANSACTION_FEE:
 
 		if p.Args == nil {
 			return errors.New("invalid args: nil, *Proposal_MinAmount expected")

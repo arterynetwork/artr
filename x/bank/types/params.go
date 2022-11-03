@@ -16,6 +16,8 @@ const (
 
 	DefaultMinSend        = 1000
 	DefaultDustDelegation = 0
+
+	DefaultMaxTransactionFee = 10_000000
 )
 
 var (
@@ -23,9 +25,10 @@ var (
 )
 
 var (
-	ParamStoreKeyMinSend        = []byte("minsend")
-	ParamStoreKeyDustDelegation = []byte("dustd")
-	ParamStoreKeyTransactionFee = []byte("txfee")
+	ParamStoreKeyMinSend           = []byte("minsend")
+	ParamStoreKeyDustDelegation    = []byte("dustd")
+	ParamStoreKeyTransactionFee    = []byte("txfee")
+	ParamStoreKeyMaxTransactionFee = []byte("maxtxfee")
 )
 
 // ParamKeyTable type declaration for parameters
@@ -38,15 +41,17 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(ParamStoreKeyMinSend, &p.MinSend, validateMinSend),
 		paramTypes.NewParamSetPair(ParamStoreKeyDustDelegation, &p.DustDelegation, validateDustDelegation),
 		paramTypes.NewParamSetPair(ParamStoreKeyTransactionFee, &p.TransactionFee, validateTransactionFee),
+		paramTypes.NewParamSetPair(ParamStoreKeyMaxTransactionFee, &p.MaxTransactionFee, validateMaxTransactionFee),
 	}
 }
 
 // NewParams creates a new parameter configuration for the bank module
-func NewParams(minSend int64, dust int64, fee util.Fraction) Params {
+func NewParams(minSend int64, dust int64, fee util.Fraction, maxFee int64) Params {
 	return Params{
-		MinSend:        minSend,
-		DustDelegation: dust,
-		TransactionFee: fee,
+		MinSend:           minSend,
+		DustDelegation:    dust,
+		TransactionFee:    fee,
+		MaxTransactionFee: maxFee,
 	}
 }
 
@@ -56,6 +61,7 @@ func DefaultParams() Params {
 		DefaultMinSend,
 		DefaultDustDelegation,
 		DefaultTransactionFee,
+		DefaultMaxTransactionFee,
 	)
 }
 
@@ -69,6 +75,9 @@ func (p Params) Validate() error {
 	}
 	if err := validateTransactionFee(p.TransactionFee); err != nil {
 		return errors.Wrap(err, "invalid transaction_fee")
+	}
+	if err := validateMaxTransactionFee(p.MaxTransactionFee); err != nil {
+		return errors.Wrap(err, "invalid max_transaction_fee")
 	}
 	return nil
 }
@@ -106,6 +115,17 @@ func validateTransactionFee(i interface{}) error {
 	}
 	if dt.IsNegative() {
 		return errors.New("TransactionFee must be non-negative")
+	}
+	return nil
+}
+
+func validateMaxTransactionFee(i interface{}) error {
+	dt, ok := i.(int64)
+	if !ok {
+		return errors.Errorf("invalid MaxTransactionFee parameter type: %T", i)
+	}
+	if dt <= 0 {
+		return errors.New("MaxTransactionFee must be positive")
 	}
 	return nil
 }

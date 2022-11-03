@@ -67,6 +67,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetValidatorPercent(),
 		cmdSetTransactionFee(),
 		cmdSetBurnOnRevoke(),
+		cmdSetMaxTransactionFee(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -1573,6 +1574,52 @@ func cmdSetBurnOnRevoke() *cobra.Command {
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetMaxTransactionFee() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-max-transaction-fee <amount> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-max-transaction-fee 10_000000 "Set max fee of 10_000000" ivan`,
+		Aliases: []string{"set_max_transaction_fee", "smtf"},
+		Short:   "Propose to change max transaction fee (in uARTR)",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := strconv.ParseInt(args[0], 0, 64)
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_MAX_TRANSACTION_FEE,
+					Args: &types.Proposal_MinAmount{
+						MinAmount: &types.MinAmountArgs{
+							MinAmount: q,
 						},
 					},
 				},

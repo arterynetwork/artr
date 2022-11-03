@@ -43,7 +43,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	// NOTE: `tariffTotal` cannot be just assigned to `total` here, 'cause Int is a struct over a pointer.
 	total := sdk.NewIntFromBigInt(new(big.Int).Set(tariffTotal.BigInt()))
 
-	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee)
+	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee)
 	tariffTotal = tariffTotal.Sub(txFee)
 
 	if refInfo, err := k.referralKeeper.Get(ctx, addr.String()); err != nil {

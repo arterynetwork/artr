@@ -165,7 +165,8 @@
         }
       ],
       "params": {
-        "transaction_fee": "3/1000"
+        "transaction_fee": "3/1000",
+        "max_transaction_fee": "10000000"
       }
     },
     "auth": {

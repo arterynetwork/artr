@@ -23,6 +23,9 @@ message Params {
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
+
+  // MaxTransactionFee - transaction fee max amount in uARTR. Must be positive.
+  int64 max_transaction_fee = 4;
 }
 
 // Supply represents a struct that passively keeps track of the total supply

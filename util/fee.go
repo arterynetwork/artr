@@ -4,10 +4,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-func CalculateFee(amount sdk.Int, txFee Fraction) sdk.Int {
-	fee := sdk.NewInt(txFee.MulInt64(amount.Int64()).Int64())
+func CalculateFee(amount sdk.Int, txFeeFraction Fraction, txFeeMaxAmount int64) sdk.Int {
+	fee := sdk.NewInt(txFeeFraction.MulInt64(amount.Int64()).Int64())
 
-	maxFee := sdk.NewInt(10_000000)
+	maxFee := sdk.NewInt(txFeeMaxAmount)
 	if fee.GT(maxFee) {
 		fee = maxFee
 	}

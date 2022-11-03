@@ -51,8 +51,8 @@ func (k Keeper) GetTasks(ctx sdk.Context, since, to time.Time) []types.Task {
 	var (
 		store   = ctx.KVStore(k.storeKey)
 		items   []types.Task
-		sinceBz = key(since)
-		toBz    = key(to)
+		sinceBz = Key(since)
+		toBz    = Key(to)
 		it      = store.Iterator(sinceBz, toBz)
 	)
 	defer it.Close()
@@ -72,7 +72,7 @@ func (k Keeper) ScheduleTask(ctx sdk.Context, time time.Time, event string, data
 func (k Keeper) scheduleTask(ctx sdk.Context, task types.Task) {
 	var (
 		store = ctx.KVStore(k.storeKey)
-		key   = key(task.Time)
+		key   = Key(task.Time)
 		sch   types.Schedule
 	)
 	if bz := store.Get(key); bz != nil {
@@ -96,7 +96,7 @@ func (k Keeper) Delete(ctx sdk.Context, time time.Time, event string, payload []
 }
 func (k Keeper) delete(ctx sdk.Context, time time.Time, predicate func(types.Task)bool) {
 	store := ctx.KVStore(k.storeKey)
-	key := key(time)
+	key := Key(time)
 	bz := store.Get(key)
 
 	if bz == nil {
@@ -124,7 +124,7 @@ func (k Keeper) delete(ctx sdk.Context, time time.Time, predicate func(types.Tas
 // complete.
 func (k Keeper) PerformSchedule(ctx sdk.Context) {
 	store := cachekv.NewStore(ctx.KVStore(k.storeKey))
-	terminator := key(ctx.BlockTime().Add(time.Nanosecond))
+	terminator := Key(ctx.BlockTime().Add(time.Nanosecond))
 	it := store.Iterator(nil, terminator)
 
 	for ; it.Valid(); it.Next() {
@@ -158,7 +158,7 @@ func performSchedule(ctx sdk.Context, task types.Task, hook func(ctx sdk.Context
 	hook(ctx, task.Data, task.Time)
 }
 
-func key(t time.Time) []byte {
+func Key(t time.Time) []byte {
 	if t.Year() < 1970 || t.Year() > 2262 {
 		panic(errors.Errorf("time is out of range: %s", t.String()))
 	}

@@ -145,7 +145,7 @@ func (k BaseKeeper) SendCoinsFromAccountToModule(
 func (k BaseKeeper) PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error) {
 	for _, c := range amt {
 		if !util.IsSendable(c.Denom) { panic(errors.Errorf("%s is not sendable", c.Denom)) }
-		fee = fee.Add(sdk.NewCoin(c.Denom, util.CalculateFee(c.Amount, k.GetParams(ctx).TransactionFee)))
+		fee = fee.Add(sdk.NewCoin(c.Denom, util.CalculateFee(c.Amount, k.GetParams(ctx).TransactionFee, k.GetParams(ctx).MaxTransactionFee)))
 	}
 	if !fee.IsZero() {
 		err = errors.Wrapf(

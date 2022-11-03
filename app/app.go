@@ -384,6 +384,11 @@ func NewArteryApp(
 		UpdateStatusDowngradeTasks(app.scheduleKeeper, keys[referral.StoreKey], keys[scheduleTypes.StoreKey], ec.Marshaler),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.4.4", Chain(
+		InitMaxTransactionFeeParam(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
+		FixStatusDowngradeTasks(app.scheduleKeeper, keys[scheduleTypes.StoreKey], ec.Marshaler),
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(

@@ -398,7 +398,7 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	supply.Inflate(emission)
 	k.bankKeeper.SetSupply(ctx, supply)
 
-	fee := util.CalculateFee(ucoins, k.bankKeeper.GetParams(ctx).TransactionFee)
+	fee := util.CalculateFee(ucoins, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee)
 	if !fee.IsZero() {
 		ucoins = ucoins.Sub(fee)
 		fee := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, fee))
