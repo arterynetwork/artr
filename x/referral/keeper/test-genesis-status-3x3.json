@@ -8,6 +8,10 @@
             {
               "amount": "1000000000",
               "denom": "uartr"
+            },
+            {
+              "amount": "150000000000",
+              "denom": "uartrd"
             }
           ]
         },

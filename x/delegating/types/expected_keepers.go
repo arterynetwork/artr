@@ -56,6 +56,7 @@ type ProfileKeeper interface {
 
 type ReferralKeeper interface {
 	GetReferralFeesForDelegating(ctx sdk.Context, acc string) ([]referral.ReferralFee, error)
+	GetReferralValidatorFeesForDelegating(ctx sdk.Context, acc string) ([]referral.ReferralValidatorFee, error)
 }
 
 type NodingKeeper interface {

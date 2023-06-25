@@ -35,6 +35,8 @@ type Suite struct {
 	ctx       sdk.Context
 	k         referral.Keeper
 	subKeeper profileK.Keeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *Suite) SetupTest() {
@@ -46,6 +48,12 @@ func (s *Suite) SetupTest() {
 	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetReferralKeeper()
 	s.subKeeper = s.app.GetProfileKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *Suite) TearDownTest() {
@@ -216,15 +224,9 @@ func user(n int) string {
 	return app.DefaultGenesisUsers[fmt.Sprintf("user%d", n)].String()
 }
 
-var bbHeader = abci.RequestBeginBlock{
-	Header: tmproto.Header{
-		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-	},
-}
-
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }

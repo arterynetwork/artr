@@ -3,163 +3,15 @@
     "artrbank": {
       "balances": [
         {
-          "address": "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
           "address": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
           "coins": [
             {
-              "amount": "1000000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-          "coins": [
-            {
-              "amount": "1000000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
-          "coins": [
-            {
               "amount": "1000000000",
               "denom": "uartr"
             },
             {
-              "amount": "10000000000",
+              "amount": "150000000000",
               "denom": "uartrd"
-            }
-          ]
-        },
-        {
-          "address": "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            }
-          ]
-        },
-        {
-          "address": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
-            },
-            {
-              "amount": "10000000000",
-              "denom": "uartrd"
-            }
-          ]
-        },
-        {
-          "address": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
-          "coins": [
-            {
-              "amount": "1000000000",
-              "denom": "uartr"
             }
           ]
         }
@@ -168,17 +20,7 @@
         "min_send": "0",
         "transaction_fee": "3/1000",
         "max_transaction_fee": "10000000"
-      },
-      "supply": [
-        {
-          "amount": "2015000000000",
-          "denom": "uartr"
-        },
-        {
-          "amount": "20000000000",
-          "denom": "uartrd"
-        }
-      ]
+      }
     },
     "auth": {
       "accounts": [
@@ -588,12 +430,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "3452",
           "address": "artr1q2gesss2xgl030xrw40pk23p3gy9ctten09cnr",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "21",
-          "address": "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
           "sequence": "0"
         },
         {
@@ -7672,12 +7508,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "20",
-          "address": "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "2674",
           "address": "artr1xhqzdz4x5dg727y6ll2yc3xe2s4pjufn0n0s8e",
           "sequence": "0"
@@ -10780,12 +10610,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "17",
-          "address": "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "276",
           "address": "artr1fej7vlvt7ntvmsfedx4vhyx6dws0tkr3m873ml",
           "sequence": "0"
@@ -12990,12 +12814,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "9328",
           "address": "artr1tkufls2ya8yhqk80type794s2dxl7jvy3jktgv",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "19",
-          "address": "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
           "sequence": "0"
         },
         {
@@ -15372,12 +15190,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "3550",
           "address": "artr1d4cp30mnx6wzk9ekf03sqmctw7upcm6833cq7f",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "8",
-          "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
           "sequence": "0"
         },
         {
@@ -17968,12 +17780,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "13",
-          "address": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "4528",
           "address": "artr1sq70wmmant5qa44m7wjjwwmfad58zxmv33q3c6",
           "sequence": "0"
@@ -19834,12 +19640,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "6",
-          "address": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "9502",
           "address": "artr1359ljgrl08tg93vrpfaa4annvkmvkgdteklhr5",
           "sequence": "0"
@@ -20620,12 +20420,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "18",
-          "address": "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "4486",
           "address": "artr1j94ccgwnk4f3vxsksypz6xyu67ljwstz9559xs",
           "sequence": "0"
@@ -20862,12 +20656,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "10382",
           "address": "artr1j2zkzf6zf7cvejth5gdsksq9qw42pdupa9wzfm",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "22",
-          "address": "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf",
           "sequence": "0"
         },
         {
@@ -21906,12 +21694,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "3098",
           "address": "artr1n2q7k8a43c7nnwzka29tqx8qjq0r565tltyr6k",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "4",
-          "address": "artr1n2gkwynafyt6jqqjptyjeyzs4un6mvexf5vypg",
           "sequence": "0"
         },
         {
@@ -23224,12 +23006,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "12",
-          "address": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "3656",
           "address": "artr15n7ulepf7rxhqyus29w7wrgf5xtudd40al78ys",
           "sequence": "0"
@@ -23592,12 +23368,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "9086",
           "address": "artr14qjj777hz0pupqqs4v24wkmxlvdxqq0nvlc57v",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "15",
-          "address": "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
           "sequence": "0"
         },
         {
@@ -24460,12 +24230,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "1",
-          "address": "artr14eyw3l9pszt7efjwvy6venvnhnaenn4uy8s9rk",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "10164",
           "address": "artr14eyudlhq3nkmvq65lmhf4qf29cmdg9ccv6xlh6",
           "sequence": "0"
@@ -24720,12 +24484,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "8540",
           "address": "artr1kqrdkyhvmq6nfj3gj8j4w44qxddm7gwgwt9ake",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "5",
-          "address": "artr1kqv0kjz9g74zhk4hm8r7ac8m9d8ynkhgz9lekl",
           "sequence": "0"
         },
         {
@@ -25134,12 +24892,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "4282",
           "address": "artr1k2dk2a9wu8fsv68hwm80tmyq025entgh4slr7d",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "2",
-          "address": "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8",
           "sequence": "0"
         },
         {
@@ -26140,12 +25892,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "3",
-          "address": "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "348",
           "address": "artr1hxqrnhtduqttrclxzydls8demcspqm7c2sv24n",
           "sequence": "0"
@@ -26202,12 +25948,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "7638",
           "address": "artr1h8sze9gk969d5rh9cky5gep6x6xe77z2l0v5yk",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "9",
-          "address": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
           "sequence": "0"
         },
         {
@@ -26286,12 +26026,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "4684",
           "address": "artr1h2cecs5rk75hgcnvv9j8j905llnmkr0kqcmpr9",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "16",
-          "address": "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
           "sequence": "0"
         },
         {
@@ -26430,12 +26164,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "9484",
           "address": "artr1hduxhc22xd5n6qsl7ztflracepedxrnvgkvwfz",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "11",
-          "address": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
           "sequence": "0"
         },
         {
@@ -26970,12 +26698,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "2964",
           "address": "artr1hasamy2q3r6stzkvzazy6nfzgvxns2a8zn85rv",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "7",
-          "address": "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76",
           "sequence": "0"
         },
         {
@@ -27672,12 +27394,6 @@
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "1472",
           "address": "artr1c36367yyw94frck86tetcm758kan4cuxlwhnj6",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "10",
-          "address": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu",
           "sequence": "0"
         },
         {
@@ -32902,12 +32618,6 @@
         },
         {
           "@type": "/cosmos.auth.v1beta1.BaseAccount",
-          "accountNumber": "14",
-          "address": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
-          "sequence": "0"
-        },
-        {
-          "@type": "/cosmos.auth.v1beta1.BaseAccount",
           "accountNumber": "10780",
           "address": "artr1uay43c4vhlujgm86yck4mt5u5750780nhc99wg",
           "sequence": "0"
@@ -36373,11 +36083,11 @@
     "noding": {
       "active": [
         {
-          "account": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-          "pub_key": "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e"
+          "account": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+          "pub_key": "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e",
+          "staff": true
         }
       ],
-      "non_active": null,
       "params": {
         "jail_after": 2,
         "max_validators": 100,
@@ -36404,20 +36114,20 @@
         "base_vpn_gb": 7,
         "card_magic": "112233592347",
         "creators": [
-          "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj"
+          "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
         ],
         "rename_price": "0",
         "storage_gb_price": 10,
+        "subscription_price": 1990,
+        "token_rate": "100000",
+        "token_rate_signers": [
+          "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
+        ],
+        "vpn_gb_price": 10,
         "storage_signers": [
           "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
           "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l"
         ],
-        "subscription_price": 1990,
-        "token_rate": "100000",
-        "token_rate_signers": [
-          "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj"
-        ],
-        "vpn_gb_price": 10,
         "vpn_signers": [
           "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
           "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l"
@@ -37099,16 +36809,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-0-1713",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user14",
             "noding": false,
             "storage": false,
             "validator": false
@@ -45285,6 +44985,16 @@
           }
         },
         {
+          "address": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+          "profile": {
+            "active_until": "2022-01-04T03:00:00Z",
+            "nickname": "root",
+            "noding": true,
+            "storage": false,
+            "validator": true
+          }
+        },
+        {
           "address": "artr1yhffcr3gka0mdy4mpmm3smsk8zp28lalpkl4kg",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -48889,16 +48599,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-0-1188",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user13",
             "noding": false,
             "storage": false,
             "validator": false
@@ -54075,16 +53775,6 @@
           }
         },
         {
-          "address": "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user10",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
           "address": "artr1fej7vlvt7ntvmsfedx4vhyx6dws0tkr3m873ml",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -57759,16 +57449,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-2-649",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user12",
             "noding": false,
             "storage": false,
             "validator": false
@@ -61732,16 +61412,6 @@
             "noding": false,
             "storage": false,
             "validator": false
-          }
-        },
-        {
-          "address": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user1",
-            "noding": true,
-            "storage": false,
-            "validator": true
           }
         },
         {
@@ -66049,16 +65719,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-0-955",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user6",
             "noding": false,
             "storage": false,
             "validator": false
@@ -70465,16 +70125,6 @@
           }
         },
         {
-          "address": "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user11",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
           "address": "artr1j94ccgwnk4f3vxsksypz6xyu67ljwstz9559xs",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -70869,16 +70519,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-2-1176",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user15",
             "noding": false,
             "storage": false,
             "validator": false
@@ -74795,16 +74435,6 @@
           }
         },
         {
-          "address": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user5",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
           "address": "artr15n7ulepf7rxhqyus29w7wrgf5xtudd40al78ys",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -75409,16 +75039,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-2-528",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user8",
             "noding": false,
             "storage": false,
             "validator": false
@@ -79725,16 +79345,6 @@
           }
         },
         {
-          "address": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user2",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
           "address": "artr1h84hw48zh002q69r69mhqa52m86ayslflc8xju",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -79859,16 +79469,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-1-328",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user9",
             "noding": false,
             "storage": false,
             "validator": false
@@ -80099,16 +79699,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-2-727",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user4",
             "noding": false,
             "storage": false,
             "validator": false
@@ -82159,16 +81749,6 @@
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
             "nickname": "tail-0-723",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
-          "address": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user3",
             "noding": false,
             "storage": false,
             "validator": false
@@ -90875,16 +90455,6 @@
           }
         },
         {
-          "address": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam",
-          "profile": {
-            "active_until": "2022-01-04T03:00:00Z",
-            "nickname": "user7",
-            "noding": false,
-            "storage": false,
-            "validator": false
-          }
-        },
-        {
           "address": "artr1uay43c4vhlujgm86yck4mt5u5750780nhc99wg",
           "profile": {
             "active_until": "2022-01-01T00:21:00Z",
@@ -96612,66 +96182,11 @@
       "other_accounts": [
         {
           "referrals": [
-            "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj"
-          ],
-          "referrer": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
-        },
-        {
-          "referrals": [
-            "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
-            "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu"
-          ],
-          "referrer": "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj"
-        },
-        {
-          "referrals": [
-            "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6",
-            "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn"
-          ],
-          "referrer": "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l"
-        },
-        {
-          "referrals": [
-            "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq",
-            "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam"
-          ],
-          "referrer": "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu"
-        },
-        {
-          "referrals": [
-            "artr14qn52aqd5dp4eycngm9e5ryrqdaf0u2zacp939",
-            "artr1h2emj28qqj0e4k3azyzqdqznxdkf9r55w8qw60"
-          ],
-          "referrer": "artr1hdayszxl2ahw4rm0mct72rxzukq058mauc0dt6"
-        },
-        {
-          "referrals": [
-            "artr1fedl94g9gqnntzqtgmxyp6msztzvw435nv2fr7",
-            "artr1j9j50h6k3v2p70nar6234etd2amxdeys8lzg9g"
-          ],
-          "referrer": "artr15n7wt45x4tkgunp25wylrjymjnkqug80a78jnn"
-        },
-        {
-          "referrals": [
-            "artr1tkl5vyca6mlfhl0zmjkl8nkcmlulpre58lpnwy",
-            "artr1xkwt5k2pktltp0jzk6hjz9k2k89l30448t74rq"
-          ],
-          "referrer": "artr1sqh7ly9z3yme0k32f42qu330a663zkculmx7qq"
-        },
-        {
-          "referrals": [
-            "artr1q2w5ytm97g490lcux69n3vfprqsdv65vtp8nun",
-            "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf"
-          ],
-          "referrer": "artr1uaz24ndash8umld4xpfn3zpknk5ske3xv4fqam"
-        },
-        {
-          "referrals": [
             "artr1847dh25pq47cysckpa05lh7yt7ckuqs8r6gsgu",
             "artr1ykm27k4ju4whlmre776s9s55gjscvvrfzy9ejx",
             "artr1utkd2et99v496k973qvpgn7w6d6zr83feclmnc"
           ],
-          "referrer": "artr1j29a9493fmlkjr9hmp54ltjun2meph9l5fhagf"
+          "referrer": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
         },
         {
           "referrals": [
@@ -102691,9 +102206,9 @@
       ],
       "params": {
         "company_accounts": {
-          "for_delegating": "artr1haatt0sqj2k0et9t4m4tp2qeeh8vvuf8zvur76",
-          "for_subscription": "artr1h93uunesjjcn2n8j47pq43ty5m7kusu0k39m7r",
-          "top_referrer": "artr1k20rvph0j2pr4g3jwpprdaw23rathkxc2w6ce8"
+          "for_delegating": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+          "for_subscription": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+          "top_referrer": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
         },
         "delegating_award": {
           "company": "5/1000",
@@ -102739,9 +102254,7 @@
     },
     "voting": {
       "government": [
-        "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj",
-        "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l",
-        "artr1cjqvu8pns5ff3vcy4r7qwy57f2ts8chsjg8kyu"
+        "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
       ],
       "params": {
         "voting_period": 18,

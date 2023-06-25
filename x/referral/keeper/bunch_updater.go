@@ -138,6 +138,18 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 		return errors.Wrap(err, "callback failed")
 	}
 	if checkForStatusUpdate {
+		if value.Status == types.HeroDeprecatedStatus {
+			nextStatus := value.Status + 1
+			util.EmitEvent(bu.ctx,
+				&types.EventStatusUpdated{
+					Address: acc,
+					Before:  value.Status,
+					After:   nextStatus,
+				},
+			)
+			bu.k.setStatus(bu.ctx, &value, nextStatus, acc)
+			bu.addCallback(StatusUpdatedCallback, acc)
+		}
 		checkResult, err := checkStatusRequirements(value.Status, value, bu)
 		if err != nil {
 			return err
@@ -169,12 +181,18 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 					break
 				}
 				nextStatus++
+				if nextStatus == types.HeroDeprecatedStatus {
+					nextStatus++
+				}
 				checkResult, err = checkStatusRequirements(nextStatus, value, bu)
 				if err != nil {
 					return err
 				}
 				if !checkResult.Overall {
 					nextStatus--
+					if nextStatus == types.HeroDeprecatedStatus {
+						nextStatus--
+					}
 					break
 				}
 			}

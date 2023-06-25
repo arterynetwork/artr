@@ -118,7 +118,7 @@ type ArteryApp struct {
 	bankKeeper       bank.Keeper
 	paramsKeeper     paramKeeper.Keeper
 	upgradeKeeper    upgradeKeeper.Keeper
-	referralKeeper   referral.Keeper
+	referralKeeper   *referral.Keeper
 	profileKeeper    profileKeeper.Keeper
 	scheduleKeeper   scheduleKeeper.Keeper
 	delegatingKeeper *delegating.Keeper
@@ -304,6 +304,7 @@ func NewArteryApp(
 		app.bankKeeper,
 	)
 
+	app.referralKeeper.SetKeepers(app.nodingKeeper)
 	app.delegatingKeeper.SetKeepers(app.nodingKeeper)
 
 	app.bankKeeper.AddHook("SetCoins", "update-referral",
@@ -333,10 +334,10 @@ func NewArteryApp(
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
 	app.referralKeeper.AddHook(referral.BanishedCallback, app.delegatingKeeper.OnBanished)
 
-	app.upgradeKeeper.SetUpgradeHandler("2.0.1", RecalculateActiveReferrals(app.referralKeeper))
+	app.upgradeKeeper.SetUpgradeHandler("2.0.1", RecalculateActiveReferrals(*app.referralKeeper))
 	app.upgradeKeeper.SetUpgradeHandler("2.1.0",
 		ScheduleBanishment(
-			app.referralKeeper,
+			*app.referralKeeper,
 			app.bankKeeper,
 			keys[referral.StoreKey],
 			keys[scheduleTypes.StoreKey],
@@ -349,7 +350,7 @@ func NewArteryApp(
 	))
 	app.upgradeKeeper.SetUpgradeHandler("2.2.1", Chain(
 		ForceGlobalDelegation(
-			app.referralKeeper,
+			*app.referralKeeper,
 			app.bankKeeper,
 			*app.delegatingKeeper,
 			app.scheduleKeeper,
@@ -357,14 +358,14 @@ func NewArteryApp(
 			keys[delegating.MainStoreKey],
 			ec.Marshaler,
 		),
-		RefreshReferralStatuses(app.referralKeeper),
+		RefreshReferralStatuses(*app.referralKeeper),
 	))
 	app.upgradeKeeper.SetUpgradeHandler("2.3.0", NopUpgradeHandler)
-	app.upgradeKeeper.SetUpgradeHandler("2.3.1", RefreshReferralStatuses(app.referralKeeper))
+	app.upgradeKeeper.SetUpgradeHandler("2.3.1", RefreshReferralStatuses(*app.referralKeeper))
 	app.upgradeKeeper.SetUpgradeHandler("2.3.2", Chain(
 		TransferFromTheBanished(app.scheduleKeeper, ec.Marshaler, keys[referral.StoreKey]),
 		UnbanishAccountsWithDelegation(app.bankKeeper, app.scheduleKeeper, ec.Marshaler, keys[referral.StoreKey]),
-		RefreshReferralStatuses(app.referralKeeper),
+		RefreshReferralStatuses(*app.referralKeeper),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.0", InitValidatorBonusParam())
@@ -374,9 +375,9 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.2", Chain(
 		InitTransactionFeeParam(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
-		RemovePromoBonuses(app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
-		RemoveStatusBonuses(app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
-		RemoveLeaderBonuses(app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
+		RemovePromoBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
+		RemoveStatusBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
+		RemoveLeaderBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.3", Chain(
@@ -389,6 +390,10 @@ func NewArteryApp(
 		FixStatusDowngradeTasks(app.scheduleKeeper, keys[scheduleTypes.StoreKey], ec.Marshaler),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.4.5", Chain(
+		ScheduleMissingBanishmentAndRefreshReferralStatuses(*app.referralKeeper, app.bankKeeper, app.scheduleKeeper),
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
@@ -398,19 +403,19 @@ func NewArteryApp(
 		upgrade.NewAppModule(app.upgradeKeeper),
 		profile.NewAppModule(app.profileKeeper, app.accountKeeper),
 		referral.NewAppModule(
-			app.referralKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.bankKeeper,
+			*app.referralKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.bankKeeper,
 		),
 		delegating.NewAppModule(
 			*app.delegatingKeeper, app.accountKeeper, app.scheduleKeeper, app.bankKeeper, app.profileKeeper,
-			app.referralKeeper,
+			*app.referralKeeper,
 		),
 		noding.NewAppModule(
-			app.nodingKeeper, app.referralKeeper, app.accountKeeper, app.bankKeeper,
+			app.nodingKeeper, *app.referralKeeper, app.accountKeeper, app.bankKeeper,
 		),
 		earning.NewAppModule(app.earningKeeper, app.bankKeeper, app.scheduleKeeper),
 		voting.NewAppModule(
 			app.votingKeeper, app.scheduleKeeper, app.upgradeKeeper, app.nodingKeeper, app.delegatingKeeper,
-			app.referralKeeper, app.profileKeeper, app.earningKeeper,
+			*app.referralKeeper, app.profileKeeper, app.earningKeeper,
 		),
 	)
 

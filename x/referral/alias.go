@@ -20,7 +20,6 @@ const (
 	StatusBusinessman      = types.STATUS_BUSINESSMAN
 	StatusProfessional     = types.STATUS_PROFESSIONAL
 	StatusTopLeader        = types.STATUS_TOP_LEADER
-	StatusHero             = types.STATUS_HERO
 	StatusAbsoluteChampion = types.STATUS_ABSOLUTE_CHAMPION
 
 	StatusUpdatedCallback = keeper.StatusUpdatedCallback

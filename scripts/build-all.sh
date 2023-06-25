@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+cd /
 apk add --no-cache git make
 git config --global --add safe.directory /art-node
 cd /art-node

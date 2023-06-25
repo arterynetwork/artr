@@ -21,8 +21,13 @@ import (
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating"
+	"github.com/arterynetwork/artr/x/delegating/keeper"
 	"github.com/arterynetwork/artr/x/delegating/types"
 )
+
+func init() {
+	keeper.InitDefaultGenesisUsers()
+}
 
 func TestDelegatingKeeper(t *testing.T) { suite.Run(t, new(Suite)) }
 
@@ -37,6 +42,8 @@ type Suite struct {
 	k   delegating.Keeper
 	bk  bank.Keeper
 	accKeeper authK.AccountKeeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *Suite) SetupTest() {
@@ -56,6 +63,12 @@ func (s *Suite) SetupTest() {
 	s.k = s.app.GetDelegatingKeeper()
 	s.bk = s.app.GetBankKeeper()
 	s.accKeeper = s.app.GetAccountKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, keeper.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *Suite) TearDownTest() {
@@ -68,8 +81,8 @@ var TENTH = util.NewFraction(1, 10)
 
 func (s *Suite) TestDelegatingAndRevoking() {
 	genesis_time := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -119,8 +132,8 @@ func (s *Suite) TestDelegatingAndRevoking() {
 }
 
 func (s *Suite) TestAccrueAfterRevoke() {
-	user := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -205,8 +218,8 @@ func (s *Suite) TestAccrueAfterRevoke() {
 
 func (s *Suite) TestAccrueOnRevoke() {
 	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	s.Equal(
 		util.Uartrs(1_000_000000),
 		s.bk.GetBalance(s.ctx, user),
@@ -293,8 +306,8 @@ func (s *Suite) TestAccrueOnRevoke() {
 }
 
 func (s *Suite) TestAccrue_MissedPart() {
-	user := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -346,8 +359,8 @@ func (s *Suite) TestAccrue_MissedPart() {
 }
 
 func (s *Suite) TestAccrueOnRevoke_MissedPart() {
-	user := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -403,9 +416,9 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 
 func (s *Suite) TestAccrue_ValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
-	validator := app.DefaultGenesisUsers["user3"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 
-	s.NoError(s.bk.SendCoins(s.ctx, app.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
+	s.NoError(s.bk.SendCoins(s.ctx, keeper.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
 	s.nextBlock()
 
 	vr := util.NewFraction(309, 1000)
@@ -438,7 +451,7 @@ func (s *Suite) TestAccrue_ValidatorPercent() {
 }
 
 func (s *Suite) TestMinDelegation() {
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 	s.ErrorIs(s.k.Delegate(s.ctx, user, sdk.NewInt(999)), types.ErrLessThanMinimum)
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1000)))
 
@@ -453,7 +466,7 @@ func (s *Suite) TestDelegateDustAmount() {
 	p := s.bk.GetParams(s.ctx)
 	p.DustDelegation = 1_000000
 	s.bk.SetParams(s.ctx, p)
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000000)))
 	s.Equal(int64(847450), s.bk.GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64())
@@ -466,7 +479,7 @@ func (s *Suite) TestLeaveDust() {
 	p := s.bk.GetParams(s.ctx)
 	p.DustDelegation = 1_000000
 	s.bk.SetParams(s.ctx, p)
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
 	s.nextBlock()
@@ -479,7 +492,7 @@ func (s *Suite) TestLeaveDust() {
 }
 
 func (s *Suite) TestRevokePeriod() {
-	user := app.DefaultGenesisUsers["user2"]
+	user := keeper.DefaultGenesisUsers["user2"]
 	genesisTime := s.ctx.BlockTime()
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(100_000000)))
@@ -537,7 +550,7 @@ func (s *Suite) TestRevokePeriod() {
 
 func (s *Suite) TestGetAccumulation() {
 	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -570,7 +583,7 @@ func (s *Suite) TestGetAccumulation() {
 
 func (s *Suite) TestGetAccumulation_MissedPart() {
 	genesisTime := s.ctx.BlockTime()
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -605,10 +618,10 @@ func (s *Suite) TestGetAccumulation_MissedPart() {
 
 func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
-	user      := app.DefaultGenesisUsers["user4"]
-	validator := app.DefaultGenesisUsers["user3"]
+	user      := keeper.DefaultGenesisUsers["user4"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 
-	s.NoError(s.bk.SendCoins(s.ctx, app.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
+	s.NoError(s.bk.SendCoins(s.ctx, keeper.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
 	s.nextBlock()
 
 	vr := util.NewFraction(309, 1000)
@@ -672,7 +685,7 @@ func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 
 func (s *Suite) TestDelegateAfterBanishment() {
 	rk := s.app.GetReferralKeeper()
-	user := app.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4*24*time.Hour))
 	s.nextBlock()
@@ -701,10 +714,10 @@ func (s *Suite) TestDelegateAfterBanishment() {
 
 func (s *Suite) TestValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
-	validator := app.DefaultGenesisUsers["user3"]
+	validator := keeper.DefaultGenesisUsers["user3"]
 	user := validator
 
-	s.NoError(s.bk.SendCoins(s.ctx, app.DefaultGenesisUsers["user4"], user, util.Uartrs(1_000_000000)))
+	s.NoError(s.bk.SendCoins(s.ctx, keeper.DefaultGenesisUsers["user4"], user, util.Uartrs(1_000_000000)))
 	s.nextBlock()
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
@@ -736,16 +749,10 @@ func (s *Suite) TestValidatorPercent() {
 	)
 }
 
-var bbHeader = abci.RequestBeginBlock{
-	Header: tmproto.Header{
-		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-	},
-}
-
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }
 

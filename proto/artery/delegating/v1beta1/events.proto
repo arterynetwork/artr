@@ -26,6 +26,11 @@ message EventAccrue {
   uint64 fee = 3;
 }
 
+message EventValidatorAccrue {
+	repeated string accounts = 1;
+	repeated uint64 ucoins = 2;
+}
+
 message EventMassiveRevoke {
   string account = 1;
   uint64 ucoins = 2;

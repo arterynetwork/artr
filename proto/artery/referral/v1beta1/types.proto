@@ -9,6 +9,9 @@ option go_package = "github.com/arterynetwork/artr/x/referral/types";
 enum Status {
   option (gogoproto.goproto_enum_prefix) = false;
 
+  reserved 8;
+  reserved "STATUS_HERO";
+
   STATUS_UNSPECIFIED = 0;
   STATUS_LUCKY = 1;
   STATUS_LEADER = 2;
@@ -17,7 +20,6 @@ enum Status {
   STATUS_BUSINESSMAN = 5;
   STATUS_PROFESSIONAL = 6;
   STATUS_TOP_LEADER = 7;
-  STATUS_HERO = 8;
   STATUS_ABSOLUTE_CHAMPION = 9;
 }
 

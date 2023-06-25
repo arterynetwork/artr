@@ -43,3 +43,7 @@ type BankKeeper interface {
 type SupplyKeeper interface {
 	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 }
+
+type NodingKeeper interface {
+	IsActiveValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error)
+}

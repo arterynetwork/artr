@@ -35,6 +35,8 @@ type SSuite struct {
 	k       keeper.Keeper
 	bk      bank.Keeper
 	sk      scheduleK.Keeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *SSuite) SetupTest() {
@@ -49,6 +51,12 @@ func (s *SSuite) SetupTest() {
 	s.k = s.app.GetProfileKeeper()
 	s.bk = s.app.GetBankKeeper()
 	s.sk = s.app.GetScheduleKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *SSuite) TearDownTest() {
@@ -417,15 +425,9 @@ func (s *SSuite) TestImExtra_AutoPay() {
 	s.EqualValues(balance - 2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 }
 
-var bbHeader = abci.RequestBeginBlock{
-	Header: tmproto.Header{
-		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-	},
-}
-
 func (s *SSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }

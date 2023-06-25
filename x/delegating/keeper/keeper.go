@@ -35,7 +35,7 @@ type Keeper struct {
 func NewKeeper(
 	cdc codec.BinaryMarshaler, mainKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accountKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, profileKeeper types.ProfileKeeper,
-	bankKeeper types.BankKeeper, refKeeper referral.Keeper,
+	bankKeeper types.BankKeeper, refKeeper types.ReferralKeeper,
 ) *Keeper {
 	keeper := Keeper{
 		mainStoreKey:    mainKey,
@@ -421,6 +421,58 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	)
 }
 
+func (k Keeper) accrueToValidator(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
+	if ucoins.IsZero() {
+		return
+	}
+
+	profile := k.profileKeeper.GetProfile(ctx, acc)
+	if profile == nil {
+		k.Logger(ctx).Error("profile not found, not accruing", "acc", acc)
+		return
+	}
+
+	fees, err := k.refKeeper.GetReferralValidatorFeesForDelegating(ctx, acc.String())
+	if err != nil {
+		k.Logger(ctx).Error(err.Error())
+		panic(err)
+	}
+	k.Logger(ctx).Debug(fmt.Sprintf("ValidatorFees: %v", fees))
+
+	totalFee := int64(0)
+	outputs := make([]bank.Output, 0, len(fees))
+
+	event := types.EventValidatorAccrue{
+		Accounts: make([]string, 0, len(fees)),
+		Ucoins:   make([]uint64, 0, len(fees)),
+	}
+
+	for _, fee := range fees {
+		x := fee.Ratio.Div(util.NewFraction(30, 1)).Reduce().MulInt64(ucoins.Int64()).Int64()
+		if x == 0 {
+			continue
+		}
+		totalFee += x
+		outputs = append(outputs, bank.NewOutput(fee.GetBeneficiary(), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x)))))
+		event.Accounts = append(event.Accounts, fee.Beneficiary)
+		event.Ucoins = append(event.Ucoins, uint64(x))
+	}
+	if totalFee != 0 {
+		for _, out := range outputs {
+			err = k.bankKeeper.AddCoins(ctx, out.Address, out.Coins)
+			if err != nil {
+				panic(err)
+			}
+		}
+		emission := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(totalFee)))
+		supply := k.bankKeeper.GetSupply(ctx)
+		supply.Inflate(emission)
+		k.bankKeeper.SetSupply(ctx, supply)
+
+		util.EmitEvent(ctx, &event)
+	}
+}
+
 func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Record, nextPayment time.Time) {
 	if item.NextAccrue != nil {
 		dayPart := k.dayPart(ctx, *item.NextAccrue)
@@ -433,8 +485,10 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 		isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
 		if err != nil { panic(err) }
 		interest := k.percent(ctx, delegated, isActiveProfile, isActiveValidator).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
+		interestToValidator := dayPart.Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {
 			k.accrue(ctx, acc, sdk.NewInt(interest))
+			k.accrueToValidator(ctx, acc, sdk.NewInt(interestToValidator))
 		}
 		k.scheduleKeeper.Delete(ctx, *item.NextAccrue, types.AccrueHookName, acc)
 	}

@@ -61,7 +61,7 @@ func (app ArteryApp) GetAccountKeeper() authKeeper.AccountKeeper { return app.ac
 func (app ArteryApp) GetBankKeeper() bank.Keeper                 { return app.bankKeeper }
 func (app ArteryApp) GetParamsKeeper() paramKeeper.Keeper        { return app.paramsKeeper }
 func (app ArteryApp) GetUpgradeKeeper() upgradeKeeper.Keeper     { return app.upgradeKeeper }
-func (app ArteryApp) GetReferralKeeper() referral.Keeper         { return app.referralKeeper }
+func (app ArteryApp) GetReferralKeeper() referral.Keeper         { return *app.referralKeeper }
 func (app ArteryApp) GetProfileKeeper() profileKeeper.Keeper     { return app.profileKeeper }
 func (app ArteryApp) GetScheduleKeeper() scheduleKeeper.Keeper   { return app.scheduleKeeper }
 func (app ArteryApp) GetDelegatingKeeper() delegating.Keeper     { return *app.delegatingKeeper }

@@ -49,9 +49,11 @@ type BaseSuite struct {
 	ak       authK.AccountKeeper
 	bk       bank.Keeper
 	storeKey sdk.StoreKey
+
+	bbHeader abci.RequestBeginBlock
 }
 
-func (s *BaseSuite) setupTest(genesis json.RawMessage) {
+func (s *BaseSuite) setupTest(genesis json.RawMessage, consPubKey string) {
 	defer func() {
 		if err := recover(); err != nil {
 			s.FailNow("panic in setup", err)
@@ -65,6 +67,12 @@ func (s *BaseSuite) setupTest(genesis json.RawMessage) {
 	s.ak = s.app.GetAccountKeeper()
 	s.bk = s.app.GetBankKeeper()
 	s.storeKey = s.app.GetKeys()[referral.ModuleName]
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, consPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *BaseSuite) TearDownTest() {
@@ -86,7 +94,7 @@ func (s *Suite) SetupTest() {
 			s.FailNow("panic on setup", e)
 		}
 	}()
-	s.setupTest(nil)
+	s.setupTest(nil, app.DefaultUser1ConsPubKey)
 
 	s.pk = s.app.GetProfileKeeper()
 	s.dk = s.app.GetDelegatingKeeper()
@@ -96,7 +104,7 @@ var (
 	THOUSAND = util.Uartrs(1_000_000000)
 	STAKE    = sdk.NewCoins(
 		sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-		sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+		sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 	)
 )
 
@@ -182,7 +190,7 @@ func (s *Suite) TestGetters() {
 	_, _, child2 := testdata.KeyTestPubAddr()
 	s.NoError(
 		s.set(acc.String(), types.Info{
-			Status:    types.STATUS_HERO,
+			Status:    types.STATUS_TOP_LEADER,
 			Referrer:  parent.String(),
 			Referrals: []string{child1.String(), child2.String()},
 			//			Coins:                [11]sdk.Int{},
@@ -194,7 +202,7 @@ func (s *Suite) TestGetters() {
 
 	resultStatus, err := s.k.GetStatus(s.ctx, acc.String())
 	s.NoError(err, "GetStatus without error")
-	s.Equal(types.STATUS_HERO, resultStatus, "GetStatus")
+	s.Equal(types.STATUS_TOP_LEADER, resultStatus, "GetStatus")
 
 	resultParent, err := s.k.GetParent(s.ctx, acc.String())
 	s.NoError(err, "GetParent without error")
@@ -224,7 +232,7 @@ func (s *Suite) TestGetCoinsInNetwork() {
 		)
 	}
 	s.NoError(s.set(accounts[0], types.Info{
-		Status:          types.STATUS_LEADER,
+		Status:          types.STATUS_LUCKY,
 		Active:          true,
 		ActiveRefCounts: []uint64{1},
 		Coins:           []sdk.Int{sdk.NewInt(3)},
@@ -304,7 +312,7 @@ func (s *Suite) TestReferralFees() {
 
 	res, err := s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForDelegating all newbies: no error")
-	s.Equal(4, len(res), "GetReferralFeesForDelegating all newbies: len")
+	s.Equal(6, len(res), "GetReferralFeesForDelegating all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
 		Ratio:       util.Percent(5),
@@ -314,17 +322,25 @@ func (s *Suite) TestReferralFees() {
 		Ratio:       util.Percent(1),
 	}, "GetReferralFesForDelegating all newbies: lvl 2")
 	s.Contains(res, types.ReferralFee{
+		Beneficiary: accounts[8],
+		Ratio:       util.Percent(1),
+	}, "GetReferralFesForDelegating all newbies: lvl 3")
+	s.Contains(res, types.ReferralFee{
+		Beneficiary: accounts[7],
+		Ratio:       util.Percent(2),
+	}, "GetReferralFesForDelegating all newbies: lvl 4")
+	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForDelegating,
 		Ratio:       util.Permille(5),
 	}, "GetReferralFesForDelegating all newbies: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Permille(85),
+		Ratio:       util.Permille(55),
 	}, "GetReferralFesForDelegating all newbies: \"top referrer\"")
 
 	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
 	s.NoError(err, "GetReferralFeesForSubscription all newbies: no error")
-	s.Equal(4, len(res), "GetReferralFeesForSubscription all newbies: len")
+	s.Equal(6, len(res), "GetReferralFeesForSubscription all newbies: len")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: accounts[10],
 		Ratio:       util.Percent(15),
@@ -334,12 +350,20 @@ func (s *Suite) TestReferralFees() {
 		Ratio:       util.Percent(10),
 	}, "GetReferralFeesForSubscription all newbies: lvl 2")
 	s.Contains(res, types.ReferralFee{
+		Beneficiary: accounts[8],
+		Ratio:       util.Percent(7),
+	}, "GetReferralFesForDelegating all newbies: lvl 3")
+	s.Contains(res, types.ReferralFee{
+		Beneficiary: accounts[7],
+		Ratio:       util.Percent(7),
+	}, "GetReferralFesForDelegating all newbies: lvl 4")
+	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.ForSubscription,
 		Ratio:       util.Percent(25),
 	}, "GetReferralFeesForSubscription all newbies: company")
 	s.Contains(res, types.ReferralFee{
 		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Percent(44),
+		Ratio:       util.Percent(30),
 	}, "GetReferralFeesForSubscription all newbies: \"top referrer\"")
 
 	for i := 0; i < 12; i++ {
@@ -1017,8 +1041,8 @@ func (s Suite) TestTransition() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		34_990_000000,
-		14_000_000000, 19_990_000000,
+		54_990_000000,
+		24_000_000000, 29_990_000000,
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
@@ -1084,8 +1108,8 @@ func (s Suite) TestTransition_Decline() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		34_990_000000,
-		16_990_000000, 17_000_000000,
+		54_990_000000,
+		26_990_000000, 27_000_000000,
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
@@ -1117,8 +1141,8 @@ func (s Suite) TestTransition_Timeout() {
 		s.Equal(n, cz)
 	}
 	for i, n := range []int64{
-		34_990_000000,
-		16_990_000000, 17_000_000000,
+		54_990_000000,
+		26_990_000000, 27_000_000000,
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
@@ -1178,8 +1202,8 @@ func (s Suite) TestTransition_Timeout() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		35_000_000000,
-		16_990_000000, 17_000_000000,
+		55_000_000000,
+		26_990_000000, 27_000_000000,
 		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
@@ -1200,7 +1224,7 @@ func (s Suite) TestTransition_Validate_Circle() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
@@ -1216,7 +1240,7 @@ func (s Suite) TestTransition_Validate_Self() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
@@ -1241,8 +1265,6 @@ func (s Suite) TestBanishment() {
 	user := app.DefaultGenesisUsers["user2"].String()
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
-
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
@@ -1262,6 +1284,8 @@ func (s Suite) TestBanishment() {
 	s.False(info.Active)
 	s.Zero(len(info.Referrals))
 	s.Equal(types.STATUS_LUCKY, info.Status)
+
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
@@ -1318,7 +1342,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	s.Equal(parent.String(), info.Referrer)
 	s.Nil(info.BanishmentAt)
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	info, err = s.get(user)
 	s.NoError(err)
@@ -1342,8 +1366,6 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	user := app.DefaultGenesisUsers["user2"].String()
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
-
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
@@ -1353,6 +1375,8 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	s.False(info.Active)
 	s.NotZero(len(info.Referrals))
 	s.Equal(types.STATUS_LEADER, info.Status)
+
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
@@ -1390,7 +1414,7 @@ func (s Suite) TestComeBack() {
 	user := app.DefaultGenesisUsers["user2"].String()
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(10_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
@@ -1495,7 +1519,7 @@ func (s *TransitionBorderlineSuite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
-	s.setupTest(data)
+	s.setupTest(data, "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e")
 
 	s.accounts = map[string]string{
 		"1":     "artr1qq9gvskgjkwfkqexeapwps0cnqj6pxkz4nevre",
@@ -1526,18 +1550,18 @@ func (s TransitionBorderlineSuite) TestAlmostUp() {
 func (s TransitionBorderlineSuite) TestAlmostDown() {
 	data, err := s.k.Get(s.ctx, s.accounts["1"])
 	s.NoError(err)
-	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(referral.StatusTopLeader, data.Status)
 
 	s.NoError(s.k.RequestTransition(s.ctx, s.accounts["1.1.1"], s.accounts["1.1.2"]))
 	s.NoError(s.k.AffirmTransition(s.ctx, s.accounts["1.1.1"]))
 
-	scr ,err := s.k.AreStatusRequirementsFulfilled(s.ctx, s.accounts["1"], referral.StatusHero)
+	scr ,err := s.k.AreStatusRequirementsFulfilled(s.ctx, s.accounts["1"], referral.StatusTopLeader)
 	s.NoError(err)
 	s.True(scr.Overall)
 
 	data, err = s.k.Get(s.ctx, s.accounts["1"])
 	s.NoError(err)
-	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(referral.StatusTopLeader, data.Status)
 	s.Nil(data.StatusDowngradeAt)
 }
 
@@ -1546,7 +1570,7 @@ func (s Suite) TestComeBackViaDelegation() {
 	user := app.DefaultGenesisUsers["user2"]
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(10_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30*time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
@@ -1603,7 +1627,7 @@ func (s *StatusUpgradeSuite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
-	s.setupTest(json.RawMessage(data))
+	s.setupTest(json.RawMessage(data), "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e")
 
 	s.heads[0] = accAddr("artr1847dh25pq47cysckpa05lh7yt7ckuqs8r6gsgu")
 	s.heads[1] = accAddr("artr1ykm27k4ju4whlmre776s9s55gjscvvrfzy9ejx")
@@ -1612,7 +1636,7 @@ func (s *StatusUpgradeSuite) SetupTest() {
 
 func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	genesisTime := s.ctx.BlockTime()
-	root := app.DefaultGenesisUsers["user15"]
+	root := accAddr("artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg")
 
 	var (
 		status types.Status
@@ -1625,31 +1649,31 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.Equal(referral.StatusChampion, status)
 
 	// Jump to next level
-	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(150_000_000000)))))
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(300_000_000000)))))
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusBusinessman, status)
 
 	// Jump several levels at once
-	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2_000_000_000000)))))
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(1_500_000_000000)))))
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
-	s.Equal(referral.StatusHero, status)
+	s.Equal(referral.StatusTopLeader, status)
 
 	// Step back
-	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000_000000)))))
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(300_000_000000)))))
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
-	s.Equal(referral.StatusHero, status)
+	s.Equal(referral.StatusTopLeader, status)
 
 	data, err = s.get(root.String())
 	s.NoError(err)
-	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(referral.StatusTopLeader, data.Status)
 	s.NotNil(data.StatusDowngradeAt)
 	s.Equal(genesisTime.Add(2*24*time.Hour), *data.StatusDowngradeAt)
 
 	// Jump to the top (downgrade should be cancelled)
-	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(100_000_000_000000)))))
+	s.NoError(s.bk.SetBalance(s.ctx, s.heads[0], sdk.NewCoins(sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(100_000_000_000000)))))
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
 	s.Equal(referral.StatusAbsoluteChampion, status)
@@ -1674,10 +1698,10 @@ func (s *StatusUpgradeSuite) TestStatusUpgradeDowngrade() {
 	s.nextBlock()
 	status, err = s.k.GetStatus(s.ctx, root.String())
 	s.NoError(err)
-	s.Equal(referral.StatusHero, status)
+	s.Equal(referral.StatusTopLeader, status)
 	data, err = s.get(root.String())
 	s.NoError(err)
-	s.Equal(referral.StatusHero, data.Status)
+	s.Equal(referral.StatusTopLeader, data.Status)
 	s.NotNil(data.StatusDowngradeAt)
 	s.Equal(genesisTime.Add(2*2*24*time.Hour), *data.StatusDowngradeAt)
 }
@@ -1696,7 +1720,7 @@ func (s *Status3x3Suite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
-	s.setupTest(json.RawMessage(data))
+	s.setupTest(json.RawMessage(data), "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e")
 }
 
 func (s *Status3x3Suite) TestStatusDowngrade_3x3() {
@@ -1792,16 +1816,10 @@ func (s *BaseSuite) update(acc string, callback func(*types.Info)) error {
 	return nil
 }
 
-var bbHeader = abci.RequestBeginBlock{
-	Header: tmproto.Header{
-		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-	},
-}
-
 func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }
 

@@ -41,6 +41,8 @@ type Suite struct {
 	pk       profileK.Keeper
 	rk       referral.Keeper
 	storeKey sdk.StoreKey
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *Suite) SetupTest() {
@@ -58,6 +60,12 @@ func (s *Suite) SetupTest() {
 	s.bk = s.app.GetBankKeeper()
 	s.pk = s.app.GetProfileKeeper()
 	s.rk = s.app.GetReferralKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *Suite) TearDownTest() {
@@ -290,15 +298,9 @@ func (s *Suite) TestEmptyList() {
 	)
 }
 
-var bbHeader = abci.RequestBeginBlock{
-	Header: tmproto.Header{
-		ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-	},
-}
-
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, bbHeader)
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }

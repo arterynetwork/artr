@@ -31,6 +31,8 @@ type Suite struct {
 	cleanup func()
 	ctx     sdk.Context
 	k       earning.Keeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *Suite) SetupTest() {
@@ -41,6 +43,12 @@ func (s *Suite) SetupTest() {
 	}()
 	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetEarningKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *Suite) TearDownTest() {
@@ -119,11 +127,7 @@ func (s Suite) TestSecondPage() {
 
 	s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(3).WithBlockTime(s.ctx.BlockTime().Add(2*30*time.Second))
-	s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
-		Header: tmproto.Header{
-			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-		},
-	})
+	s.app.BeginBlocker(s.ctx, s.bbHeader)
 
 	s.checkExportImport()
 }

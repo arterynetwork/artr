@@ -65,7 +65,7 @@ func (s *Suite) TestBurn() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2015_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(40_000_000000)),
 		).String(),
 		sdk.Coins(s.k.GetSupply(s.ctx).Total).String(),
 	)
@@ -93,7 +93,7 @@ func (s *Suite) TestBurn() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2014_900_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(40_000_000000)),
 		).String(),
 		sdk.Coins(s.k.GetSupply(s.ctx).Total).String(),
 	)

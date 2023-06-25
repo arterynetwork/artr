@@ -34,6 +34,8 @@ type BaseSuite struct {
 	ctx     sdk.Context
 
 	k votingKeeper.Keeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *BaseSuite) TearDownTest() {
@@ -42,7 +44,7 @@ func (s *BaseSuite) TearDownTest() {
 	}
 }
 
-func (s *BaseSuite) setupTest(genesis []byte) {
+func (s *BaseSuite) setupTest(genesis []byte, consPubKey string) {
 	defer func() {
 		if err := recover(); err != nil {
 			s.FailNow("panic in setup", err)
@@ -51,16 +53,18 @@ func (s *BaseSuite) setupTest(genesis []byte) {
 
 	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(genesis)
 	s.k = s.app.GetVotingKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, consPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
-		Header: tmproto.Header{
-			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-		},
-	})
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }
 
@@ -69,7 +73,7 @@ type Suite struct {
 	BaseSuite
 }
 
-func (s *Suite) SetupTest() { s.setupTest(nil) }
+func (s *Suite) SetupTest() { s.setupTest(nil, app.DefaultUser1ConsPubKey) }
 
 func (s *Suite) TestInitialState() {
 	_, ok := s.k.GetCurrentPoll(s.ctx)
@@ -250,7 +254,7 @@ func (s *StatusSuite) SetupTest() {
 	if err != nil {
 		panic(err)
 	}
-	s.setupTest(data)
+	s.setupTest(data, "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e")
 
 	s.governor, err = sdk.AccAddressFromBech32("artr1cd4g3grtpslw799alf78w9gc2vqdnhrldc0tjc")
 	if err != nil { panic(err) }
@@ -284,6 +288,11 @@ func (s *StatusSuite) TestStartPoll_Status() {
 }
 
 func (s *StatusSuite) TestVotePoll_Status() {
+	const (
+		root  = "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
+		user1 = "artr1d4ezqdj03uachct8hum0z9zlfftzdq2f6yzvhj"
+		user2 = "artr1h8s8yf433ypjc5htavsyc9zvg3vk43vms03z3l"
+	)
 	poll := types.NewPollStatus(
 		s.governor,
 		"the question",
@@ -293,9 +302,9 @@ func (s *StatusSuite) TestVotePoll_Status() {
 	)
 	s.NoError(s.k.StartPoll(s.ctx, poll))
 
-	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["root"].String(), true))
-	s.Error(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), false))
-	s.Error(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), true))
+	s.NoError(s.k.Answer(s.ctx, root, true))
+	s.Error(s.k.Answer(s.ctx, user1, false))
+	s.Error(s.k.Answer(s.ctx, user2, true))
 
 	y, n := s.k.GetPollStatus(s.ctx)
 	s.EqualValues(1, y)

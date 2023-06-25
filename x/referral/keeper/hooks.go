@@ -86,14 +86,18 @@ func (k Keeper) performDowngrade(ctx sdk.Context, acc string) error {
 		if value.StatusDowngradeAt == nil || value.StatusDowngradeAt.After(ctx.BlockTime()) { // the user fixed things up
 			return nil
 		}
+		nextStatus := value.Status - 1
+		if nextStatus == types.HeroDeprecatedStatus {
+			nextStatus = nextStatus - 1
+		}
 		util.EmitEvent(bu.ctx,
 			&types.EventStatusUpdated{
 				Address: acc,
 				Before:  value.Status,
-				After:   value.Status - 1,
+				After:   nextStatus,
 			},
 		)
-		k.setStatus(ctx, value, value.Status-1, acc)
+		k.setStatus(ctx, value, nextStatus, acc)
 		value.StatusDowngradeAt = nil
 		return nil
 	})

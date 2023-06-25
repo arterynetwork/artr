@@ -32,6 +32,7 @@ type Keeper struct {
 	scheduleKeeper types.ScheduleKeeper
 	bankKeeper     types.BankKeeper
 	supplyKeeper   types.SupplyKeeper
+	nodingKeeper   types.NodingKeeper
 	eventHooks     map[string][]func(ctx sdk.Context, acc string) error
 }
 
@@ -40,7 +41,7 @@ func NewKeeper(
 	cdc codec.BinaryMarshaler, key sdk.StoreKey, idxKey sdk.StoreKey, paramspace types.ParamSubspace,
 	accKeeper types.AccountKeeper, scheduleKeeper types.ScheduleKeeper, bankKeeper types.BankKeeper,
 	supplyKeeper types.SupplyKeeper,
-) Keeper {
+) *Keeper {
 	keeper := Keeper{
 		cdc:            cdc,
 		storeKey:       key,
@@ -50,9 +51,14 @@ func NewKeeper(
 		scheduleKeeper: scheduleKeeper,
 		bankKeeper:     bankKeeper,
 		supplyKeeper:   supplyKeeper,
+		nodingKeeper:   nil, // must be set later
 		eventHooks:     make(map[string][]func(ctx sdk.Context, acc string) error),
 	}
-	return keeper
+	return &keeper
+}
+
+func (k *Keeper) SetKeepers(nodingKeeper types.NodingKeeper) {
+	k.nodingKeeper = nodingKeeper
 }
 
 // Logger returns a module-specific logger.
@@ -121,10 +127,50 @@ func (k Keeper) GetReferralFeesForDelegating(ctx sdk.Context, acc string) ([]typ
 	)
 }
 
+// GetReferralFeesForDelegating returns a set of account-ratio pairs, describing what part of being delegated funds
+// should go to what wallet. 0.006 total. The rest goes for validator's wallets.
+func (k Keeper) GetReferralValidatorFeesForDelegating(ctx sdk.Context, acc string) ([]types.ReferralValidatorFee, error) {
+	toValidators := []struct {
+		Ratio    util.Fraction
+		Status   types.Status
+		MaxLevel int
+	}{{
+		Ratio:    util.Permille(1),
+		Status:   types.STATUS_MASTER,
+		MaxLevel: 4,
+	}, {
+		Ratio:    util.Permille(2),
+		Status:   types.STATUS_CHAMPION,
+		MaxLevel: 6,
+	}, {
+		Ratio:    util.Permille(3),
+		Status:   types.STATUS_BUSINESSMAN,
+		MaxLevel: 10,
+	}, {
+		Ratio:    util.Permille(4),
+		Status:   types.STATUS_PROFESSIONAL,
+		MaxLevel: 12,
+	}, {
+		Ratio:    util.Permille(5),
+		Status:   types.STATUS_TOP_LEADER,
+		MaxLevel: 14,
+	}, {
+		Ratio:    util.Permille(6),
+		Status:   types.STATUS_ABSOLUTE_CHAMPION,
+		MaxLevel: 20,
+	}}
+
+	return k.getReferralValidatorFeesCore(
+		ctx,
+		acc,
+		toValidators,
+	)
+}
+
 // AreStatusRequirementsFulfilled validates if the account suffices the status requirement.
 // The actual account status doesn't matter and won't be updated.
 func (k Keeper) AreStatusRequirementsFulfilled(ctx sdk.Context, acc string, s types.Status) (types.StatusCheckResult, error) {
-	if s < types.MinimumStatus || s > types.MaximumStatus {
+	if s < types.MinimumStatus || s > types.MaximumStatus || s == types.HeroDeprecatedStatus {
 		return types.StatusCheckResult{Overall: false}, fmt.Errorf("there is no such status: %d", s)
 	}
 	data, err := k.Get(ctx, acc)
@@ -1116,6 +1162,66 @@ func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc string, companyAccount 
 	if !excess.IsZero() {
 		result = append(result, types.ReferralFee{Beneficiary: topReferrer, Ratio: excess})
 	}
+	return result, nil
+}
+
+func (k Keeper) getReferralValidatorFeesCore(ctx sdk.Context, acc string, toValidators []struct {
+	Ratio    util.Fraction
+	Status   types.Status
+	MaxLevel int
+}) ([]types.ReferralValidatorFee, error) {
+	if len(toValidators) != 6 {
+		return nil, errors.Errorf("toValidators param must have exactly 6 items (%d found)", len(toValidators))
+	}
+	result := make([]types.ReferralValidatorFee, 0, 6)
+
+	highestAncestorValidatorIndex := -1
+	data, err := k.Get(ctx, acc)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < 20; i++ {
+		ancestor := data.Referrer
+		if ancestor == "" {
+			break
+		}
+		var ancestorAddr sdk.AccAddress
+		ancestorAddr, err = sdk.AccAddressFromBech32(ancestor)
+		if err != nil {
+			return nil, err
+		}
+		data, err = k.Get(ctx, ancestor)
+		if err != nil {
+			return nil, err
+		}
+		var isActiveValidator bool
+		isActiveValidator, err = k.nodingKeeper.IsActiveValidator(ctx, ancestorAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		if isActiveValidator {
+			for j := len(toValidators) - 1; j >= 0; j-- {
+				if data.Status >= toValidators[j].Status && i < toValidators[j].MaxLevel {
+					if highestAncestorValidatorIndex < j {
+						var highestAncestorValidatorRatio util.Fraction
+						if highestAncestorValidatorIndex == -1 {
+							highestAncestorValidatorRatio = util.FractionZero()
+						} else {
+							highestAncestorValidatorRatio = toValidators[highestAncestorValidatorIndex].Ratio
+						}
+						highestAncestorValidatorIndex = j
+						result = append(result, types.ReferralValidatorFee{
+							Beneficiary: ancestor,
+							Ratio:       toValidators[j].Ratio.Sub(highestAncestorValidatorRatio),
+						})
+					}
+					break
+				}
+			}
+		}
+	}
+
 	return result, nil
 }
 

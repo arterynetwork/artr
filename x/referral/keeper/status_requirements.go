@@ -31,36 +31,47 @@ var statusRequirements = map[types.Status]func(value types.Info, bu *bunchUpdate
 		return types.StatusCheckResult{Overall: true}, nil
 	},
 	types.STATUS_LEADER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsXByX(value, bu, 2, 2)
+		return statusRequirementsXByX(value, bu, types.STATUS_LUCKY.LinesOpened(), 20_000, 2, 2)
 	},
 	types.STATUS_MASTER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsXByX(value, bu, 3, 3)
+		return statusRequirementsXByX(value, bu, types.STATUS_LEADER.LinesOpened(), 50_000, 3, 3)
 	},
 	types.STATUS_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_MASTER.LinesOpened(), 0, 10)
+		return statusRequirementsCore(value, bu, types.STATUS_MASTER.LinesOpened(), 150_000, 10)
 	},
 	types.STATUS_BUSINESSMAN: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_CHAMPION.LinesOpened(), 150_000, 50)
+		return statusRequirementsCore(value, bu, types.STATUS_CHAMPION.LinesOpened(), 300_000, 50)
 	},
 	types.STATUS_PROFESSIONAL: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_BUSINESSMAN.LinesOpened(), 300_000, 100)
+		return statusRequirementsCore(value, bu, types.STATUS_BUSINESSMAN.LinesOpened(), 700_000, 100)
 	},
 	types.STATUS_TOP_LEADER: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_PROFESSIONAL.LinesOpened(), 1_000_000, 200)
-	},
-	types.STATUS_HERO: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_TOP_LEADER.LinesOpened(), 2_000_000, 300)
+		return statusRequirementsCore(value, bu, types.STATUS_PROFESSIONAL.LinesOpened(), 1_500_000, 300)
 	},
 	types.STATUS_ABSOLUTE_CHAMPION: func(value types.Info, bu *bunchUpdater) (types.StatusCheckResult, error) {
-		return statusRequirementsCore(value, bu, types.STATUS_HERO.LinesOpened(), 5_000_000, 400)
+		return statusRequirementsCore(value, bu, types.STATUS_TOP_LEADER.LinesOpened(), 3_000_000, 600)
 	},
 }
 
-func statusRequirementsXByX(value types.Info, bu *bunchUpdater, count int, size int) (types.StatusCheckResult, error) {
+func statusRequirementsXByX(value types.Info, bu *bunchUpdater, linesOpen int, coins int64, count int, size int) (types.StatusCheckResult, error) {
 	var (
-		result    = types.StatusCheckResult{}
+		result    = types.StatusCheckResult{Overall: true}
 		criterion types.StatusCheckResult_Criterion
 	)
+
+	if coins > 0 {
+		criterion = types.StatusCheckResult_Criterion{
+			Rule:        types.RULE_N_COINS_IN_STRUCTURE,
+			TargetValue: uint64(coins),
+			ActualValue: value.DelegatedAtLevelsUpTo(linesOpen).Uint64() / 1_000_000,
+		}
+		if criterion.ActualValue >= criterion.TargetValue {
+			criterion.Met = true
+			criterion.ActualValue = criterion.TargetValue
+		}
+		result.Criteria = append(result.Criteria, criterion)
+		result.Overall = result.Overall && criterion.Met
+	}
 
 	criterion = types.StatusCheckResult_Criterion{
 		Rule:        types.RULE_N_REFERRALS_WITH_X_REFERRALS_EACH,
@@ -84,8 +95,8 @@ func statusRequirementsXByX(value types.Info, bu *bunchUpdater, count int, size 
 	}
 	criterion.ActualValue = uint64(found)
 
-	result.Criteria = []types.StatusCheckResult_Criterion{criterion}
-	result.Overall = criterion.Met
+	result.Criteria = append(result.Criteria, criterion)
+	result.Overall = result.Overall && criterion.Met
 	return result, nil
 }
 
@@ -99,7 +110,7 @@ func statusRequirementsCore(value types.Info, bu *bunchUpdater, linesOpen int, c
 		criterion = types.StatusCheckResult_Criterion{
 			Rule:        types.RULE_N_COINS_IN_STRUCTURE,
 			TargetValue: uint64(coins),
-			ActualValue: value.CoinsAtLevelsUpTo(linesOpen).Uint64() / 1_000_000,
+			ActualValue: value.DelegatedAtLevelsUpTo(linesOpen).Uint64() / 1_000_000,
 		}
 		if criterion.ActualValue >= criterion.TargetValue {
 			criterion.Met = true

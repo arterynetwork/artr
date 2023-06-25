@@ -159,7 +159,7 @@ func (s *Suite) TestRename() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // from genesis
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -173,7 +173,7 @@ func (s *Suite) TestRename() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // -1 ARTR for rename
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -189,7 +189,7 @@ func (s *Suite) TestRename_InsufficientFunds() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // from genesis
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -203,7 +203,7 @@ func (s *Suite) TestRename_InsufficientFunds() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999999)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // nothing changed
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -218,7 +218,7 @@ func (s *Suite) TestRename_ClearAndSet() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // from genesis
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -232,7 +232,7 @@ func (s *Suite) TestRename_ClearAndSet() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // nothing changed, removal is free
 		s.bk.GetBalance(s.ctx, user),
 	)
@@ -246,7 +246,7 @@ func (s *Suite) TestRename_ClearAndSet() {
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(10_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
 		), // -1 ARTR
 		s.bk.GetBalance(s.ctx, user),
 	)

@@ -9,11 +9,11 @@ import (
 func (s Status) LinesOpened() int {
 	switch s {
 	case STATUS_LUCKY:
-		return 2
-	case STATUS_LEADER:
 		return 4
-	case STATUS_MASTER:
+	case STATUS_LEADER:
 		return 6
+	case STATUS_MASTER:
+		return 8
 	default:
 		return 10
 	}
@@ -21,6 +21,7 @@ func (s Status) LinesOpened() int {
 
 const MinimumStatus = STATUS_LUCKY
 const MaximumStatus = STATUS_ABSOLUTE_CHAMPION
+const HeroDeprecatedStatus = 8
 
 func NewInfo(referrer string, coins sdk.Int, delegated sdk.Int) Info {
 	zero := sdk.ZeroInt()
@@ -98,6 +99,19 @@ type ReferralFee struct {
 }
 
 func (fee ReferralFee) GetBeneficiary() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(fee.Beneficiary)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
+type ReferralValidatorFee struct {
+	Beneficiary string        `json:"beneficiary" yaml:"beneficiary"`
+	Ratio       util.Fraction `json:"ratio" yaml:"ratio"`
+}
+
+func (fee ReferralValidatorFee) GetBeneficiary() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(fee.Beneficiary)
 	if err != nil {
 		panic(err)

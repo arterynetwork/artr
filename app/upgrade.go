@@ -916,3 +916,46 @@ func FixStatusDowngradeTasks(sk scheduleK.Keeper, sKey sdk.StoreKey, cdc codec.B
 		logger.Info("... UpdateStatusDowngradeTasks done!")
 	}
 }
+
+func ScheduleMissingBanishmentAndRefreshReferralStatuses(rk referralK.Keeper, bk bank.Keeper, sk scheduleK.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting ScheduleMissingBanishmentAndRefreshReferralStatuses ...")
+		defer logger.Info("... ScheduleMissingBanishmentAndRefreshReferralStatuses done!")
+
+		var (
+			dd = bk.GetParams(ctx).DustDelegation
+
+			blockTime         = ctx.BlockTime()
+			shiftInterval     = time.Duration(sk.GetParams(ctx).DayNanos * 15 / (24 * 60 * 60))
+			newBanishmentTime = blockTime.Add(time.Duration(sk.GetParams(ctx).DayNanos / 24))
+		)
+
+		rk.Iterate(ctx, func(bech32 string, r *referralT.Info) (changed, checkForStatusUpdate bool) {
+			changed = false
+			checkForStatusUpdate = true
+
+			acc, err := sdk.AccAddressFromBech32(bech32)
+			if err != nil {
+				logger.Error("Cannot parse account address", "acc", bech32, "err", err)
+				return
+			}
+
+			balance := bk.GetBalance(ctx, acc)
+
+			if !r.Active {
+				if balance.AmountOf(util.ConfigDelegatedDenom).Int64() <= dd {
+					if !r.Banished && r.BanishmentAt == nil && (r.CompressionAt == nil || blockTime.After(*r.CompressionAt)) {
+						newBanishmentTime = newBanishmentTime.Add(shiftInterval)
+						logger.Debug("add missing banishment", "acc", bech32, "t", newBanishmentTime.String())
+						sk.ScheduleTask(ctx, newBanishmentTime, referralK.BanishHookName, []byte(bech32))
+						r.BanishmentAt = &newBanishmentTime
+						changed = true
+					}
+				}
+			}
+
+			return
+		})
+	}
+}

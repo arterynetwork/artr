@@ -37,6 +37,8 @@ type Suite struct {
 	cleanup func()
 	ctx     sdk.Context
 	k       keeper.Keeper
+
+	bbHeader abci.RequestBeginBlock
 }
 
 func (s *Suite) SetupTest() {
@@ -47,6 +49,12 @@ func (s *Suite) SetupTest() {
 	}()
 	s.app, s.cleanup, s.ctx = app.NewAppFromGenesis(nil)
 	s.k = s.app.GetVotingKeeper()
+
+	s.bbHeader = abci.RequestBeginBlock{
+		Header: tmproto.Header{
+			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
+		},
+	}
 }
 
 func (s *Suite) TearDownTest() {
@@ -206,10 +214,6 @@ func (s Suite) checkExportImport() {
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
 	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
-	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
-		Header: tmproto.Header{
-			ProposerAddress: sdk.MustGetPubKeyFromBech32(sdk.Bech32PubKeyTypeConsPub, app.DefaultUser1ConsPubKey).Address().Bytes(),
-		},
-	})
+	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }
