@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
@@ -43,7 +42,8 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	// NOTE: `tariffTotal` cannot be just assigned to `total` here, 'cause Int is a struct over a pointer.
 	total := sdk.NewIntFromBigInt(new(big.Int).Set(tariffTotal.BigInt()))
 
-	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee)
+	txFeeSplitRatios := k.bankKeeper.GetParams(ctx).TransactionFeeSplitRatios
+	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee, txFeeSplitRatios.ForProposer, txFeeSplitRatios.ForCompany)
 	tariffTotal = tariffTotal.Sub(txFee)
 
 	if refInfo, err := k.referralKeeper.Get(ctx, addr.String()); err != nil {
@@ -118,7 +118,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	event.ExpireAt = *profile.ActiveUntil
 
 	if !txFee.IsZero() {
-		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(auth.FeeCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee))))
+		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee))))
 	}
 	if !vpnFee.IsZero() {
 		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(earning.VpnCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, vpnFee))))
@@ -142,7 +142,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		event,
 		&bankT.EventTransfer{
 			Sender:    addr.String(),
-			Recipient: k.accountKeeper.GetModuleAddress(auth.FeeCollectorName).String(),
+			Recipient: k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName).String(),
 			Amount:    sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee)),
 		},
 	)
@@ -245,7 +245,7 @@ func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint3
 	if timerSet {
 		profile.ImLimitExtra += uint64(extraGb)
 	} else {
-		profile.ImLimitExtra = uint64(extraGb);
+		profile.ImLimitExtra = uint64(extraGb)
 
 		until := ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
 		profile.ExtraImUntil = &until
@@ -338,7 +338,9 @@ func (k Keeper) GiveImStorageUp(ctx sdk.Context, addr sdk.AccAddress, extraGb ui
 	profile := k.GetProfile(ctx, addr)
 
 	current := profile.ImLimitExtra
-	if !profile.IsExtraImStorageActive(ctx) { current = 0 }
+	if !profile.IsExtraImStorageActive(ctx) {
+		current = 0
+	}
 	if uint64(extraGb) >= current {
 		return errors.Errorf("new value greater than or equal previous one (%d ≥ %d)", extraGb, current)
 	}
@@ -479,7 +481,7 @@ func (k Keeper) monthlyImRoutine(ctx sdk.Context, addr sdk.AccAddress) error {
 	var err error
 
 	if profile.AutoPayImExtra {
-		err = k.prolongImExtra(ctx, addr, profile);
+		err = k.prolongImExtra(ctx, addr, profile)
 		if err != nil {
 			k.Logger(ctx).Error("IM store autopay failed", "addr", addr.String(), "err", err)
 		}
@@ -488,8 +490,8 @@ func (k Keeper) monthlyImRoutine(ctx sdk.Context, addr sdk.AccAddress) error {
 	}
 
 	if err != nil {
-		profile.ImLimitExtra   = 0
-		profile.ExtraImUntil   = nil
+		profile.ImLimitExtra = 0
+		profile.ExtraImUntil = nil
 		profile.AutoPayImExtra = false
 
 		util.EmitEvent(ctx,

@@ -5,7 +5,7 @@ const (
 	ModuleName = "delegating"
 
 	// MainStoreKey to be used when creating the KVStore
-	MainStoreKey    = ModuleName
+	MainStoreKey = ModuleName
 
 	// RouterKey to be used for routing msgs
 	RouterKey = ModuleName

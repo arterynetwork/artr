@@ -99,6 +99,8 @@ func (msg MsgBurn) GetSigners() []sdk.AccAddress {
 
 func (msg MsgBurn) GetAccount() sdk.AccAddress {
 	acc, err := sdk.AccAddressFromBech32(msg.Account)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return acc
 }

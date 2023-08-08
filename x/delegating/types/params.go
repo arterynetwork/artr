@@ -24,6 +24,7 @@ const (
 	DefaultMinDelegate  = 1000
 	DefaultRevokePeriod = 14
 )
+
 var (
 	DefaultValidator    = util.Percent(15)
 	DefaultBurnOnRevoke = util.Percent(5)
@@ -181,9 +182,15 @@ func validateRevokePeriod(i interface{}) error {
 
 func validateValidator(i interface{}) error {
 	vb, ok := i.(util.Fraction)
-	if !ok { return errors.Errorf("invalid Validator parameter type: %T", i) }
-	if vb.IsNullValue() { return errors.New("Validator must be non-null") }
-	if vb.IsNegative() { return errors.New("Validator must be non-negative") }
+	if !ok {
+		return errors.Errorf("invalid Validator parameter type: %T", i)
+	}
+	if vb.IsNullValue() {
+		return errors.New("Validator must be non-null")
+	}
+	if vb.IsNegative() {
+		return errors.New("Validator must be non-negative")
+	}
 	return nil
 }
 

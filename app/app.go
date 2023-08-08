@@ -45,6 +45,7 @@ import (
 	upgradeTypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
 	_ "github.com/arterynetwork/artr/client/docs/statik"
+	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating"
 	"github.com/arterynetwork/artr/x/earning"
@@ -92,11 +93,12 @@ var (
 
 	// module account permissions
 	maccPerms = map[string][]string{
-		authTypes.FeeCollectorName:   nil,
-		noding.ModuleName:            nil,
-		earning.ModuleName:           nil,
-		earning.VpnCollectorName:     nil,
-		earning.StorageCollectorName: nil,
+		authTypes.FeeCollectorName:      nil,
+		util.SplittableFeeCollectorName: nil,
+		noding.ModuleName:               nil,
+		earning.ModuleName:              nil,
+		earning.VpnCollectorName:        nil,
+		earning.StorageCollectorName:    nil,
 	}
 )
 
@@ -210,6 +212,7 @@ func NewArteryApp(
 		authTypes.ProtoBaseAccount,
 		map[string][]string{
 			authTypes.FeeCollectorName:        {},
+			util.SplittableFeeCollectorName:   {},
 			earningTypes.VpnCollectorName:     {},
 			earningTypes.StorageCollectorName: {},
 			earningTypes.ModuleName:           {},
@@ -279,6 +282,7 @@ func NewArteryApp(
 		app.bankKeeper,
 		app.subspaces[noding.DefaultParamspace],
 		authTypes.FeeCollectorName,
+		util.SplittableFeeCollectorName,
 	)
 
 	app.earningKeeper = earningKeeper.NewKeeper(
@@ -392,6 +396,10 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.5", Chain(
 		ScheduleMissingBanishmentAndRefreshReferralStatuses(*app.referralKeeper, app.bankKeeper, app.scheduleKeeper),
+	))
+
+	app.upgradeKeeper.SetUpgradeHandler("2.4.6", Chain(
+		InitTransactionFeeSplitRatiosAndCompanyAccountParams(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

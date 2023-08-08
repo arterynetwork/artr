@@ -40,10 +40,10 @@ type VASuite struct {
 	bk       bank.Keeper
 	storeKey sdk.StoreKey
 
-	pk             profileK.Keeper
-	dk             delegatingK.Keeper
-	nk             nodingK.Keeper
-	indexStoreKey  sdk.StoreKey
+	pk            profileK.Keeper
+	dk            delegatingK.Keeper
+	nk            nodingK.Keeper
+	indexStoreKey sdk.StoreKey
 }
 
 func (s *VASuite) SetupTest() {

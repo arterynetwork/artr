@@ -9,10 +9,10 @@ import (
 )
 
 type EncodingConfig struct {
-	Marshaler codec.Marshaler
+	Marshaler         codec.Marshaler
 	InterfaceRegistry codecTypes.InterfaceRegistry
-	TxConfig client.TxConfig
-	Amino *codec.LegacyAmino
+	TxConfig          client.TxConfig
+	Amino             *codec.LegacyAmino
 }
 
 func (conf EncodingConfig) BuildClientContext() client.Context {

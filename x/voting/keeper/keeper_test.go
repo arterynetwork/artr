@@ -68,7 +68,6 @@ func (s *BaseSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock)
 	return ebr, bbr
 }
 
-
 type Suite struct {
 	BaseSuite
 }
@@ -102,7 +101,7 @@ func (s *Suite) TestStartPoll_Validators() {
 	s.NotNil(got.StartTime)
 	s.Equal(s.ctx.BlockTime(), *got.StartTime)
 	s.NotNil(got.EndTime)
-	s.Equal(s.ctx.BlockTime().Add(18 * time.Hour), *got.EndTime)
+	s.Equal(s.ctx.BlockTime().Add(18*time.Hour), *got.EndTime)
 
 	y, n := s.k.GetPollStatus(s.ctx)
 	s.EqualValues(0, y)
@@ -142,7 +141,7 @@ func (s *Suite) TestEndPoll_Positive() {
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user3"].String(), true))
 
-	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18*time.Hour)).WithBlockHeight(s.ctx.BlockHeight()+1)
+	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18 * time.Hour)).WithBlockHeight(s.ctx.BlockHeight() + 1)
 	s.nextBlock()
 
 	_, ok := s.k.GetCurrentPoll(s.ctx)
@@ -180,7 +179,7 @@ func (s *Suite) TestEndPoll_Negative() {
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), true))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
 
-	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18*time.Hour)).WithBlockHeight(s.ctx.BlockHeight()+1)
+	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18 * time.Hour)).WithBlockHeight(s.ctx.BlockHeight() + 1)
 	s.nextBlock()
 
 	_, ok := s.k.GetCurrentPoll(s.ctx)
@@ -218,7 +217,7 @@ func (s *Suite) TestEndPoll_Undecided() {
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user3"].String(), true))
 
-	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18*time.Hour)).WithBlockHeight(s.ctx.BlockHeight()+1)
+	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(18 * time.Hour)).WithBlockHeight(s.ctx.BlockHeight() + 1)
 	s.nextBlock()
 
 	_, ok := s.k.GetCurrentPoll(s.ctx)
@@ -242,7 +241,6 @@ func (s *Suite) TestEndPoll_Undecided() {
 	s.EqualValues(types.DECISION_UNSPECIFIED, history[0].Decision)
 }
 
-
 type StatusSuite struct {
 	BaseSuite
 
@@ -257,7 +255,9 @@ func (s *StatusSuite) SetupTest() {
 	s.setupTest(data, "artrvalconspub1zcjduepqpme87trszw7awc62ra2de9edwr40v7xy7yfhvpvds96fncagm04qxu308e")
 
 	s.governor, err = sdk.AccAddressFromBech32("artr1cd4g3grtpslw799alf78w9gc2vqdnhrldc0tjc")
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (s *StatusSuite) TestStartPoll_Status() {
@@ -280,7 +280,7 @@ func (s *StatusSuite) TestStartPoll_Status() {
 	s.NotNil(got.StartTime)
 	s.Equal(s.ctx.BlockTime(), *got.StartTime)
 	s.NotNil(got.EndTime)
-	s.Equal(s.ctx.BlockTime().Add(18 * time.Hour), *got.EndTime)
+	s.Equal(s.ctx.BlockTime().Add(18*time.Hour), *got.EndTime)
 
 	y, n := s.k.GetPollStatus(s.ctx)
 	s.EqualValues(0, y)

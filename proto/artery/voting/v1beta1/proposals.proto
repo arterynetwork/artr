@@ -87,4 +87,6 @@ enum ProposalType {
   PROPOSAL_TYPE_BURN_ON_REVOKE = 37;
   // Максимальная комиссия за перевод
   PROPOSAL_TYPE_MAX_TRANSACTION_FEE = 38;
+  // Пропорции в которых делится комиссия за перевод между пропозером, компанией и сжиганием
+  PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS = 39;
 }

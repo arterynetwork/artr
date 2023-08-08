@@ -15,7 +15,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authK "github.com/cosmos/cosmos-sdk/x/auth/keeper"
-	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
@@ -37,10 +36,10 @@ type Suite struct {
 	app     *app.ArteryApp
 	cleanup func()
 
-	cdc codec.BinaryMarshaler
-	ctx sdk.Context
-	k   delegating.Keeper
-	bk  bank.Keeper
+	cdc       codec.BinaryMarshaler
+	ctx       sdk.Context
+	k         delegating.Keeper
+	bk        bank.Keeper
 	accKeeper authK.AccountKeeper
 
 	bbHeader abci.RequestBeginBlock
@@ -88,7 +87,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Nil(
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -98,7 +97,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(847_450000)))
@@ -108,17 +107,17 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 	s.Equal(
 		[]types.RevokeRequest{{
-			Time:   genesis_time.Add(14*24*time.Hour),
+			Time:   genesis_time.Add(14 * 24 * time.Hour),
 			Amount: sdk.NewInt(805_077500),
 		}},
 		s.k.GetRevoking(s.ctx, user),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(14*2880 - 1).WithBlockTime(genesis_time.Add((14*2880 - 1) *30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(14*2880 - 1).WithBlockTime(genesis_time.Add((14*2880 - 1) * 30 * time.Second))
 	s.nextBlock()
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(805_077500))),
@@ -126,7 +125,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 	s.Empty(s.k.GetRevoking(s.ctx, user))
 }
@@ -139,7 +138,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Nil(
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -149,7 +148,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000)))
@@ -162,7 +161,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	t := 0
@@ -180,7 +179,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_010943),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	for ; t < 14*util.BlocksOneDay; t++ {
@@ -196,7 +195,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_147735),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	for ; t < 15*util.BlocksOneDay; t++ {
@@ -212,7 +211,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_158181),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 }
 
@@ -225,7 +224,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Nil(
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -235,7 +234,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	t := 0
@@ -264,7 +263,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_009321),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	// 2 weeks later
@@ -280,12 +279,12 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_156559),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 	acc, err = s.k.GetAccumulation(s.ctx, user)
 	s.NoError(err)
-	s.Equal(genesisTime.Add(29 * 12*time.Hour), acc.Start)
-	s.Equal(genesisTime.Add(31 * 12*time.Hour), acc.End)
+	s.Equal(genesisTime.Add(29*12*time.Hour), acc.Start)
+	s.Equal(genesisTime.Add(31*12*time.Hour), acc.End)
 	s.Equal(int64(0), acc.CurrentUartrs)
 
 	// Half a day later
@@ -301,7 +300,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	)
 	s.Equal(
 		util.Uartrs(3_156559),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 }
 
@@ -313,7 +312,7 @@ func (s *Suite) TestAccrue_MissedPart() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Nil(
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -323,12 +322,14 @@ func (s *Suite) TestAccrue_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.setMissedPart(user, TENTH)
 
-	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+	for t := 0; t < util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
 
 	s.Equal(
 		sdk.NewCoins(
@@ -339,11 +340,13 @@ func (s *Suite) TestAccrue_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_016779),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 	s.Nil(s.k.Get(s.ctx, user).MissedPart)
 
-	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+	for t := 0; t < util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
 
 	s.Equal(
 		sdk.NewCoins(
@@ -354,7 +357,7 @@ func (s *Suite) TestAccrue_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_035422),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 }
 
@@ -366,7 +369,7 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 	s.Nil(
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))
@@ -376,12 +379,14 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_000000),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
 	s.setMissedPart(user, TENTH)
 
-	for t := 0; t < util.BlocksOneDay / 4; t++ { s.nextBlock() }
+	for t := 0; t < util.BlocksOneDay/4; t++ {
+		s.nextBlock()
+	}
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(100_000000)))
 
 	s.Equal(
@@ -394,11 +399,13 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_002796),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 	s.Nil(s.k.Get(s.ctx, user).MissedPart)
 
-	for t := 0; t < util.BlocksOneDay; t++ { s.nextBlock() }
+	for t := 0; t < util.BlocksOneDay; t++ {
+		s.nextBlock()
+	}
 
 	s.Equal(
 		sdk.NewCoins(
@@ -410,7 +417,7 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 	)
 	s.Equal(
 		util.Uartrs(3_019239),
-		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 }
 
@@ -437,7 +444,7 @@ func (s *Suite) TestAccrue_ValidatorPercent() {
 		s.bk.GetBalance(s.ctx, validator),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(1234).WithBlockTime(genesisTime.Add(24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(1234).WithBlockTime(genesisTime.Add(24 * time.Hour))
 	s.nextBlock()
 	s.nextBlock()
 
@@ -502,7 +509,7 @@ func (s *Suite) TestRevokePeriod() {
 		[]types.RevokeRequest{
 			{
 				Amount: sdk.NewInt(950000),
-				Time: genesisTime.Add(14 * 24 * time.Hour),
+				Time:   genesisTime.Add(14 * 24 * time.Hour),
 			},
 		},
 		s.k.GetRevoking(s.ctx, user),
@@ -520,16 +527,16 @@ func (s *Suite) TestRevokePeriod() {
 		[]types.RevokeRequest{
 			{
 				Amount: sdk.NewInt(950000),
-				Time: genesisTime.Add(14 * 24 * time.Hour),
+				Time:   genesisTime.Add(14 * 24 * time.Hour),
 			}, {
 				Amount: sdk.NewInt(1_900000),
-				Time: genesisTime.Add(7 * 24 * time.Hour + time.Minute),
+				Time:   genesisTime.Add(7*24*time.Hour + time.Minute),
 			},
 		}, s.k.GetRevoking(s.ctx, user),
 	)
 
 	s.EqualValues(2_850000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
-	s.ctx = s.ctx.WithBlockHeight(20_161).WithBlockTime(genesisTime.Add(20_161*30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(20_161).WithBlockTime(genesisTime.Add(20_161 * 30 * time.Second))
 	s.nextBlock()
 
 	s.EqualValues(950000, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
@@ -537,12 +544,12 @@ func (s *Suite) TestRevokePeriod() {
 		[]types.RevokeRequest{
 			{
 				Amount: sdk.NewInt(950000),
-				Time: genesisTime.Add(14 * 24 * time.Hour),
+				Time:   genesisTime.Add(14 * 24 * time.Hour),
 			},
 		}, s.k.GetRevoking(s.ctx, user),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(40_319).WithBlockTime(genesisTime.Add(40_319*30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(40_319).WithBlockTime(genesisTime.Add(40_319 * 30 * time.Second))
 	s.nextBlock()
 	s.EqualValues(0, s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigRevokingDenom).Int64())
 	s.Empty(s.k.GetRevoking(s.ctx, user))
@@ -562,7 +569,7 @@ func (s *Suite) TestGetAccumulation() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) *30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) * 30 * time.Second))
 	s.nextBlock()
 
 	resp, err := s.k.GetAccumulation(s.ctx, user)
@@ -571,7 +578,7 @@ func (s *Suite) TestGetAccumulation() {
 	s.Equal(
 		types.AccumulationResponse{
 			Start:         genesisTime,
-			End:           genesisTime.Add(24*time.Hour),
+			End:           genesisTime.Add(24 * time.Hour),
 			Percent:       22,
 			PercentDaily:  util.NewFraction(22, 30*100).Reduce(),
 			TotalUartrs:   6_214633,
@@ -596,7 +603,7 @@ func (s *Suite) TestGetAccumulation_MissedPart() {
 	)
 
 	s.setMissedPart(user, TENTH.Clone())
-	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) *30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(1234 - 1).WithBlockTime(genesisTime.Add((1234 - 1) * 30 * time.Second))
 	s.nextBlock()
 
 	resp, err := s.k.GetAccumulation(s.ctx, user)
@@ -605,7 +612,7 @@ func (s *Suite) TestGetAccumulation_MissedPart() {
 	s.Equal(
 		types.AccumulationResponse{
 			Start:         genesisTime,
-			End:           genesisTime.Add(24*time.Hour),
+			End:           genesisTime.Add(24 * time.Hour),
 			Percent:       22,
 			PercentDaily:  util.NewFraction(22, 30*100).Reduce(),
 			TotalUartrs:   5_593170,
@@ -618,7 +625,7 @@ func (s *Suite) TestGetAccumulation_MissedPart() {
 
 func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 	genesisTime := s.ctx.BlockTime()
-	user      := keeper.DefaultGenesisUsers["user4"]
+	user := keeper.DefaultGenesisUsers["user4"]
 	validator := keeper.DefaultGenesisUsers["user3"]
 
 	s.NoError(s.bk.SendCoins(s.ctx, keeper.DefaultGenesisUsers["user2"], validator, util.Uartrs(1_000_000000)))
@@ -649,7 +656,7 @@ func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 		s.bk.GetBalance(s.ctx, validator),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(1234).WithBlockTime(genesisTime.Add((1234) *30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(1234).WithBlockTime(genesisTime.Add((1234) * 30 * time.Second))
 	s.nextBlock()
 
 	resp, err := s.k.GetAccumulation(s.ctx, user)
@@ -657,8 +664,8 @@ func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 	s.NotNil(resp)
 	s.Equal(
 		types.AccumulationResponse{
-			Start:         genesisTime.Add(30*time.Second),
-			End:           genesisTime.Add(24*time.Hour +30*time.Second),
+			Start:         genesisTime.Add(30 * time.Second),
+			End:           genesisTime.Add(24*time.Hour + 30*time.Second),
 			Percent:       22,
 			PercentDaily:  util.NewFraction(22, 30*100).Reduce(),
 			TotalUartrs:   6_214633,
@@ -672,8 +679,8 @@ func (s *Suite) TestGetAccumulation_ValidatorPercent() {
 	s.NotNil(resp)
 	s.Equal(
 		types.AccumulationResponse{
-			Start:         genesisTime.Add(30*time.Second),
-			End:           genesisTime.Add(24*time.Hour +30*time.Second),
+			Start:         genesisTime.Add(30 * time.Second),
+			End:           genesisTime.Add(24*time.Hour + 30*time.Second),
 			Percent:       31,
 			PercentDaily:  vr.Add(util.NewFraction(1, 100)).DivInt64(30).Reduce(),
 			TotalUartrs:   9_011218,
@@ -687,27 +694,27 @@ func (s *Suite) TestDelegateAfterBanishment() {
 	rk := s.app.GetReferralKeeper()
 	user := keeper.DefaultGenesisUsers["user4"]
 
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4*24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4 * 24 * time.Hour))
 	s.nextBlock()
 	r, err := rk.Get(s.ctx, user.String())
 	s.NoError(err)
 	s.False(r.Active)
 	s.NotNil(r.CompressionAt)
 
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 172800).WithBlockTime(s.ctx.BlockTime().Add(2*30*24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 172800).WithBlockTime(s.ctx.BlockTime().Add(2 * 30 * 24 * time.Hour))
 	s.nextBlock()
 	r, err = rk.Get(s.ctx, user.String())
 	s.NoError(err)
 	s.NotNil(r.BanishmentAt)
 
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 86400).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 86400).WithBlockTime(s.ctx.BlockTime().Add(30 * 24 * time.Hour))
 	s.nextBlock()
 	r, err = rk.Get(s.ctx, user.String())
 	s.NoError(err)
 	s.True(r.Banished)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
-	r,err = rk.Get(s.ctx, user.String())
+	r, err = rk.Get(s.ctx, user.String())
 	s.NoError(err)
 	s.False(r.Banished)
 }
@@ -738,20 +745,20 @@ func (s *Suite) TestValidatorPercent() {
 		s.bk.GetBalance(s.ctx, user),
 	)
 
-	s.ctx = s.ctx.WithBlockHeight(2880).WithBlockTime(genesisTime.Add((2880) *30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(2880).WithBlockTime(genesisTime.Add((2880) * 30 * time.Second))
 	s.nextBlock()
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(11_756983)), // 3 + 847.45 * (31% / 30)
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(847_450000)),
 		),
-		s.bk.GetBalance(s.ctx, user).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(auth.FeeCollectorName))...),
+		s.bk.GetBalance(s.ctx, user).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 }
 
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
 	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }

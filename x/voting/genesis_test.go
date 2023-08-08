@@ -106,8 +106,8 @@ func (s Suite) TestHistory() {
 				},
 			},
 		},
-		Author:   app.DefaultGenesisUsers["user1"].String(),
-		EndTime:  &time.Time{},
+		Author:  app.DefaultGenesisUsers["user1"].String(),
+		EndTime: &time.Time{},
 	}
 	*proposal.EndTime = time.Date(2021, 8, 3, 11, 20, 10, 666128000, time.UTC)
 
@@ -132,10 +132,10 @@ func (s *Suite) TestParams() {
 func (s *Suite) TestActivePoll_FullData() {
 	zero := util.FractionZero()
 	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
-		Author:   app.DefaultGenesisUsers["user1"].String(),
-		Name:     "Hamlet's dilemma",
-		Question: "To be or not to be? It's the question.",
-		Quorum:   &zero,
+		Author:       app.DefaultGenesisUsers["user1"].String(),
+		Name:         "Hamlet's dilemma",
+		Question:     "To be or not to be? It's the question.",
+		Quorum:       &zero,
 		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
 	}))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), true))
@@ -146,8 +146,8 @@ func (s *Suite) TestActivePoll_FullData() {
 
 func (s *Suite) TestActivePoll_Minimal() {
 	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
-		Author:   app.DefaultGenesisUsers["user1"].String(),
-		Name:     "Hamlet's dilemma",
+		Author:       app.DefaultGenesisUsers["user1"].String(),
+		Name:         "Hamlet's dilemma",
 		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
 	}))
 	s.checkExportImport()
@@ -155,8 +155,8 @@ func (s *Suite) TestActivePoll_Minimal() {
 
 func (s *Suite) TestActivePoll_MinStatus() {
 	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
-		Author:   app.DefaultGenesisUsers["user1"].String(),
-		Name:     "Hamlet's dilemma",
+		Author:       app.DefaultGenesisUsers["user1"].String(),
+		Name:         "Hamlet's dilemma",
 		Requirements: &types.Poll_MinStatus{MinStatus: referral.StatusChampion},
 	}))
 	s.checkExportImport()
@@ -165,17 +165,17 @@ func (s *Suite) TestActivePoll_MinStatus() {
 func (s *Suite) TestPollHistory() {
 	zero := util.FractionZero()
 	s.NoError(s.k.StartPoll(s.ctx, types.Poll{
-		Author:   app.DefaultGenesisUsers["user1"].String(),
-		Name:     "Hamlet's dilemma",
-		Question: "To be or not to be? It's the question.",
-		Quorum:   &zero,
+		Author:       app.DefaultGenesisUsers["user1"].String(),
+		Name:         "Hamlet's dilemma",
+		Question:     "To be or not to be? It's the question.",
+		Quorum:       &zero,
 		Requirements: &types.Poll_CanValidate{CanValidate: &types.Poll_Unit{}},
 	}))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user1"].String(), true))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user2"].String(), false))
 	s.NoError(s.k.Answer(s.ctx, app.DefaultGenesisUsers["user3"].String(), true))
 
-	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(19*time.Hour)).WithBlockHeight(s.ctx.BlockHeight()+1)
+	s.ctx = s.ctx.WithBlockTime(s.ctx.BlockTime().Add(19 * time.Hour)).WithBlockHeight(s.ctx.BlockHeight() + 1)
 	s.nextBlock()
 
 	_, ok := s.k.GetCurrentPoll(s.ctx)

@@ -94,12 +94,14 @@ func (msg *MsgStartPoll) GetSignBytes() []byte {
 }
 
 func (msg MsgStartPoll) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{ msg.GetAuthor() }
+	return []sdk.AccAddress{msg.GetAuthor()}
 }
 
 func (msg MsgStartPoll) GetAuthor() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(msg.Poll.Author)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return addr
 }
 
@@ -116,16 +118,20 @@ func (msg MsgAnswerPoll) ValidateBasic() error {
 
 func (msg *MsgAnswerPoll) GetSignBytes() []byte {
 	bz, err := proto.Marshal(msg)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return bz
 }
 
 func (msg MsgAnswerPoll) GetSigners() []sdk.AccAddress {
-	return []sdk.AccAddress{ msg.GetRespondent() }
+	return []sdk.AccAddress{msg.GetRespondent()}
 }
 
 func (msg MsgAnswerPoll) GetRespondent() sdk.AccAddress {
 	res, err := sdk.AccAddressFromBech32(msg.Respondent)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return res
 }

@@ -9,11 +9,14 @@ const (
 	ConfigDelegatedDenom = "uartrd"
 	ConfigRevokingDenom  = "uartrr"
 
-	GBSize               = 1024 * 1024 * 1024
-	BlocksOneDay         = 2880
-	BlocksOneWeek        = BlocksOneDay * 7
-	BlocksOneMonth       = BlocksOneDay * 30
-	BlocksOneHour        = BlocksOneDay / 24
+	SplittableFeeCollectorName      = "splittable_fee_collector"
+	TransactionFeeSplitRatiosMaxLcm = 100
+
+	GBSize         = 1024 * 1024 * 1024
+	BlocksOneDay   = 2880
+	BlocksOneWeek  = BlocksOneDay * 7
+	BlocksOneMonth = BlocksOneDay * 30
+	BlocksOneHour  = BlocksOneDay / 24
 )
 
 func Uartrs(n int64) sdk.Coins {

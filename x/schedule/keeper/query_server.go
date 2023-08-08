@@ -14,6 +14,7 @@ import (
 )
 
 type QueryServer Keeper
+
 var _ types.QueryServer = QueryServer{}
 
 func (qs QueryServer) All(ctx context.Context, req *types.AllRequest) (resp *types.AllResponse, err error) {

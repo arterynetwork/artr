@@ -76,6 +76,11 @@ message Proposal {
       (gogoproto.jsontag)  = "portion,omitempty",
       (gogoproto.moretags) = "yaml:\"portion,omitempty"
     ];
+
+    PortionsArgs portions = 17 [
+      (gogoproto.jsontag)  = "portions,omitempty",
+      (gogoproto.moretags) = "yaml:\"portions,omitempty"
+    ];
   }
 }
 

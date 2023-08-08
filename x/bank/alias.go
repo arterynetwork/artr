@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	QueryBalance       = keeper.QueryBalance
-	QueryParams        = keeper.QueryParams
-	ModuleName         = types.ModuleName
-	QuerierRoute       = types.QuerierRoute
-	RouterKey          = types.RouterKey
-	StoreKey           = types.StoreKey
-	DefaultParamspace  = types.DefaultParamspace
+	QueryBalance      = keeper.QueryBalance
+	QueryParams       = keeper.QueryParams
+	ModuleName        = types.ModuleName
+	QuerierRoute      = types.QuerierRoute
+	RouterKey         = types.RouterKey
+	StoreKey          = types.StoreKey
+	DefaultParamspace = types.DefaultParamspace
 )
 
 var (
@@ -52,6 +52,6 @@ type (
 	QueryBalanceParams = types.QueryBalanceParams
 	Input              = types.Input
 	Output             = types.Output
-	Supply			   = types.Supply
+	Supply             = types.Supply
 	Params             = types.Params
 )

@@ -27,7 +27,6 @@ func TagTx(ctx sdk.Context, module string, tx proto.Message) {
 
 func (EventMessage) XXX_MessageName() string { return "message" }
 
-
 // EmitEvent emits a typed event like the sdk.EventManager.EmitTypedEvent method does, but it unquotes string
 // attribute values so Tendermint could search txs by them.
 //
@@ -41,7 +40,7 @@ func EmitEvent(ctx sdk.Context, tev proto.Message) {
 // attribute values so Tendermint could search txs by them.
 //
 // See https://github.com/tendermint/tendermint/issues/6809
-func EmitEvents(ctx sdk.Context, tevs... proto.Message) {
+func EmitEvents(ctx sdk.Context, tevs ...proto.Message) {
 	events := make([]sdk.Event, 0, len(tevs))
 	for _, tev := range tevs {
 		events = append(events, patchEvent(tev))

@@ -23,7 +23,7 @@ const (
 	StatusBonusHookName       = "referral/status-bonus"
 )
 
-//TODO: refactor x/noding too
+// TODO: refactor x/noding too
 func (k *Keeper) AddHook(eventName string, callback func(ctx sdk.Context, acc sdk.AccAddress) error) {
 	lst, found := k.eventHooks[eventName]
 	if !found {

@@ -212,6 +212,22 @@ func (p Proposal) Validate() error {
 		} else if q := args.Portion.Fraction; q.IsNullValue() || q.IsNegative() || q.GTE(util.FractionInt(1)) {
 			return errors.Errorf("invalid args: %s, should be in [0; 1)", q.String())
 		}
+	case
+		PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_Portions expected")
+		}
+		if args, ok := p.Args.(*Proposal_Portions); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Portions expected", p.Args)
+		} else if forProposer := args.Portions.Fractions[0]; forProposer.IsNullValue() || forProposer.IsNegative() || forProposer.GT(util.FractionInt(1)) {
+			return errors.Errorf("invalid args: %s, should be in [0; 1]", forProposer.String())
+		} else if forCompany := args.Portions.Fractions[1]; forCompany.IsNullValue() || forCompany.IsNegative() || forCompany.GT(util.FractionInt(1)) {
+			return errors.Errorf("invalid args: %s, should be in [0; 1]", forCompany.String())
+		} else if forProposer, forCompany := args.Portions.Fractions[0], args.Portions.Fractions[1]; forProposer.Add(forCompany).GT(util.FractionInt(1)) {
+			return errors.Errorf("invalid args: %s and %s sums must be less than or equal 1", forProposer.String(), forCompany.String())
+		} else if forProposer, forCompany := args.Portions.Fractions[0], args.Portions.Fractions[1]; util.CalculateTransactionFeeSplitRatiosLCM(forProposer, forCompany).GT(sdk.NewInt(util.TransactionFeeSplitRatiosMaxLcm)) {
+			return errors.Errorf("invalid args: %s and %s LCM must be less than or equal %d", forProposer.String(), forCompany.String(), util.TransactionFeeSplitRatiosMaxLcm)
+		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)
 	}
@@ -338,16 +354,18 @@ func NewPollStatus(author sdk.AccAddress, name, text string, quorum util.Fractio
 
 func (p Poll) String() string {
 	bz, err := yaml.Marshal(p)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	return string(bz)
 }
 
 func (p Poll) Validate() error {
-	if len(p.Name) + len(p.Question) == 0 {
+	if len(p.Name)+len(p.Question) == 0 {
 		return errors.New("neither name nor question specified")
 	}
 	if _, err := sdk.AccAddressFromBech32(p.Author); err != nil {
-		return  errors.Wrap(err, "cannot parse author")
+		return errors.Wrap(err, "cannot parse author")
 	}
 	if p.Quorum != nil && (p.Quorum.IsNegative() || p.Quorum.GT(util.FractionInt(1))) {
 		return errors.New("quorum must be nil or in [0; 1]")

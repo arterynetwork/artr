@@ -48,7 +48,9 @@ func MergeStringsSorted(arr1 []string, arr2 []string) []string {
 		return arr2
 	}
 	res := make([]string, len(arr1)+len(arr2))
-	i1 := 0; i2 := 0; ir := 0
+	i1 := 0
+	i2 := 0
+	ir := 0
 	for {
 		if i1 == len(arr1) {
 			ir += copy(res[ir:], arr2[i2:])

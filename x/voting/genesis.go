@@ -54,7 +54,9 @@ func ExportGenesis(ctx sdk.Context, k keeper.Keeper) (data *types.GenesisState) 
 		if err := k.IterateThroughCurrentPollAnswers(ctx, func(acc string, ans bool) (stop bool) {
 			data.PollAnswers = append(data.PollAnswers, types.PollAnswer{Acc: acc, Ans: ans})
 			return false
-		}); err != nil { panic(err) }
+		}); err != nil {
+			panic(err)
+		}
 	}
 	data.PollHistory = k.GetPollHistoryAll(ctx)
 	return data

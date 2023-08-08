@@ -126,7 +126,7 @@ func (s Suite) TestSecondPage() {
 	}
 
 	s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
-	s.ctx = s.ctx.WithBlockHeight(3).WithBlockTime(s.ctx.BlockTime().Add(2*30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(3).WithBlockTime(s.ctx.BlockTime().Add(2 * 30 * time.Second))
 	s.app.BeginBlocker(s.ctx, s.bbHeader)
 
 	s.checkExportImport()

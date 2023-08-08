@@ -65,7 +65,7 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 	var (
 		acc   sdk.AccAddress = payload
 		store                = ctx.KVStore(k.mainStoreKey)
-		data types.Record
+		data  types.Record
 	)
 
 	k.cdc.MustUnmarshalBinaryBare(store.Get(acc), &data)
@@ -78,7 +78,9 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 	delegated, _ := k.getDelegated(ctx, acc)
 	isActiveProfile := k.profileKeeper.GetProfile(ctx, acc).IsActive(ctx)
 	isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator)
 	if percent.IsZero() {
 		data.NextAccrue = nil

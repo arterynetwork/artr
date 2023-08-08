@@ -23,7 +23,6 @@ type ParamSubspace interface {
 type AccountKeeper interface {
 	GetAccount(ctx sdk.Context, addr sdk.AccAddress) auth.AccountI
 	GetModuleAddress(moduleName string) sdk.AccAddress
-
 }
 
 type ScheduleKeeper interface {

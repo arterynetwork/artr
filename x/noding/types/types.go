@@ -36,7 +36,9 @@ func (x Info) IsActive() bool {
 
 func (x *Info) UpdateScore(stake int64) (changed bool) {
 
-	if stake < 1 { stake = 1 }
+	if stake < 1 {
+		stake = 1
+	}
 	score := int64(math.Log(float64(stake))) - x.Strokes + x.OkBlocksInRow/100
 	if score == x.Score {
 		return false

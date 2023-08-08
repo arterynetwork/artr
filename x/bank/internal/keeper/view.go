@@ -68,7 +68,9 @@ func (k BaseViewKeeper) GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coi
 	}
 
 	var balance types.Balance
-	if err := k.cdc.UnmarshalBinaryBare(bz, &balance); err != nil { panic(errors.Wrap(err, "cannot unmarshal value")) }
+	if err := k.cdc.UnmarshalBinaryBare(bz, &balance); err != nil {
+		panic(errors.Wrap(err, "cannot unmarshal value"))
+	}
 	return sdk.NewCoins(balance.Coins...)
 }
 

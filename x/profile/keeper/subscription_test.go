@@ -101,13 +101,13 @@ func (s *SSuite) TestAutoPay() {
 	s.True(p.IsActive(s.ctx))
 	s.True(p.AutoPay)
 
-	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(wasPaidUpTo.Add(-28*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(wasPaidUpTo.Add(-28 * time.Second))
 	s.nextBlock()
 
 	p = *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
 	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
-	s.True(p.ActiveUntil.After(wasPaidUpTo.Add(30*24*time.Hour)))  // 2 seconds for free
+	s.True(p.ActiveUntil.After(wasPaidUpTo.Add(30 * 24 * time.Hour))) // 2 seconds for free
 	s.True(p.IsActive(s.ctx))
 	s.True(p.AutoPay)
 }
@@ -122,7 +122,7 @@ func (s *SSuite) TestPayTariffWhenItIsOver() {
 	s.True(p.IsActive(s.ctx))
 	s.False(p.AutoPay)
 
-	s.ctx = s.ctx.WithBlockHeight(9010).WithBlockTime(wasPaidUpTo.Add(272*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(9010).WithBlockTime(wasPaidUpTo.Add(272 * time.Second))
 	s.nextBlock()
 
 	p = *s.k.GetProfile(s.ctx, addr)
@@ -142,13 +142,13 @@ func (s *SSuite) TestPayTariffWhenItIsOver() {
 func (s *SSuite) TestPayTariff_ExtraStorage() {
 	addr := app.DefaultGenesisUsers["user1"]
 	s.NoError(s.k.BuyStorage(s.ctx, addr, 13))
-	s.Equal(uint64((5+13) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	s.Equal(uint64((5+13)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 	balance := s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64()
 
 	s.NoError(s.k.PayTariff(s.ctx, addr, 0))
-	s.Equal(uint64((5+13) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	s.Equal(uint64((5+13)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 	s.EqualValues(
-		balance - (1990 + 13*10)*100000,
+		balance-(1990+13*10)*100000,
 		s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64(),
 	)
 }
@@ -159,7 +159,7 @@ func (s *SSuite) TestBuyStorage_TiB() {
 
 	s.NoError(s.k.BuyStorage(s.ctx, addr, 1024))
 
-	s.Equal(uint64((5+1024) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	s.Equal(uint64((5+1024)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 }
 
 func (s *SSuite) TestBuyStorage_PiB() {
@@ -169,7 +169,7 @@ func (s *SSuite) TestBuyStorage_PiB() {
 
 	s.NoError(s.k.BuyStorage(s.ctx, addr, 1048576))
 
-	s.Equal(uint64((5+1048576) * util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
+	s.Equal(uint64((5+1048576)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 }
 
 func (s *SSuite) TestGiveUpStorage_NegativeDelta() {
@@ -186,7 +186,7 @@ func (s *SSuite) TestImExtra_InitialState() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
 }
 
@@ -200,10 +200,10 @@ func (s *SSuite) TestImExtra_Buy() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
 	s.Equal(genesisTime.Add(s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
-	s.EqualValues(balance - 100000 * 13 * 10, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.EqualValues(balance-100000*13*10, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 }
 
 func (s *SSuite) TestImExtra_Buy_SaleOff() {
@@ -216,16 +216,17 @@ func (s *SSuite) TestImExtra_Buy_SaleOff() {
 	s.NoError(s.k.BuyImStorage(s.ctx, addr, 13))
 
 	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(20*24*time.Hour - 30*time.Second))
-	s.nextBlock(); balance += price1 * 3 / 1000 // TX fee
-	s.EqualValues(balance - price1, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.nextBlock()
+	balance += price1 * 3 / 1000 // TX fee
+	s.EqualValues(balance-price1, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
 	s.NoError(s.k.BuyImStorage(s.ctx, addr, 6))
-	s.EqualValues(balance - price1 - price2, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.EqualValues(balance-price1-price2, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
 	p := s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(19, p.ImLimitExtra)
-	s.EqualValues(24 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(24*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
 	s.Equal(genesisTime.Add(s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 }
@@ -243,7 +244,7 @@ func (s *SSuite) TestImExtra_Expiration() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
 }
 
@@ -256,50 +257,50 @@ func (s *SSuite) TestImExtra_Prolong() {
 	s.NoError(s.k.BuyImStorage(s.ctx, addr, 13))
 	s.True(s.k.GetProfile(s.ctx, addr).IsExtraImStorageActive(s.ctx))
 
-	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(15*24*time.Hour))
-	s.nextBlock(); balance += price * 3/1000 // TX fee
+	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(15 * 24 * time.Hour))
+	s.nextBlock()
+	balance += price * 3 / 1000 // TX fee
 	s.True(s.k.GetProfile(s.ctx, addr).IsExtraImStorageActive(s.ctx))
-	s.EqualValues(balance - price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.EqualValues(balance-price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
 	s.NoError(s.k.ProlongImExtra(s.ctx, addr))
 	p := s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
-	s.Equal(genesisTime.Add(2 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
-	s.EqualValues(balance - 2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
-
+	s.Equal(genesisTime.Add(2*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.EqualValues(balance-2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
 	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(30*24*time.Hour - 59*time.Second))
 	s.nextBlock()
 	p = s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(2 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.Equal(genesisTime.Add(2*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 
 	s.nextBlock()
 	p = s.k.GetProfile(s.ctx, addr)
 	p = s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(2 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.Equal(genesisTime.Add(2*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 
-	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(2 * 30*24*time.Hour - 59*time.Second))
+	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(2*30*24*time.Hour - 59*time.Second))
 	s.nextBlock()
 	p = s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(2 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.Equal(genesisTime.Add(2*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 
 	s.nextBlock()
 	p = s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
 }
 
@@ -313,7 +314,7 @@ func (s *SSuite) TestImExtra_Prolong_Nothing() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
 	s.EqualValues(balance, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 }
@@ -331,7 +332,7 @@ func (s *SSuite) TestImExtra_GiveUp_Part() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(6, p.ImLimitExtra)
-	s.EqualValues(11 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(11*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
 	s.Equal(genesisTime.Add(s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 }
@@ -348,7 +349,7 @@ func (s *SSuite) TestImExtra_GiveUp_All() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
 }
 
@@ -365,7 +366,7 @@ func (s *SSuite) TestImExtra_GiveUp_Negative() {
 	p := s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
 	s.Equal(genesisTime.Add(s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
 }
@@ -383,46 +384,49 @@ func (s *SSuite) TestImExtra_AutoPay() {
 	balance := s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64()
 	var price int64 = 100000 * 13 * 10
 	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(30*24*time.Hour - time.Second))
-	s.nextBlock(); balance += price * 3 / 1000 // TX fee
+	s.nextBlock()
+	balance += price * 3 / 1000 // TX fee
 
 	p = s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(2 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
-	s.EqualValues(balance - price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.Equal(genesisTime.Add(2*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.EqualValues(balance-price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
-	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(2 * 30*24*time.Hour - time.Second))
-	s.nextBlock(); balance += price * 3 / 1000 // TX fee
+	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(2*30*24*time.Hour - time.Second))
+	s.nextBlock()
+	balance += price * 3 / 1000 // TX fee
 
 	p = s.k.GetProfile(s.ctx, addr)
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(3 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
-	s.EqualValues(balance - 2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.Equal(genesisTime.Add(3*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.EqualValues(balance-2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
 	p.AutoPayImExtra = false
-	s.nextBlock(); balance += price * 3 / 1000 // TX fee
+	s.nextBlock()
+	balance += price * 3 / 1000 // TX fee
 
 	s.NoError(s.k.SetProfile(s.ctx, addr, *p))
 	s.True(p.IsExtraImStorageActive(s.ctx))
 	s.EqualValues(13, p.ImLimitExtra)
-	s.EqualValues(18 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(18*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.NotNil(p.ExtraImUntil)
-	s.Equal(genesisTime.Add(3 * s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
-	s.EqualValues(balance - 2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.Equal(genesisTime.Add(3*s.sk.OneMonth(s.ctx)), *p.ExtraImUntil)
+	s.EqualValues(balance-2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 
-	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(3 * 30*24*time.Hour - time.Second))
+	s.ctx = s.ctx.WithBlockTime(genesisTime.Add(3*30*24*time.Hour - time.Second))
 	s.nextBlock() // all TX fees have been paid already
 	p = s.k.GetProfile(s.ctx, addr)
 	s.False(p.IsExtraImStorageActive(s.ctx))
 	s.Zero(p.ImLimitExtra)
-	s.EqualValues(5 * util.GBSize, p.ImLimitTotal(s.ctx));
+	s.EqualValues(5*util.GBSize, p.ImLimitTotal(s.ctx))
 	s.Nil(p.ExtraImUntil)
-	s.EqualValues(balance - 2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
+	s.EqualValues(balance-2*price, s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64())
 }
 
 func (s *SSuite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {

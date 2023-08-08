@@ -57,7 +57,7 @@ func (s Suite) TestFullData() {
 	_, _, newAcc := testdata.KeyTestPubAddr()
 	s.NoError(
 		s.k.CreateAccountWithProfile(s.ctx, newAcc, app.DefaultGenesisUsers["user13"], types.NewProfile(
-			genesis_time.Add(42 * 30*time.Second),
+			genesis_time.Add(42*30*time.Second),
 			true,
 			true,
 			true,

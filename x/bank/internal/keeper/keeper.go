@@ -37,6 +37,7 @@ type Keeper = interface {
 
 	MintCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
 	BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins) error
+	BurnAccCoins(ctx sdk.Context, acc sdk.AccAddress, amt sdk.Coins) error
 }
 
 // BaseKeeper manages transfers between accounts. It implements the Keeper interface.
@@ -144,12 +145,15 @@ func (k BaseKeeper) SendCoinsFromAccountToModule(
 
 func (k BaseKeeper) PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error) {
 	for _, c := range amt {
-		if !util.IsSendable(c.Denom) { panic(errors.Errorf("%s is not sendable", c.Denom)) }
-		fee = fee.Add(sdk.NewCoin(c.Denom, util.CalculateFee(c.Amount, k.GetParams(ctx).TransactionFee, k.GetParams(ctx).MaxTransactionFee)))
+		if !util.IsSendable(c.Denom) {
+			panic(errors.Errorf("%s is not sendable", c.Denom))
+		}
+		txFeeSplitRatios := k.GetParams(ctx).TransactionFeeSplitRatios
+		fee = fee.Add(sdk.NewCoin(c.Denom, util.CalculateFee(c.Amount, k.GetParams(ctx).TransactionFee, k.GetParams(ctx).MaxTransactionFee, txFeeSplitRatios.ForProposer, txFeeSplitRatios.ForCompany)))
 	}
 	if !fee.IsZero() {
 		err = errors.Wrapf(
-			k.SendCoinsFromAccountToModule(ctx, senderAddr, authtypes.FeeCollectorName, fee),
+			k.SendCoinsFromAccountToModule(ctx, senderAddr, util.SplittableFeeCollectorName, fee),
 			"cannot collect fee: accAddress=%s amount=%s fee=%s", senderAddr, amt, fee,
 		)
 	}
@@ -209,7 +213,9 @@ func (k BaseKeeper) BurnCoins(ctx sdk.Context, moduleName string, amt sdk.Coins)
 		panic(sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "module account %s does not have permissions to burn tokens", moduleName))
 	}
 
-	if err := k.BurnAccCoins(ctx, acc.GetAddress(), amt); err != nil { return nil }
+	if err := k.BurnAccCoins(ctx, acc.GetAddress(), amt); err != nil {
+		return nil
+	}
 
 	logger := k.Logger(ctx)
 	logger.Info("burned tokens from module account", "amount", amt.String(), "from", moduleName)

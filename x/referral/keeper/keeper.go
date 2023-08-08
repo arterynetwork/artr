@@ -224,7 +224,7 @@ func (k Keeper) GetTopLevelAndBanishedAccounts(ctx sdk.Context) (topLevel []stri
 		var record types.Info
 		err = k.cdc.UnmarshalBinaryBare(v, &record)
 		if err != nil {
-			return nil,nil, err
+			return nil, nil, err
 		}
 		addr := string(itr.Key())
 		if record.Banished {
@@ -255,10 +255,10 @@ func (k Keeper) appendChild(ctx sdk.Context, parentAcc string, childAcc string, 
 		)
 	}
 	var (
-		bu            = newBunchUpdater(k, ctx)
-		anc           = parentAcc
-		coins         = k.getBalance(ctx, childAcc)
-		delegated     = k.getDelegated(ctx, childAcc)
+		bu        = newBunchUpdater(k, ctx)
+		anc       = parentAcc
+		coins     = k.getBalance(ctx, childAcc)
+		delegated = k.getDelegated(ctx, childAcc)
 	)
 	newItem := types.NewInfo(parentAcc, coins, delegated)
 	if setCompressionTime {
@@ -317,7 +317,7 @@ func (k Keeper) appendChild(ctx sdk.Context, parentAcc string, childAcc string, 
 // Compress relocates all account's children under its parent, so the account looses its entire network.
 func (k Keeper) Compress(ctx sdk.Context, acc string) error {
 	var (
-		bu         = newBunchUpdater(k, ctx)
+		bu = newBunchUpdater(k, ctx)
 
 		coins      []sdk.Int
 		delegated  []sdk.Int
@@ -410,8 +410,8 @@ func (k Keeper) Compress(ctx sdk.Context, acc string) error {
 
 	util.EmitEvent(ctx,
 		&types.EventCompression{
-			Address: acc,
-			Referrer: parent,
+			Address:   acc,
+			Referrer:  parent,
 			Referrals: children,
 		},
 	)

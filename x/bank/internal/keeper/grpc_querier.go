@@ -9,6 +9,7 @@ import (
 )
 
 type QueryServer BaseKeeper
+
 var _ types.QueryServer = BaseKeeper{}
 
 func (k BaseKeeper) Params(ctx context.Context, req *types.ParamsRequest) (*types.ParamsResponse, error) {

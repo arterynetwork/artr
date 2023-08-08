@@ -359,6 +359,13 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			if err = p.Validate(); err == nil {
 				k.bankKeeper.SetParams(ctx, p)
 			}
+		case types.PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS:
+			p := k.bankKeeper.GetParams(ctx)
+			p.TransactionFeeSplitRatios.ForProposer = proposal.GetPortions().Fractions[0]
+			p.TransactionFeeSplitRatios.ForCompany = proposal.GetPortions().Fractions[1]
+			if err = p.Validate(); err == nil {
+				k.bankKeeper.SetParams(ctx, p)
+			}
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}
@@ -502,7 +509,9 @@ func (k Keeper) GetCurrentPoll(ctx sdk.Context) (poll types.Poll, ok bool) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
 	bz := store.Get(types.KeyPollCurrent)
 
-	if bz == nil { return types.Poll{}, false }
+	if bz == nil {
+		return types.Poll{}, false
+	}
 
 	k.cdc.MustUnmarshalBinaryBare(bz, &poll)
 	return poll, true
@@ -522,11 +531,15 @@ func (k Keeper) GetPollStatus(ctx sdk.Context) (yes, no uint64) {
 func (k Keeper) StartPoll(ctx sdk.Context, poll types.Poll) error {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
 
-	if store.Has(types.KeyPollCurrent) { return types.ErrOtherActive }
-	if !util.ContainsString(k.GetGovernment(ctx).Strings(), poll.Author) { return types.ErrSignerNotAllowed }
+	if store.Has(types.KeyPollCurrent) {
+		return types.ErrOtherActive
+	}
+	if !util.ContainsString(k.GetGovernment(ctx).Strings(), poll.Author) {
+		return types.ErrSignerNotAllowed
+	}
 
 	start := ctx.BlockTime()
-	end   := start.Add(time.Duration(k.GetParams(ctx).PollPeriod) * time.Hour)
+	end := start.Add(time.Duration(k.GetParams(ctx).PollPeriod) * time.Hour)
 	k.scheduleKeeper.ScheduleTask(ctx, end, types.PollHookName, nil)
 	poll.StartTime = &start
 	poll.EndTime = &end
@@ -537,33 +550,47 @@ func (k Keeper) StartPoll(ctx sdk.Context, poll types.Poll) error {
 
 func (k Keeper) Answer(ctx sdk.Context, acc string, yes bool) error {
 	poll, ok := k.GetCurrentPoll(ctx)
-	if !ok { return types.ErrNoActivePoll }
+	if !ok {
+		return types.ErrNoActivePoll
+	}
 
 	addr, err := sdk.AccAddressFromBech32(acc)
-	if err != nil { panic(errors.Wrap(err, "cannot parse acc address")) }
+	if err != nil {
+		panic(errors.Wrap(err, "cannot parse acc address"))
+	}
 
 	switch r := poll.Requirements.(type) {
 	case *types.Poll_CanValidate:
 		q, _, _, err := k.nodingKeeper.IsQualified(ctx, addr)
-		if err != nil { panic(errors.Wrap(err, "cannot check for qualification")) }
-		if !q { return types.ErrRespondentNotAllowed }
+		if err != nil {
+			panic(errors.Wrap(err, "cannot check for qualification"))
+		}
+		if !q {
+			return types.ErrRespondentNotAllowed
+		}
 	case *types.Poll_MinStatus:
 		info, err := k.referralKeeper.Get(ctx, acc)
-		if err != nil { panic(errors.Wrap(err, "cannot obtain referral info")) }
-		if info.Status < r.MinStatus { return types.ErrRespondentNotAllowed }
+		if err != nil {
+			panic(errors.Wrap(err, "cannot obtain referral info"))
+		}
+		if info.Status < r.MinStatus {
+			return types.ErrRespondentNotAllowed
+		}
 	}
 
-	store    := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
 	ansStore := prefix.NewStore(store, types.KeyPollAnswers)
-	key   := []byte(acc)
-	if ansStore.Has(key) { return types.ErrAlreadyVoted }
+	key := []byte(acc)
+	if ansStore.Has(key) {
+		return types.ErrAlreadyVoted
+	}
 
 	var ans, countKey []byte
 	if yes {
-		ans      = types.ValueYes
+		ans = types.ValueYes
 		countKey = types.KeyPollYesCount
 	} else {
-		ans      = types.ValueNo
+		ans = types.ValueNo
 		countKey = types.KeyPollNoCount
 	}
 	ansStore.Set(key, ans)
@@ -575,7 +602,7 @@ func (k Keeper) Answer(ctx sdk.Context, acc string, yes bool) error {
 	if bz = store.Get(countKey); bz != nil {
 		value = binary.BigEndian.Uint64(bz)
 	} else {
-		bz =  make([]byte, 8)
+		bz = make([]byte, 8)
 	}
 	value += 1
 	binary.BigEndian.PutUint64(bz, value)
@@ -653,10 +680,10 @@ func (k Keeper) GetPollHistory(ctx sdk.Context, limit int32, page int32) []types
 		res []types.PollHistoryItem
 	)
 	if limit > 0 {
-		it  = sdk.KVStorePrefixIteratorPaginated(store, types.KeyPollHistory, uint(page), uint(limit))
+		it = sdk.KVStorePrefixIteratorPaginated(store, types.KeyPollHistory, uint(page), uint(limit))
 		res = make([]types.PollHistoryItem, 0, limit)
 	} else {
-		it  = sdk.KVStorePrefixIterator(store, types.KeyPollHistory)
+		it = sdk.KVStorePrefixIterator(store, types.KeyPollHistory)
 	}
 	for ; it.Valid(); it.Next() {
 		var item types.PollHistoryItem
@@ -667,7 +694,7 @@ func (k Keeper) GetPollHistory(ctx sdk.Context, limit int32, page int32) []types
 	return res
 }
 
-func (k Keeper) IterateThroughCurrentPollAnswers(ctx sdk.Context, callback func(acc string, ans bool)(stop bool)) (err error) {
+func (k Keeper) IterateThroughCurrentPollAnswers(ctx sdk.Context, callback func(acc string, ans bool) (stop bool)) (err error) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.KeyPollPrefix)
 	if !store.Has(types.KeyPollCurrent) {
 		return types.ErrNoActivePoll
@@ -701,7 +728,9 @@ func (k Keeper) LoadPolls(ctx sdk.Context, state types.GenesisState) {
 	if state.CurrentPoll != nil {
 		store.Set(types.KeyPollCurrent, k.cdc.MustMarshalBinaryBare(state.CurrentPoll))
 		for _, ans := range state.PollAnswers {
-			if err := k.Answer(ctx, ans.Acc, ans.Ans); err != nil { panic(err) }
+			if err := k.Answer(ctx, ans.Acc, ans.Ans); err != nil {
+				panic(err)
+			}
 		}
 	}
 

@@ -11,3 +11,8 @@ message EventTransfer {
   string recipient = 2;
   repeated cosmos.base.v1beta1.Coin amount = 3 [(gogoproto.nullable) = false];
 }
+
+message EventBurn {
+  string account = 1;
+  repeated cosmos.base.v1beta1.Coin amount = 2 [(gogoproto.nullable) = false];
+}

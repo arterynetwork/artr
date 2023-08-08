@@ -56,8 +56,8 @@ func main() {
 
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
-		Use:               "artrd",
-		Short:             "Artery Blockchain node (server + client)",
+		Use:   "artrd",
+		Short: "Artery Blockchain node (server + client)",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx = client.ReadHomeFlag(clientCtx, cmd)
 
@@ -100,10 +100,10 @@ func main() {
 }
 
 func newApp(ec app.EncodingConfig) serverTypes.AppCreator {
-	return func	(logger	log.Logger, db	dbm.DB, traceStore	io.Writer, appOpts	serverTypes.AppOptions) serverTypes.Application{
+	return func(logger log.Logger, db dbm.DB, traceStore io.Writer, appOpts serverTypes.AppOptions) serverTypes.Application {
 		var cache sdk.MultiStorePersistentCache
 
-		if viper.GetBool(server.FlagInterBlockCache){
+		if viper.GetBool(server.FlagInterBlockCache) {
 			cache = store.NewCommitKVStoreCacheManager()
 		}
 
@@ -118,8 +118,8 @@ func newApp(ec app.EncodingConfig) serverTypes.AppCreator {
 	}
 }
 
-func exportAppState(ec app.EncodingConfig) serverTypes.AppExporter{
-	return func (
+func exportAppState(ec app.EncodingConfig) serverTypes.AppExporter {
+	return func(
 		logger log.Logger, db dbm.DB, traceStore io.Writer, height int64, forZeroHeight bool, jailWhiteList []string,
 		_ serverTypes.AppOptions,
 	) (serverTypes.ExportedApp, error) {
@@ -139,7 +139,7 @@ func exportAppState(ec app.EncodingConfig) serverTypes.AppExporter{
 	}
 }
 
-func addModuleInitFlags(_ *cobra.Command) { }
+func addModuleInitFlags(_ *cobra.Command) {}
 
 func queryCmd() *cobra.Command {
 	queryCmd := &cobra.Command{

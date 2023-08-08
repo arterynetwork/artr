@@ -18,13 +18,13 @@ type Fraction struct {
 
 type protoFieldMarshaler interface {
 	// Size is a value s10n length in bytes
-	Size() int;
+	Size() int
 
 	// MarshalTo serializes a fraction to a byte stream
-	MarshalTo(dest []byte) (int, error);
+	MarshalTo(dest []byte) (int, error)
 
 	// Unmarshal deserializes a fraction from a byte array
-	Unmarshal(bz []byte) error;
+	Unmarshal(bz []byte) error
 }
 
 var (
@@ -247,10 +247,10 @@ func (x Fraction) IsPositive() bool {
 }
 
 func (x Fraction) Equal(y Fraction) bool { return x.Sub(y).IsZero() }
-func (x Fraction) GT(y Fraction) bool  { return x.Sub(y).IsPositive() }
-func (x Fraction) LT(y Fraction) bool  { return y.GT(x) }
-func (x Fraction) GTE(y Fraction) bool { return !x.LT(y) }
-func (x Fraction) LTE(y Fraction) bool { return !x.GT(y) }
+func (x Fraction) GT(y Fraction) bool    { return x.Sub(y).IsPositive() }
+func (x Fraction) LT(y Fraction) bool    { return y.GT(x) }
+func (x Fraction) GTE(y Fraction) bool   { return !x.LT(y) }
+func (x Fraction) LTE(y Fraction) bool   { return !x.GT(y) }
 
 func lcm(x *big.Int, y *big.Int) *big.Int {
 	res := &big.Int{}

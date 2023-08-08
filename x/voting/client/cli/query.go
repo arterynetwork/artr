@@ -170,8 +170,8 @@ func cmdPoll() *cobra.Command {
 	return cmd
 }
 
-func cmdPollHistory() *cobra.Command{
-	cmd  := &cobra.Command{
+func cmdPollHistory() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "poll-history [limit [page]]",
 		Short: "List of completed polls",
 		Args:  cobra.MaximumNArgs(2),

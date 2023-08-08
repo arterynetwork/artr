@@ -486,7 +486,7 @@ func (s *BaseSuite) nextBlock(proposer crypto.PubKey, votes []abci.VoteInfo, byz
 
 	s.ctx = s.ctx.
 		WithBlockHeight(s.ctx.BlockHeight() + 1).
-		WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
+		WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
 
 	bbr := s.app.BeginBlocker(s.ctx, abci.RequestBeginBlock{
 		Header: tmproto.Header{

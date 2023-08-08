@@ -109,7 +109,7 @@ func ScheduleBanishment(rk referralK.Keeper, bk bank.Keeper, rKey, sKey sdk.Stor
 				changed := false
 				tasks := make([]scheduleT.Task, 0, len(sch.Tasks))
 
-				TasksForAMomentInTime:
+			TasksForAMomentInTime:
 				for _, task := range sch.Tasks {
 					if task.HandlerName == referralK.BanishHookName {
 						var addr sdk.AccAddress
@@ -297,22 +297,24 @@ func ForceGlobalDelegation(rk referralK.Keeper, bk bank.Keeper, dk delegatingK.K
 		logger.Info("Starting ForceGlobalDelegation ...")
 		defer logger.Info("... ForceGlobalDelegation done!")
 
-		dMain   := sdk.NewInt(0)
+		dMain := sdk.NewInt(0)
 		dRevoke := sdk.NewInt(0)
 
 		oneDay := sk.OneDay(ctx)
-		t      := time.Unix(0, plan.Time.UnixNano()).Add(oneDay)
+		t := time.Unix(0, plan.Time.UnixNano()).Add(oneDay)
 
-		q      := util.FractionZero()
+		q := util.FractionZero()
 		deltaT := -1 * time.Second
 		deltaQ := util.NewFraction(-deltaT.Nanoseconds(), oneDay.Nanoseconds()).Reduce()
 
 		bStore := ctx.KVStore(bKey)
-		key := make([]byte, len(bankT.BalancesPrefix) + AddrLen)
+		key := make([]byte, len(bankT.BalancesPrefix)+AddrLen)
 		copy(key, bankT.BalancesPrefix)
 
 		rk.Iterate(ctx, func(bech32 string, r *referralT.Info) (changed, _ bool) {
-			if r.Banished { return }
+			if r.Banished {
+				return
+			}
 
 			empty := r.Coins[0].Equal(r.Delegated[0])
 			for i := 0; i <= 10; i++ {
@@ -321,7 +323,9 @@ func ForceGlobalDelegation(rk referralK.Keeper, bk bank.Keeper, dk delegatingK.K
 					changed = true
 				}
 			}
-			if empty { return }
+			if empty {
+				return
+			}
 
 			acc, err := sdk.AccAddressFromBech32(bech32)
 			if err != nil {
@@ -348,7 +352,9 @@ func ForceGlobalDelegation(rk referralK.Keeper, bk bank.Keeper, dk delegatingK.K
 			di := dk.Get(ctx, acc)
 			diChanged := false
 
-			if di == nil { di = &delegatingT.Record{} }
+			if di == nil {
+				di = &delegatingT.Record{}
+			}
 
 			if len(di.Requests) != 0 {
 				for _, r := range di.Requests {
@@ -358,7 +364,7 @@ func ForceGlobalDelegation(rk referralK.Keeper, bk bank.Keeper, dk delegatingK.K
 				diChanged = true
 			}
 			if di.NextAccrue != nil {
-				missedPart := util.NewFraction(mainBal.Int64() + revokeBal.Int64(), balance.AmountOf(util.ConfigDelegatedDenom).Int64()).Mul(util.NewFraction(plan.Time.Sub(di.NextAccrue.Add(-oneDay)).Nanoseconds(), oneDay.Nanoseconds()))
+				missedPart := util.NewFraction(mainBal.Int64()+revokeBal.Int64(), balance.AmountOf(util.ConfigDelegatedDenom).Int64()).Mul(util.NewFraction(plan.Time.Sub(di.NextAccrue.Add(-oneDay)).Nanoseconds(), oneDay.Nanoseconds()))
 				di.MissedPart = &missedPart
 				diChanged = true
 			} else if balance.AmountOf(util.ConfigDelegatedDenom).Int64() > bk.GetParams(ctx).DustDelegation {
@@ -424,9 +430,11 @@ func UnbanishAccountsWithDelegation(bk bank.Keeper, sk scheduleK.Keeper, cdc cod
 		logger.Info("Starting UnbanishAccountsWithDelegation ...")
 
 		store := cachekv.NewStore(ctx.KVStore(rKey))
-		get := func(acc string)referralT.Info {
+		get := func(acc string) referralT.Info {
 			bz := store.Get([]byte(acc))
-			if bz == nil { panic("not found") }
+			if bz == nil {
+				panic("not found")
+			}
 			var r referralT.Info
 			cdc.MustUnmarshalBinaryBare(bz, &r)
 			return r
@@ -453,9 +461,13 @@ func UnbanishAccountsWithDelegation(bk bank.Keeper, sk scheduleK.Keeper, cdc cod
 			acc := string(it.Key())
 			r := get(acc)
 
-			if !r.Banished { continue }
+			if !r.Banished {
+				continue
+			}
 			addr, err := sdk.AccAddressFromBech32(acc)
-			if err != nil { panic(errors.Wrap(err, "cannot parse address")) }
+			if err != nil {
+				panic(errors.Wrap(err, "cannot parse address"))
+			}
 
 			if d := bk.GetBalance(ctx, addr).AmountOf(util.ConfigDelegatedDenom).Int64(); d > ddt {
 				logger.Info("... unbanishing", "acc", acc, "delegation", d)
@@ -464,7 +476,9 @@ func UnbanishAccountsWithDelegation(bk bank.Keeper, sk scheduleK.Keeper, cdc cod
 				var pi referralT.Info
 				for parent = r.Referrer; parent != ""; parent = pi.Referrer {
 					pi := get(parent)
-					if !pi.RegistrationClosed(ctx, sk) { break }
+					if !pi.RegistrationClosed(ctx, sk) {
+						break
+					}
 				}
 
 				r.Referrer = parent
@@ -513,7 +527,8 @@ func UnbanishAccountsWithDelegation(bk bank.Keeper, sk scheduleK.Keeper, cdc cod
 				set(acc, r)
 			}
 		}
-		_ = it.Close(); it = nil
+		_ = it.Close()
+		it = nil
 		store.Write()
 		// RefreshReferralStatuses must be called after this.
 	}
@@ -525,9 +540,11 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 		logger.Info("Starting TransferFromTheBanished ...")
 
 		store := cachekv.NewStore(ctx.KVStore(rKey))
-		get := func(acc string)referralT.Info {
+		get := func(acc string) referralT.Info {
 			bz := store.Get([]byte(acc))
-			if bz == nil { panic("not found") }
+			if bz == nil {
+				panic("not found")
+			}
 			var r referralT.Info
 			cdc.MustUnmarshalBinaryBare(bz, &r)
 			return r
@@ -552,19 +569,27 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 
 			var r referralT.Info
 			cdc.MustUnmarshalBinaryBare(it.Value(), &r)
-			if r.Banished || r.Referrer == "" { continue }
+			if r.Banished || r.Referrer == "" {
+				continue
+			}
 
 			parent := r.Referrer
 			pi := get(parent)
-			if !pi.Banished { continue }
+			if !pi.Banished {
+				continue
+			}
 
 			logger.Info("... parent is banished, moving account up ...", "acc", acc, "parent", parent)
 
 			for {
 				parent = pi.Referrer
-				if parent == "" { break }
+				if parent == "" {
+					break
+				}
 				pi = get(parent)
-				if !pi.RegistrationClosed(ctx, sk) { break }
+				if !pi.RegistrationClosed(ctx, sk) {
+					break
+				}
 			}
 
 			empty := true
@@ -587,7 +612,9 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 			} else {
 				a := r.Referrer
 				for i := 1; i <= 10; i++ {
-					if a == "" { break }
+					if a == "" {
+						break
+					}
 					info := get(a)
 					if i == 1 {
 						util.RemoveStringPreserveOrder(&info.Referrals, acc)
@@ -603,7 +630,9 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 
 				a = parent
 				for i := 1; i <= 10; i++ {
-					if a == "" { break }
+					if a == "" {
+						break
+					}
 					info := get(a)
 					if i == 1 {
 						info.Referrals = append(info.Referrals, acc)
@@ -623,7 +652,8 @@ func TransferFromTheBanished(sk scheduleK.Keeper, cdc codec.BinaryMarshaler, rKe
 			logger.Info("... ... relocated", "acc", acc, "parent", parent)
 		}
 
-		_ = it.Close(); it = nil
+		_ = it.Close()
+		it = nil
 		store.Write()
 		// RefreshReferralStatuses must be called after this.
 	}
@@ -957,5 +987,25 @@ func ScheduleMissingBanishmentAndRefreshReferralStatuses(rk referralK.Keeper, bk
 
 			return
 		})
+	}
+}
+
+func InitTransactionFeeSplitRatiosAndCompanyAccountParams(k bank.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitTransactionFeeSplitRatiosAndCompanyAccountParams ...")
+
+		var pz bankT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, bankT.ParamStoreKeyTransactionFeeSplitRatios) {
+				pz.TransactionFeeSplitRatios = bankT.DefaultTransactionFeeSplitRatios
+			} else if bytes.Equal(pair.Key, bankT.ParamStoreKeyCompanyAccount) {
+				pz.CompanyAccount = "artr1d3paqmusp39t2yhx4ju4vm50pfjmddfkwnn22p"
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitTransactionFeeSplitRatiosAndCompanyAccountParams done!", "params", pz)
 	}
 }

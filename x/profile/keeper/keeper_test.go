@@ -81,10 +81,10 @@ func (s *Suite) TestCreateAccountWithProfile() {
 		s.NoError(err)
 		t := refInfo.CompressionAt
 		s.NotNil(t)
-		s.Equal(genesisTime.Add(2 * 30*24*time.Hour), *t)
+		s.Equal(genesisTime.Add(2*30*24*time.Hour), *t)
 	}
 	{
-		t := genesisTime.Add(2 * 30*24*time.Hour)
+		t := genesisTime.Add(2 * 30 * 24 * time.Hour)
 		tasks := s.sk.GetTasks(s.ctx, t, t.Add(1))
 		s.Equal(
 			[]schedule.Task{
@@ -136,10 +136,10 @@ func (s *Suite) TestCreateAccount() {
 		s.NoError(err)
 		t := refInfo.CompressionAt
 		s.NotNil(t)
-		s.Equal(genesisTime.Add(2 * 30*24*time.Hour), *t)
+		s.Equal(genesisTime.Add(2*30*24*time.Hour), *t)
 	}
 	{
-		t := genesisTime.Add(2 * 30*24*time.Hour)
+		t := genesisTime.Add(2 * 30 * 24 * time.Hour)
 		tasks := s.sk.GetTasks(s.ctx, t, t.Add(1))
 		s.Equal(
 			[]schedule.Task{

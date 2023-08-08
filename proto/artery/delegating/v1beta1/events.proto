@@ -27,8 +27,9 @@ message EventAccrue {
 }
 
 message EventValidatorAccrue {
-	repeated string accounts = 1;
-	repeated uint64 ucoins = 2;
+  string account = 3;
+  repeated string accounts = 1;
+  repeated uint64 ucoins = 2;
 }
 
 message EventMassiveRevoke {

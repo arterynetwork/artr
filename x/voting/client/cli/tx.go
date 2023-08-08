@@ -68,6 +68,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetTransactionFee(),
 		cmdSetBurnOnRevoke(),
 		cmdSetMaxTransactionFee(),
+		cmdSetTransactionFeeSplitRatios(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -85,7 +86,9 @@ func cmdEnterPrice() *cobra.Command {
 		Short:   "Propose to change the subscription price",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -132,7 +135,9 @@ func cmdDelegationAward() *cobra.Command {
 		Example: `artrcli tx voting set-delegation-award 21 24 27 30 "return to default values" ivan`,
 		Args:    cobra.ExactArgs(6),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[5]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[5]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -185,7 +190,9 @@ func cmdDelegationNetworkAward() *cobra.Command {
 		Example: `artrcli tx voting set-delegation-network-award 5/1000 5% 1% 1% 2% 1% 1% 1% 1% 1% 5/1000 "return to default values" ivan`,
 		Args:    cobra.ExactArgs(13),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -229,7 +236,9 @@ func cmdSubscriptionNetworkAward() *cobra.Command {
 		Example: `artrcli tx voting set-subscription-network-award 10% 15% 10% 7% 7% 7% 7% 7% 5% 2% 2% "return to default values" ivan`,
 		Args:    cobra.ExactArgs(13),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -291,7 +300,9 @@ func cmdAddGovernor() *cobra.Command {
 		Short:   "Propose to add an account to the government",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -331,7 +342,9 @@ func cmdRemoveGovernor() *cobra.Command {
 		Short:   "Propose to remove an account from the government",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -370,7 +383,9 @@ func cmdProductVpnBasePrice() *cobra.Command {
 		Short:   "Propose to change the VPN base price",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -417,7 +432,9 @@ func cmdProductStorageBasePrice() *cobra.Command {
 		Short:   "Propose to change the storage base price",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -464,7 +481,9 @@ func cmdAddFreeCreator() *cobra.Command {
 		Short:   "Propose to allow an account to create new accounts for free",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -503,7 +522,9 @@ func cmdRemoveFreeCreator() *cobra.Command {
 		Short:   "Propose to disallow an account to create new accounts for free",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -544,7 +565,9 @@ func cmdUpgradeSoftware() *cobra.Command {
 		Example: `artrcli tx voting upgrade-software 3.0.0 2023-01-01T03:00:00Z https://example.com/updates/3.0.0/info.json?checksum=sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 "update to v3 Jan 1st at 03:00 AM GMT" ivan`,
 		Args:    cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[4]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[4]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -571,9 +594,9 @@ func cmdUpgradeSoftware() *cobra.Command {
 					Type:   types.PROPOSAL_TYPE_SOFTWARE_UPGRADE,
 					Args: &types.Proposal_SoftwareUpgrade{
 						SoftwareUpgrade: &types.SoftwareUpgradeArgs{
-							Name:   upgradeName,
-							Time:   &t,
-							Info:   info,
+							Name: upgradeName,
+							Time: &t,
+							Info: info,
 						},
 					},
 				},
@@ -596,7 +619,9 @@ func cmdCancelSoftwareUpgrade() *cobra.Command {
 		Short:   "Propose to cancel a previously scheduled blockchain software upgrade",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -630,7 +655,9 @@ func cmdStaffValidatorAdd() *cobra.Command {
 		Short:   "Propose to allow an account to become a validator even if it doesn't fulfill requirements",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -669,7 +696,9 @@ func cmdStaffValidatorRemove() *cobra.Command {
 		Short:   "Propose to disallow an account to be a validator if it doesn't fulfill requirements",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -708,7 +737,9 @@ func cmdEarningSignerAdd() *cobra.Command {
 		Short:   "Propose to allow an account to schedule VPN & storage awards",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -747,7 +778,9 @@ func cmdEarningSignerRemove() *cobra.Command {
 		Short:   "Propose to disallow an account to schedule VPN & storage awards",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -786,7 +819,9 @@ func cmdCourseChangeSignerAdd() *cobra.Command {
 		Short:   "Propose to allow an account to set token exchange rate",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -825,7 +860,9 @@ func cmdCourseChangeSignerRemove() *cobra.Command {
 		Short:   "Propose to disallow an account to set token exchange rate",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -864,7 +901,9 @@ func cmdVpnCurrentSignerAdd() *cobra.Command {
 		Short:   "Propose to allow an account to update accounts' current VPN traffic value",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -903,7 +942,9 @@ func cmdVpnCurrentSignerRemove() *cobra.Command {
 		Short:   "Propose to disallow an account to update accounts' current VPN traffic value",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -943,7 +984,9 @@ func cmdAccountTransitionPrice() *cobra.Command {
 		Short:   "Propose to change an account transition price (in uARTR)",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -991,7 +1034,9 @@ func cmdSetMinSend() *cobra.Command {
 		Short:   "Propose to change minimum amount allowed to send (in uARTR)",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1039,7 +1084,9 @@ func cmdSetMinDelegate() *cobra.Command {
 		Short:   "Propose to change minimum amount allowed to delegate (in uARTR)",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1087,7 +1134,9 @@ func cmdSetMaxValidators() *cobra.Command {
 		Short:   "Propose to change maximum validator count",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1135,7 +1184,9 @@ func cmdSetLotteryValidators() *cobra.Command {
 		Short:   `Propose to change the count of "lucky" (aka "lottery") validators`,
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1182,7 +1233,9 @@ func cmdGeneralAmnesty() *cobra.Command {
 		Short:   "Zero all users' missed block count and jail count",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1215,7 +1268,9 @@ func cmdSetValidatorMinStatus() *cobra.Command {
 		Short:   `Propose to set minimal status required for validation`,
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1262,7 +1317,9 @@ func cmdSetJailAfter() *cobra.Command {
 		Short:   `Propose to set a number of blocks, a validator is jailed after missing which in row`,
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1310,7 +1367,9 @@ func cmdSetDustDelegation() *cobra.Command {
 		Short:   "Propose to change dust delegation threshold (in uARTR, an exactly equal delegation counts as dust)",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1357,7 +1416,9 @@ func cmdSetRevokePeriod() *cobra.Command {
 		Short:   `Set a number of days, coins are returned from delegation after`,
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1405,24 +1466,26 @@ func cmdSetVotingPower() *cobra.Command {
 		Short:   "Propose to change validator voting power distribution",
 		Args:    cobra.MinimumNArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[len(args) - 1]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[len(args)-1]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
 			author := clientCtx.GetFromAddress().String()
-			proposalName := args[len(args) - 2]
+			proposalName := args[len(args)-2]
 
 			value := noding.Distribution{}
 
-			n, err := strconv.ParseInt(args[len(args) - 3], 0, 64)
+			n, err := strconv.ParseInt(args[len(args)-3], 0, 64)
 			if err != nil {
 				return errors.Wrap(err, `cannot parse "luckies" voting power`)
 			}
 			value.LuckiesVotingPower = n
 
-			for i := 0; i < len(args) - 3; i++ {
+			for i := 0; i < len(args)-3; i++ {
 				parts := strings.Split(args[i], ":")
 				if len(parts) != 2 {
 					return errors.Errorf("cannot parse the slice #%d: exactly one colon expected", i)
@@ -1466,7 +1529,9 @@ func cmdSetValidatorPercent() *cobra.Command {
 		Short:   "Propose to set active validators' delegation award rate",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1476,13 +1541,15 @@ func cmdSetValidatorPercent() *cobra.Command {
 			proposalName := args[1]
 
 			q, err := util.ParseFraction(args[0])
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			msg := &types.MsgPropose{
 				Proposal: types.Proposal{
 					Author: author,
-					Name: proposalName,
-					Type: types.PROPOSAL_TYPE_VALIDATOR,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_VALIDATOR,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,
@@ -1508,7 +1575,9 @@ func cmdSetTransactionFee() *cobra.Command {
 		Short:   "Propose to change transaction fee",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1518,13 +1587,15 @@ func cmdSetTransactionFee() *cobra.Command {
 			proposalName := args[1]
 
 			q, err := util.ParseFraction(args[0])
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 
 			msg := &types.MsgPropose{
 				Proposal: types.Proposal{
 					Author: author,
-					Name: proposalName,
-					Type: types.PROPOSAL_TYPE_TRANSACTION_FEE,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_TRANSACTION_FEE,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,
@@ -1634,13 +1705,66 @@ func cmdSetMaxTransactionFee() *cobra.Command {
 	return cmd
 }
 
+func cmdSetTransactionFeeSplitRatios() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-transaction-fee-split-ratios <for proposal ratio> <for company ratio> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-transaction-fee-split-ratios 2/5 1/5 "Set transaction fee split ratios: 2 part for proposal, 1 part for company and 2 part for burning" ivan`,
+		Aliases: []string{"set_transaction_fee_split_ratios", "stfsr"},
+		Short:   "Propose to change transaction fee split ratios (in fractions for proposal and company)",
+		Args:    cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[3]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[2]
+
+			forProposal, err := util.ParseFraction(args[0])
+			if err != nil {
+				return err
+			}
+
+			forCompany, err := util.ParseFraction(args[1])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS,
+					Args: &types.Proposal_Portions{
+						Portions: &types.PortionsArgs{
+							Fractions: []util.Fraction{forProposal, forCompany},
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
 func cmdVote() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vote agree|disagree <voter_key_or_address>",
 		Short: "Vote for/against the current proposal",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1674,15 +1798,17 @@ func cmdStartPoll() *cobra.Command {
 		Example: `start-poll ivan validators Halving "Should we decrease all awards by a half next Monday?" 2/3`,
 		Args:    cobra.RangeArgs(4, 5),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[0]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[0]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
 			}
 
 			poll := types.Poll{
-				Name:    args[2],
-				Author:  clientCtx.GetFromAddress().String(),
+				Name:     args[2],
+				Author:   clientCtx.GetFromAddress().String(),
 				Question: args[3],
 			}
 
@@ -1722,7 +1848,9 @@ func cmdStartPoll() *cobra.Command {
 			}
 
 			msg := types.MsgStartPoll{Poll: poll}
-			if err = msg.ValidateBasic(); err != nil { return err }
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), &msg)
 		},
 	}
@@ -1737,7 +1865,9 @@ func cmdAnswerPoll() *cobra.Command {
 		Short:   "Answer the current public poll",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil { return err }
+			if err := cmd.Flags().Set(flags.FlagFrom, args[1]); err != nil {
+				return err
+			}
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
 				return err
@@ -1754,7 +1884,9 @@ func cmdAnswerPoll() *cobra.Command {
 				Respondent: clientCtx.GetFromAddress().String(),
 				Yes:        yes,
 			}
-			if err = msg.ValidateBasic(); err != nil { return err }
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), &msg)
 		},
 	}

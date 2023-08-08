@@ -41,7 +41,6 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	types.RegisterLegacyAminoCodec(cdc)
 }
 
-
 // RegisterInterfaces registers interfaces and implementations of the bank module.
 func (AppModuleBasic) RegisterInterfaces(registry codecTypes.InterfaceRegistry) {
 	types.RegisterInterfaces(registry)
@@ -64,7 +63,7 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONMarshaler, _ client.TxEncodi
 }
 
 // RegisterRESTRoutes registers the REST routes for the schedule module.
-func (AppModuleBasic) RegisterRESTRoutes(_ client.Context, _ *mux.Router) { }
+func (AppModuleBasic) RegisterRESTRoutes(_ client.Context, _ *mux.Router) {}
 
 // GetTxCmd returns the root tx command for the schedule module.
 func (AppModuleBasic) GetTxCmd() *cobra.Command {

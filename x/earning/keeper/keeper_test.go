@@ -300,7 +300,7 @@ func (s *Suite) TestEmptyList() {
 
 func (s *Suite) nextBlock() (abci.ResponseEndBlock, abci.ResponseBeginBlock) {
 	ebr := s.app.EndBlocker(s.ctx, abci.RequestEndBlock{})
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(s.ctx.BlockTime().Add(30 * time.Second))
 	bbr := s.app.BeginBlocker(s.ctx, s.bbHeader)
 	return ebr, bbr
 }

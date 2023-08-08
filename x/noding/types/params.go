@@ -176,6 +176,8 @@ func (p *Params) Validate() error {
 	if err := validateStatus(p.MinStatus); err != nil {
 		return sdkerrors.Wrap(err, "invalid MinStatus")
 	}
-	if err := validateVotingPower(p.VotingPower); err != nil { return err }
+	if err := validateVotingPower(p.VotingPower); err != nil {
+		return err
+	}
 	return nil
 }

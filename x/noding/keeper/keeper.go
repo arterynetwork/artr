@@ -20,19 +20,21 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/arterynetwork/artr/util"
+	bankTypes "github.com/arterynetwork/artr/x/bank/types"
 	"github.com/arterynetwork/artr/x/noding/types"
 )
 
 // Keeper of the noding store
 type Keeper struct {
-	dataStoreKey     sdk.StoreKey
-	indexStoreKey    sdk.StoreKey
-	cdc              codec.BinaryMarshaler
-	referralKeeper   types.ReferralKeeper
-	accountKeeper    types.AccountKeeper
-	bankKeeper       types.BankKeeper
-	paramspace       types.ParamSubspace
-	feeCollectorName string
+	dataStoreKey               sdk.StoreKey
+	indexStoreKey              sdk.StoreKey
+	cdc                        codec.BinaryMarshaler
+	referralKeeper             types.ReferralKeeper
+	accountKeeper              types.AccountKeeper
+	bankKeeper                 types.BankKeeper
+	paramspace                 types.ParamSubspace
+	feeCollectorName           string
+	splittableFeeCollectorName string
 }
 
 // NewKeeper creates a noding keeper
@@ -45,16 +47,18 @@ func NewKeeper(
 	bankKeeper types.BankKeeper,
 	paramspace types.ParamSubspace,
 	feeCollectorName string,
+	splittableFeeCollectorName string,
 ) Keeper {
 	keeper := Keeper{
-		dataStoreKey:     dataKey,
-		indexStoreKey:    indexKey,
-		cdc:              cdc,
-		referralKeeper:   referralKeeper,
-		accountKeeper:    accountKeeper,
-		bankKeeper:       bankKeeper,
-		paramspace:       paramspace.WithKeyTable(types.ParamKeyTable()),
-		feeCollectorName: feeCollectorName,
+		dataStoreKey:               dataKey,
+		indexStoreKey:              indexKey,
+		cdc:                        cdc,
+		referralKeeper:             referralKeeper,
+		accountKeeper:              accountKeeper,
+		bankKeeper:                 bankKeeper,
+		paramspace:                 paramspace.WithKeyTable(types.ParamKeyTable()),
+		feeCollectorName:           feeCollectorName,
+		splittableFeeCollectorName: splittableFeeCollectorName,
 	}
 	return keeper
 }
@@ -131,7 +135,7 @@ func (k Keeper) IsActiveValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool
 		return false, nil
 	}
 	pz := k.GetParams(ctx)
-	if ctx.BlockHeight() - record.UnjailAt < 6 * int64(pz.UnjailAfter) {
+	if ctx.BlockHeight()-record.UnjailAt < 6*int64(pz.UnjailAfter) {
 		return false, nil
 	}
 	return true, nil
@@ -276,12 +280,16 @@ func (k Keeper) OnStatusUpdate(ctx sdk.Context, acc sdk.AccAddress) error {
 func (k Keeper) OnStakeChanged(ctx sdk.Context, acc sdk.AccAddress) error {
 	record, err := k.Get(ctx, acc)
 	if err != nil {
-		if errors.Is(err, types.ErrNotFound) { return nil }
+		if errors.Is(err, types.ErrNotFound) {
+			return nil
+		}
 		return errors.Wrap(err, "cannot obtain data")
 	}
 	isV := record.IsActive()
 	isQ, delegation, reason, err := k.IsQualified(ctx, acc)
-	if err != nil {	return errors.Wrap(err, "cannot check if validator's qualified") }
+	if err != nil {
+		return errors.Wrap(err, "cannot check if validator's qualified")
+	}
 
 	changed := record.UpdateScore(delegation.Int64())
 
@@ -575,7 +583,9 @@ func (k Keeper) SetActiveValidators(ctx sdk.Context, validators []types.Validato
 
 		acc := v.GetAccount()
 		stake, err := k.referralKeeper.GetDelegatedInNetwork(ctx, acc.String(), 10)
-		if err != nil { return errors.Wrap(err, "cannot obtain stake") }
+		if err != nil {
+			return errors.Wrap(err, "cannot obtain stake")
+		}
 		if err := k.set(ctx, acc, v.ToInfo(stake.Int64())); err != nil {
 			return errors.Wrap(err, "cannot set data")
 		}
@@ -593,7 +603,9 @@ func (k Keeper) SetNonActiveValidators(ctx sdk.Context, validators []types.Valid
 	for _, v := range validators {
 		acc := v.GetAccount()
 		stake, err := k.referralKeeper.GetDelegatedInNetwork(ctx, acc.String(), 10)
-		if err != nil { return errors.Wrap(err, "cannot obtain stake") }
+		if err != nil {
+			return errors.Wrap(err, "cannot obtain stake")
+		}
 		if err := k.set(ctx, acc, v.ToInfo(stake.Int64())); err != nil {
 			return err
 		}
@@ -650,7 +662,7 @@ func (k Keeper) MarkTick(ctx sdk.Context, acc sdk.AccAddress) error {
 	return k.update(ctx, acc, func(d *types.Info) (save bool) {
 		d.MissedBlocksInRow = 0
 		d.OkBlocksInRow++
-		if d.OkBlocksInRow % 100 == 0 {
+		if d.OkBlocksInRow%100 == 0 {
 			d.Score++
 		}
 		return true
@@ -739,11 +751,63 @@ func (k Keeper) PayProposerReward(ctx sdk.Context, acc sdk.AccAddress) (err erro
 	}
 
 	amount := k.bankKeeper.GetBalance(ctx, k.accountKeeper.GetModuleAddress(k.feeCollectorName))
-	if amount.IsZero() {
-		return nil
+	if !amount.IsZero() {
+		if err = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil {
+			return err
+		}
 	}
-	if err = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, k.feeCollectorName, acc, amount); err != nil {
-		return err
+	splittableFeeCollectorAcc := k.accountKeeper.GetModuleAddress(k.splittableFeeCollectorName)
+	splittableAmount := k.bankKeeper.GetBalance(ctx, splittableFeeCollectorAcc)
+	splittable := splittableAmount.AmountOf(util.ConfigMainDenom)
+	txFeeSplitRatios := k.bankKeeper.GetParams(ctx).TransactionFeeSplitRatios
+	forProposer, forCompany, forBurning := util.SplitFee(splittable, txFeeSplitRatios.ForProposer, txFeeSplitRatios.ForCompany)
+
+	if splittable.LT(forProposer) {
+		k.Logger(ctx).Info("Module SplittableFeeCollector main denom coins amount less than need pay to proposer", "splittable", splittable.Int64(), "forProposer", forProposer.Int64())
+		forProposer = splittable
+	}
+	forProposerAmount := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, forProposer))
+	if !forProposerAmount.IsZero() {
+		if err = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, k.splittableFeeCollectorName, acc, forProposerAmount); err != nil {
+			return err
+		}
+	}
+	splittable = splittable.Sub(forProposer)
+
+	if splittable.LT(forCompany) {
+		k.Logger(ctx).Info("Module SplittableFeeCollector main denom coins amount less than need pay to company", "splittable", splittable.Int64(), "forCompany", forCompany.Int64())
+		forCompany = splittable
+	}
+	forCompanyAmount := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, forCompany))
+	if !forCompanyAmount.IsZero() {
+		companyAcc, err := sdk.AccAddressFromBech32(k.bankKeeper.GetParams(ctx).CompanyAccount)
+		if err != nil {
+			return err
+		}
+		if err = k.bankKeeper.SendCoinsFromModuleToAccount(ctx, k.splittableFeeCollectorName, companyAcc, forCompanyAmount); err != nil {
+			return err
+		}
+	}
+	splittable = splittable.Sub(forCompany)
+
+	if splittable.LT(forBurning) {
+		k.Logger(ctx).Info("Module SplittableFeeCollector main denom coins amount less than need to burn", "splittable", splittable.Int64(), "forBurning", forBurning.Int64())
+		forBurning = splittable
+	} else if splittable.GT(forBurning) {
+		k.Logger(ctx).Info("Module SplittableFeeCollector main denom coins amount greater than need to burn", "splittable", splittable.Int64(), "forBurning", forBurning.Int64())
+		forBurning = splittable
+	}
+	forBurningAmount := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, forBurning))
+	if !forBurningAmount.IsZero() {
+		util.EmitEvent(ctx,
+			&bankTypes.EventBurn{
+				Account: splittableFeeCollectorAcc.String(),
+				Amount:  forBurningAmount,
+			},
+		)
+		if err = k.bankKeeper.BurnAccCoins(ctx, splittableFeeCollectorAcc, forBurningAmount); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -904,9 +968,9 @@ func (k Keeper) set(ctx sdk.Context, acc sdk.AccAddress, value types.Info) error
 
 func (k Keeper) update(ctx sdk.Context, acc sdk.AccAddress, callback func(d *types.Info) (save bool)) error {
 	var (
-		store      = ctx.KVStore(k.dataStoreKey)
-		keyBytes   = []byte(acc)
-		value      types.Info
+		store    = ctx.KVStore(k.dataStoreKey)
+		keyBytes = []byte(acc)
+		value    types.Info
 	)
 	if !store.Has(keyBytes) {
 		return types.ErrNotFound

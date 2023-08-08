@@ -94,7 +94,7 @@ func (k Keeper) Delete(ctx sdk.Context, time time.Time, event string, payload []
 		return task.HandlerName == event && bytes.Equal(task.Data, payload)
 	})
 }
-func (k Keeper) delete(ctx sdk.Context, time time.Time, predicate func(types.Task)bool) {
+func (k Keeper) delete(ctx sdk.Context, time time.Time, predicate func(types.Task) bool) {
 	store := ctx.KVStore(k.storeKey)
 	key := Key(time)
 	bz := store.Get(key)

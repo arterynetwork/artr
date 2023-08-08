@@ -69,8 +69,8 @@ func (s *Suite) TestRevokeAll() {
 	s.Equal(
 		int64(8_474500),
 		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
-	)  // -tx_fee -15%
- 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_474500)))
+	) // -tx_fee -15%
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_474500)))
 
 	s.True(s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).IsZero())
 	s.checkExportImport()

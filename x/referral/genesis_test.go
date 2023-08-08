@@ -111,14 +111,14 @@ func (s Suite) TestCompression() {
 func (s Suite) TestAlreadyCompressed() {
 	user1 := app.DefaultGenesisUsers["user1"]
 
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4*24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 8640).WithBlockTime(s.ctx.BlockTime().Add(4 * 24 * time.Hour))
 	s.nextBlock()
 	info, err := s.k.Get(s.ctx, user1.String())
 	s.NoError(err)
 	s.False(info.Active)
 	s.NotNil(info.CompressionAt)
 
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight()+1).WithBlockTime(*info.CompressionAt)
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + 1).WithBlockTime(*info.CompressionAt)
 	s.nextBlock()
 	info, err = s.k.Get(s.ctx, user1.String())
 	s.NoError(err)
@@ -175,7 +175,7 @@ func (s Suite) TestBanished() {
 		panic(err)
 	}
 	s.NoError(s.k.Compress(s.ctx, user))
-	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + util.BlocksOneMonth).WithBlockTime(s.ctx.BlockTime().Add(30*24*time.Hour))
+	s.ctx = s.ctx.WithBlockHeight(s.ctx.BlockHeight() + util.BlocksOneMonth).WithBlockTime(s.ctx.BlockTime().Add(30 * 24 * time.Hour))
 	s.nextBlock()
 	for i := 1; i <= 7; i++ {
 		user := fmt.Sprintf("user%d", i)
@@ -214,7 +214,7 @@ func (s Suite) checkExportImport() {
 				return fmt.Sprintf("%+v", result), nil
 			},
 			scheduleT.StoreKey: app.DummyDecoder,
-			params.StoreKey:   app.DummyDecoder,
+			params.StoreKey:    app.DummyDecoder,
 		},
 		make(map[string][][]byte, 0),
 	)

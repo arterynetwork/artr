@@ -41,7 +41,7 @@ func cmdAtHeight() *cobra.Command {
 			queryClient := types.NewQueryClient(clientCtx)
 
 			since := args[0]
-			to    := args[1]
+			to := args[1]
 
 			res, err := queryClient.Get(
 				context.Background(),

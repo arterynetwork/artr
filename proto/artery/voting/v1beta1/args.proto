@@ -120,3 +120,14 @@ message PortionArgs {
     (gogoproto.moretags)   = "yaml:\"fraction\""
   ];
 }
+
+message PortionsArgs {
+  option (gogoproto.equal) = true;
+
+  repeated string Fractions = 1 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
+    (gogoproto.jsontag)    = "fractions",
+    (gogoproto.moretags)   = "yaml:\"fractions\""
+  ];
+}

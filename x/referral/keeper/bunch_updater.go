@@ -89,7 +89,7 @@ func (bu *bunchUpdater) set(acc string, value types.Info) error {
 	return nil
 }
 
-//TODO: Refactor to mitigate string <-> AccAddress casting
+// TODO: Refactor to mitigate string <-> AccAddress casting
 func (bu *bunchUpdater) get(acc string) (types.Info, error) {
 	var (
 		keyBytes   = []byte(acc)
@@ -209,7 +209,9 @@ func (bu *bunchUpdater) update(acc string, checkForStatusUpdate bool, callback f
 			}
 		}
 	}
-	if err := bu.set(acc, value); err != nil { return err }
+	if err := bu.set(acc, value); err != nil {
+		return err
+	}
 	return nil
 }
 

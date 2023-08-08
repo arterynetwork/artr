@@ -10,7 +10,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	auth "github.com/cosmos/cosmos-sdk/x/auth/types"
 
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
@@ -20,15 +19,15 @@ import (
 
 // Keeper of the delegating store
 type Keeper struct {
-	mainStoreKey    sdk.StoreKey
-	cdc             codec.BinaryMarshaler
-	paramspace      types.ParamSubspace
-	accKeeper       types.AccountKeeper
-	bankKeeper      types.BankKeeper
-	scheduleKeeper  types.ScheduleKeeper
-	profileKeeper   types.ProfileKeeper
-	refKeeper       types.ReferralKeeper
-	nodingKeeper    types.NodingKeeper
+	mainStoreKey   sdk.StoreKey
+	cdc            codec.BinaryMarshaler
+	paramspace     types.ParamSubspace
+	accKeeper      types.AccountKeeper
+	bankKeeper     types.BankKeeper
+	scheduleKeeper types.ScheduleKeeper
+	profileKeeper  types.ProfileKeeper
+	refKeeper      types.ReferralKeeper
+	nodingKeeper   types.NodingKeeper
 }
 
 // NewKeeper creates a delegating keeper
@@ -38,15 +37,15 @@ func NewKeeper(
 	bankKeeper types.BankKeeper, refKeeper types.ReferralKeeper,
 ) *Keeper {
 	keeper := Keeper{
-		mainStoreKey:    mainKey,
-		cdc:             cdc,
-		paramspace:      paramspace.WithKeyTable(types.ParamKeyTable()),
-		accKeeper:       accountKeeper,
-		scheduleKeeper:  scheduleKeeper,
-		profileKeeper:   profileKeeper,
-		bankKeeper:      bankKeeper,
-		refKeeper:       refKeeper,
-		nodingKeeper:    nil, // must be set later
+		mainStoreKey:   mainKey,
+		cdc:            cdc,
+		paramspace:     paramspace.WithKeyTable(types.ParamKeyTable()),
+		accKeeper:      accountKeeper,
+		scheduleKeeper: scheduleKeeper,
+		profileKeeper:  profileKeeper,
+		bankKeeper:     bankKeeper,
+		refKeeper:      refKeeper,
+		nodingKeeper:   nil, // must be set later
 	}
 	return &keeper
 }
@@ -184,7 +183,6 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		item = types.NewRecord()
 	}
 
-
 	k.accruePart(ctx, acc, &item, nextPayment)
 	delegation := uartrs.SubRaw(totalFee)
 	if err = k.delegate(ctx, acc, delegation); err != nil {
@@ -255,7 +253,9 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 	delegated, _ := k.getDelegated(ctx, acc)
 	isActiveProfile := k.profileKeeper.GetProfile(ctx, acc).IsActive(ctx)
 	isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
-	if err != nil { panic(err) }
+	if err != nil {
+		panic(err)
+	}
 	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator)
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
@@ -281,8 +281,6 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 
 //----------------------------------------------------------------------------------------------------------------------
 // PRIVATE FUNCTIONS
-
-
 
 func (k Keeper) getDelegated(ctx sdk.Context, acc sdk.AccAddress) (delegated sdk.Int, undelegating sdk.Int) {
 	balance := k.bankKeeper.GetBalance(ctx, acc)
@@ -398,13 +396,14 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 	supply.Inflate(emission)
 	k.bankKeeper.SetSupply(ctx, supply)
 
-	fee := util.CalculateFee(ucoins, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee)
+	txFeeSplitRatios := k.bankKeeper.GetParams(ctx).TransactionFeeSplitRatios
+	fee := util.CalculateFee(ucoins, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee, txFeeSplitRatios.ForProposer, txFeeSplitRatios.ForCompany)
 	if !fee.IsZero() {
 		ucoins = ucoins.Sub(fee)
 		fee := sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, fee))
 		emission = emission.Sub(fee)
 
-		if err := k.bankKeeper.AddCoins(ctx, k.accKeeper.GetModuleAddress(auth.FeeCollectorName), fee); err != nil {
+		if err := k.bankKeeper.AddCoins(ctx, k.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName), fee); err != nil {
 			panic(errors.Wrap(err, "cannot collect fee"))
 		}
 	}
@@ -443,6 +442,7 @@ func (k Keeper) accrueToValidator(ctx sdk.Context, acc sdk.AccAddress, ucoins sd
 	outputs := make([]bank.Output, 0, len(fees))
 
 	event := types.EventValidatorAccrue{
+		Account:  acc.String(),
 		Accounts: make([]string, 0, len(fees)),
 		Ucoins:   make([]uint64, 0, len(fees)),
 	}
@@ -483,7 +483,9 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 		delegated, _ := k.getDelegated(ctx, acc)
 		isActiveProfile := k.profileKeeper.GetProfile(ctx, acc).IsActive(ctx)
 		isActiveValidator, err := k.nodingKeeper.IsActiveValidator(ctx, acc)
-		if err != nil { panic(err) }
+		if err != nil {
+			panic(err)
+		}
 		interest := k.percent(ctx, delegated, isActiveProfile, isActiveValidator).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		interestToValidator := dayPart.Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {

@@ -24,8 +24,34 @@ message Params {
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
-  // MaxTransactionFee - transaction fee max amount in uARTR. Must be positive.
+  // MaxTransactionFee - transaction fee max amount in uARTR. Must be non-negative.
   int64 max_transaction_fee = 4;
+
+  // TransactionFeeSplitRatios - the proportions in which the amount will be split among the proposer and company, the rest will be burned. The sum of proportions must be less than or equal 1.
+  TransactionFeeSplitRatios transaction_fee_split_ratios = 5 [
+    (gogoproto.nullable) = false
+  ];
+
+  // CompanyAccount - company account for fee payment
+  string company_account = 6;
+}
+
+// The proportions in which the amount will be split among the proposer and company, the rest will be burned. The sum of proportions must be less than or equal 1.
+message TransactionFeeSplitRatios {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.equal)            = true;
+
+  // ForProposer - proposer fee part
+  string for_proposer = 1 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+
+  // ForCompany - company fee part
+  string for_company = 2 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
 }
 
 // Supply represents a struct that passively keeps track of the total supply

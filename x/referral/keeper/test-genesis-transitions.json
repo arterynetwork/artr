@@ -28858,7 +28858,12 @@
       ],
       "params": {
         "transaction_fee": "3/1000",
-        "max_transaction_fee": "10000000"
+        "max_transaction_fee": "10000000",
+        "transaction_fee_split_ratios": {
+          "for_proposer": "1",
+          "for_company": "0"
+        },
+        "company_account": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
       }
     },
     "auth": {

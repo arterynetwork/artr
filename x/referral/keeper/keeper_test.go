@@ -1555,7 +1555,7 @@ func (s TransitionBorderlineSuite) TestAlmostDown() {
 	s.NoError(s.k.RequestTransition(s.ctx, s.accounts["1.1.1"], s.accounts["1.1.2"]))
 	s.NoError(s.k.AffirmTransition(s.ctx, s.accounts["1.1.1"]))
 
-	scr ,err := s.k.AreStatusRequirementsFulfilled(s.ctx, s.accounts["1"], referral.StatusTopLeader)
+	scr, err := s.k.AreStatusRequirementsFulfilled(s.ctx, s.accounts["1"], referral.StatusTopLeader)
 	s.NoError(err)
 	s.True(scr.Overall)
 
@@ -1572,19 +1572,19 @@ func (s Suite) TestComeBackViaDelegation() {
 
 	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(20_000_000000)))
 
-	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30*time.Second))
+	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 2*util.BlocksOneMonth).
-		WithBlockTime(genesisTime.Add((8999 + 2*util.BlocksOneMonth) * 30*time.Second))
+		WithBlockTime(genesisTime.Add((8999 + 2*util.BlocksOneMonth) * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 3*util.BlocksOneMonth).
-		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth) * 30*time.Second))
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth) * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 
@@ -1594,7 +1594,7 @@ func (s Suite) TestComeBackViaDelegation() {
 
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay).
-		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth + util.BlocksOneDay) * 30*time.Second))
+		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth + util.BlocksOneDay) * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
 	s.nextBlock()
 

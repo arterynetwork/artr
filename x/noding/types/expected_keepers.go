@@ -4,6 +4,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
+	"github.com/arterynetwork/artr/x/bank"
 	referral "github.com/arterynetwork/artr/x/referral/types"
 )
 
@@ -25,6 +26,8 @@ type AccountKeeper interface {
 }
 
 type BankKeeper interface {
+	GetParams(ctx sdk.Context) bank.Params
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
 	SendCoinsFromModuleToAccount(ctx sdk.Context, senderModule string, recipientAddr sdk.AccAddress, amt sdk.Coins) error
+	BurnAccCoins(ctx sdk.Context, acc sdk.AccAddress, amt sdk.Coins) error
 }
