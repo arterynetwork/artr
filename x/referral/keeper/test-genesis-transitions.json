@@ -48118,8 +48118,27 @@
           "thousand_plus": "24"
         },
         "revoke_period": 14,
+        "validator_bonus": "0%",
         "validator": "15%",
-        "burn_on_revoke": "5%"
+        "burn_on_revoke": "5%",
+        "accrue_percentage_ranges": [
+          {
+            "start": "0",
+            "percent": "21%"
+          },
+          {
+            "start": "1000000000",
+            "percent": "24%"
+          },
+          {
+            "start": "10000000000",
+            "percent": "27%"
+          },
+          {
+            "start": "100000000000",
+            "percent": "30%"
+          }
+        ]
       }
     },
     "earning": {

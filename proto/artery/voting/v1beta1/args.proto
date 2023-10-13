@@ -6,6 +6,7 @@ import "google/protobuf/timestamp.proto";
 import "artery/referral/v1beta1/params.proto";
 import "artery/referral/v1beta1/types.proto";
 import "artery/delegating/v1beta1/params.proto";
+import "artery/delegating/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/voting/types";
 
@@ -19,6 +20,7 @@ message PriceArgs {
 }
 
 message DelegationAwardArgs {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   artery.delegating.v1beta1.Percentage award = 1 [
@@ -130,4 +132,10 @@ message PortionsArgs {
     (gogoproto.jsontag)    = "fractions",
     (gogoproto.moretags)   = "yaml:\"fractions\""
   ];
+}
+
+message AccruePercentageRangesArgs {
+  option (gogoproto.equal) = true;
+
+  repeated artery.delegating.v1beta1.PercentageRange accrue_percentage_ranges = 1 [(gogoproto.nullable) = false];
 }

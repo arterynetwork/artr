@@ -1009,3 +1009,31 @@ func InitTransactionFeeSplitRatiosAndCompanyAccountParams(k bank.Keeper, paramsp
 		logger.Info("... InitTransactionFeeSplitRatiosAndCompanyAccountParams done!", "params", pz)
 	}
 }
+
+func InitAccruePercentageRangesAndValidatorBonusParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitAccruePercentageRangesAndValidatorBonusParams ...")
+
+		var pz delegatingT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, delegatingT.KeyAccruePercentageRanges) {
+				pz.AccruePercentageRanges = []delegatingT.PercentageRange{
+					{Start: 0, Percent: util.Percent(pz.Percentage.Minimal)},
+					{Start: 1_000_000000, Percent: util.Percent(pz.Percentage.ThousandPlus)},
+					{Start: 10_000_000000, Percent: util.Percent(pz.Percentage.TenKPlus)},
+					{Start: 100_000_000000, Percent: util.Percent(pz.Percentage.HundredKPlus)},
+				}
+			} else if bytes.Equal(pair.Key, delegatingT.KeyValidatorBonus) {
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		pz.ValidatorBonus = pz.Validator.Sub(util.Percent(pz.Percentage.HundredKPlus))
+		if pz.ValidatorBonus.IsNegative() {
+			pz.ValidatorBonus = util.FractionZero()
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitAccruePercentageRangesAndValidatorBonusParams done!", "params", pz)
+	}
+}

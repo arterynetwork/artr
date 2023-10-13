@@ -64,11 +64,12 @@ func NewTxCmd() *cobra.Command {
 		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
-		cmdSetValidatorPercent(),
+		cmdSetValidatorBonus(),
 		cmdSetTransactionFee(),
 		cmdSetBurnOnRevoke(),
 		cmdSetMaxTransactionFee(),
 		cmdSetTransactionFeeSplitRatios(),
+		cmdSetAccruePercentageRanges(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -131,7 +132,7 @@ func cmdDelegationAward() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "set-delegation-award <minimal> <1K+> <10K+> <100K+> <proposal name> <author key or address>",
 		Aliases: []string{"set_delegation_award", "sda"},
-		Short:   "Propose to change an award for delegating funds",
+		Short:   "Propose to change an award for delegating funds DEPRECATED",
 		Example: `artrcli tx voting set-delegation-award 21 24 27 30 "return to default values" ivan`,
 		Args:    cobra.ExactArgs(6),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -159,14 +160,14 @@ func cmdDelegationAward() *cobra.Command {
 				Proposal: types.Proposal{
 					Author: author,
 					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_DELEGATION_AWARD,
-					Args: &types.Proposal_DelegationAward{
-						DelegationAward: &types.DelegationAwardArgs{
-							Award: delegating.Percentage{
-								Minimal:      percent[0],
-								ThousandPlus: percent[1],
-								TenKPlus:     percent[2],
-								HundredKPlus: percent[3],
+					Type:   types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
+					Args: &types.Proposal_AccruePercentageRanges{
+						AccruePercentageRanges: &types.AccruePercentageRangesArgs{
+							AccruePercentageRanges: []delegating.PercentageRange{
+								{Start: 0, Percent: util.Percent(percent[0])},
+								{Start: 1_000_000000, Percent: util.Percent(percent[1])},
+								{Start: 10_000_000000, Percent: util.Percent(percent[2])},
+								{Start: 100_000_000000, Percent: util.Percent(percent[3])},
 							},
 						},
 					},
@@ -1521,12 +1522,12 @@ func cmdSetVotingPower() *cobra.Command {
 	return cmd
 }
 
-func cmdSetValidatorPercent() *cobra.Command {
+func cmdSetValidatorBonus() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "set-validator-rate <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-validator-rate 15% "Set active validators' delegation award to 15%" ivan`,
-		Aliases: []string{"set_validator_rate", "svr"},
-		Short:   "Propose to set active validators' delegation award rate",
+		Use:     "set-validator-bonus <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-validator-bonus 1% "Increase active validators' delegation award by 1%" ivan`,
+		Aliases: []string{"set_validator_bonus", "svb"},
+		Short:   "Propose to set active validators' delegation award bonus",
 		Args:    cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
@@ -1549,7 +1550,7 @@ func cmdSetValidatorPercent() *cobra.Command {
 				Proposal: types.Proposal{
 					Author: author,
 					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_VALIDATOR,
+					Type:   types.PROPOSAL_TYPE_VALIDATOR_BONUS,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,
@@ -1742,6 +1743,65 @@ func cmdSetTransactionFeeSplitRatios() *cobra.Command {
 					Args: &types.Proposal_Portions{
 						Portions: &types.PortionsArgs{
 							Fractions: []util.Fraction{forProposal, forCompany},
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetAccruePercentageRanges() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-accrue-percentage-ranges <range start in uartr>:<percentage> [<range start in uartr>:<percentage> [...]] <proposal name> <author key or address>",
+		Example: `artrcli tx voting set-accrue-percentage-ranges 0:21% 1000000000:24% 10000000000:27% 100000000000:30% "return to default values" ivan`,
+		Aliases: []string{"set_accrue_percentage_ranges", "sapr"},
+		Short:   "Propose to change an award for delegating funds",
+		Args:    cobra.MinimumNArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[len(args)-1]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[len(args)-2]
+
+			value := []delegating.PercentageRange(nil)
+
+			for i := 0; i < len(args)-2; i++ {
+				parts := strings.Split(args[i], ":")
+				if len(parts) != 2 {
+					return errors.Errorf("cannot parse the range #%d: exactly one colon expected", i)
+				}
+				n, err := strconv.ParseUint(parts[0], 0, 64)
+				if err != nil {
+					return errors.Wrapf(err, "cannot parse the range #%d: invalid range start", i)
+				}
+				f, err := util.ParseFraction(parts[1])
+				if err != nil {
+					return errors.Wrapf(err, "cannot parse the range #%d: invalid percentage", i)
+				}
+				value = append(value, delegating.PercentageRange{Start: n, Percent: f})
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
+					Args: &types.Proposal_AccruePercentageRanges{
+						AccruePercentageRanges: &types.AccruePercentageRangesArgs{
+							AccruePercentageRanges: value,
 						},
 					},
 				},

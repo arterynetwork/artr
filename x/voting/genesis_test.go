@@ -70,14 +70,14 @@ func (s Suite) TestCleanGenesis() {
 func (s Suite) TestCurrentProposal() {
 	s.k.SetCurrentProposal(s.ctx, types.Proposal{
 		Name: "halving",
-		Type: types.PROPOSAL_TYPE_DELEGATION_AWARD,
-		Args: &types.Proposal_DelegationAward{
-			DelegationAward: &types.DelegationAwardArgs{
-				Award: dt.Percentage{
-					Minimal:      11,
-					ThousandPlus: 12,
-					TenKPlus:     14,
-					HundredKPlus: 15,
+		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
+		Args: &types.Proposal_AccruePercentageRanges{
+			AccruePercentageRanges: &types.AccruePercentageRangesArgs{
+				AccruePercentageRanges: []dt.PercentageRange{
+					{Start: 0, Percent: util.Percent(11)},
+					{Start: 1_000_000000, Percent: util.Percent(12)},
+					{Start: 10_000_000000, Percent: util.Percent(14)},
+					{Start: 100_000_000000, Percent: util.Percent(15)},
 				},
 			},
 		},
@@ -95,14 +95,14 @@ func (s Suite) TestCurrentProposal() {
 func (s Suite) TestHistory() {
 	proposal := types.Proposal{
 		Name: "halving",
-		Type: types.PROPOSAL_TYPE_DELEGATION_AWARD,
-		Args: &types.Proposal_DelegationAward{
-			DelegationAward: &types.DelegationAwardArgs{
-				Award: dt.Percentage{
-					Minimal:      11,
-					ThousandPlus: 12,
-					TenKPlus:     14,
-					HundredKPlus: 15,
+		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
+		Args: &types.Proposal_AccruePercentageRanges{
+			AccruePercentageRanges: &types.AccruePercentageRangesArgs{
+				AccruePercentageRanges: []dt.PercentageRange{
+					{Start: 0, Percent: util.Percent(11)},
+					{Start: 1_000_000000, Percent: util.Percent(12)},
+					{Start: 10_000_000000, Percent: util.Percent(14)},
+					{Start: 100_000_000000, Percent: util.Percent(15)},
 				},
 			},
 		},

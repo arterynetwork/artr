@@ -500,7 +500,7 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool, isActiveValidator bool) util.Fraction {
 	var (
 		params  = k.GetParams(ctx)
-		ladder  = params.Percentage
+		ladder  = params.AccruePercentageRanges
 		percent util.Fraction
 	)
 
@@ -508,16 +508,16 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool
 		return util.FractionZero()
 	}
 
+	percent = util.FractionZero()
+	for _, step := range ladder {
+		if delegated.GTE(sdk.NewIntFromUint64(step.Start)) {
+			percent = step.Percent
+		} else {
+			break
+		}
+	}
 	if isActiveValidator {
-		percent = params.Validator
-	} else if delegated.LT(sdk.NewInt(1_000_000000)) {
-		percent = util.Percent(ladder.Minimal)
-	} else if delegated.LT(sdk.NewInt(10_000_000000)) {
-		percent = util.Percent(ladder.ThousandPlus)
-	} else if delegated.LT(sdk.NewInt(100_000_000000)) {
-		percent = util.Percent(ladder.TenKPlus)
-	} else {
-		percent = util.Percent(ladder.HundredKPlus)
+		percent = percent.Add(params.ValidatorBonus)
 	}
 	if isActiveProfile {
 		percent = percent.Add(util.Percent(1))

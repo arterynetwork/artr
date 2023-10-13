@@ -7,6 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/util"
+	"github.com/arterynetwork/artr/x/delegating"
 	referral "github.com/arterynetwork/artr/x/referral/types"
 )
 
@@ -227,6 +228,19 @@ func (p Proposal) Validate() error {
 			return errors.Errorf("invalid args: %s and %s sums must be less than or equal 1", forProposer.String(), forCompany.String())
 		} else if forProposer, forCompany := args.Portions.Fractions[0], args.Portions.Fractions[1]; util.CalculateTransactionFeeSplitRatiosLCM(forProposer, forCompany).GT(sdk.NewInt(util.TransactionFeeSplitRatiosMaxLcm)) {
 			return errors.Errorf("invalid args: %s and %s LCM must be less than or equal %d", forProposer.String(), forCompany.String(), util.TransactionFeeSplitRatiosMaxLcm)
+		}
+	case
+		PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_AccruePercentageRanges expected")
+		}
+		if args, ok := p.Args.(*Proposal_AccruePercentageRanges); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Portions expected", p.Args)
+		} else {
+			v := args.AccruePercentageRanges.AccruePercentageRanges
+			if err := delegating.ValidatePercentageRanges(v); err != nil {
+				return errors.Wrap(err, "invalid args:")
+			}
 		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)

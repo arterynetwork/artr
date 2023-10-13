@@ -86,8 +86,15 @@ func (s *Suite) TestParams() {
 		},
 		MinDelegate:  123456,
 		RevokePeriod: 28,
+		ValidatorBonus: util.Percent(13),
 		Validator:    util.Percent(100),
 		BurnOnRevoke: util.Percent(50),
+		AccruePercentageRanges: []delegating.PercentageRange{
+			{Start: 0, Percent: util.Percent(96)},
+			{Start: 1_000_000000, Percent: util.Percent(97)},
+			{Start: 10_000_000000, Percent: util.Percent(98)},
+			{Start: 100_000_000000, Percent: util.Percent(99)},
+		},
 	})
 }
 

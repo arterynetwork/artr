@@ -36,3 +36,19 @@ message Record {
     (gogoproto.moretags)   = "yaml:\"missed_part,omitempty\""
   ];
 }
+
+// Percentage value associated with a range of uARTR. Used as a sequence of repeated elements:
+// the end boundary of the range is the start boundary of the net range, or infinity if the range is last one in the sequence.
+message PercentageRange {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.equal)            = true;
+
+  // Start boundary of a range in uARTR. Must be non-negative.
+  uint64 start = 1;
+
+  // Percent valid in a range. Must be non-negative.
+  string percent = 2 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+}

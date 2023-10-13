@@ -12,7 +12,7 @@ enum ProposalType {
   //1. Стоимость входа
   PROPOSAL_TYPE_ENTER_PRICE = 1;
   //2. Вознаграждение за делегирование
-  PROPOSAL_TYPE_DELEGATION_AWARD = 2;
+  PROPOSAL_TYPE_DELEGATION_AWARD = 2 [deprecated = true];
   //3. Сетевое вознаграждение с делегирования
   PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD = 3;
   //4. Сетевое вознаграждение с покупки продукта
@@ -76,11 +76,9 @@ enum ProposalType {
   // Разбивка voting power по процентилям
   PROPOSAL_TYPE_VOTING_POWER = 33;
   // PROPOSAL_TYPE_VALIDATOR_BONUS - Дополнительный процент с делегирования, который получают активные валидаторы
-  //
-  // DEPRECATED
   PROPOSAL_TYPE_VALIDATOR_BONUS = 34;
   // PROPOSAL_TYPE_VALIDATOR - Процент с делегирования, который получают активные валидаторы
-  PROPOSAL_TYPE_VALIDATOR = 35;
+  PROPOSAL_TYPE_VALIDATOR = 35 [deprecated = true];
   // Комиссия за перевод
   PROPOSAL_TYPE_TRANSACTION_FEE = 36;
   // Процент сжигаемый при разделегировании
@@ -89,4 +87,6 @@ enum ProposalType {
   PROPOSAL_TYPE_MAX_TRANSACTION_FEE = 38;
   // Пропорции в которых делится комиссия за перевод между пропозером, компанией и сжиганием
   PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS = 39;
+  // Вознаграждение за делегирование с возможностью указать произвольные диапазоны
+  PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES = 40;
 }

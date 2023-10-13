@@ -23,7 +23,7 @@ var (
 	NewGenesisState          = types.NewGenesisState
 	DefaultGenesisState      = types.DefaultGenesisState
 	ValidateGenesis          = types.ValidateGenesis
-	NewPercentage            = types.NewPercentage
+	ValidatePercentageRanges = types.ValidatePercentageRanges
 
 	// variable aliases
 	ModuleCdc = types.ModuleCdc
@@ -34,6 +34,7 @@ type (
 	GenesisState = types.GenesisState
 	Params       = types.Params
 	Percentage   = types.Percentage
+	PercentageRange = types.PercentageRange
 	MsgDelegate  = types.MsgDelegate
 	MsgRevoke    = types.MsgRevoke
 )

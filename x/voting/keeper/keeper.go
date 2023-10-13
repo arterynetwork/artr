@@ -232,9 +232,7 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.SubscriptionPrice = proposal.GetPrice().Price
 			k.profileKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_DELEGATION_AWARD:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.Percentage = proposal.GetDelegationAward().Award
-			k.delegatingKeeper.SetParams(ctx, p)
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD:
 			p := k.referralKeeper.GetParams(ctx)
 			p.DelegatingAward = proposal.GetNetworkAward().Award
@@ -334,13 +332,13 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.VotingPower = *proposal.GetVotingPower()
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_VALIDATOR_BONUS:
-			err = errors.New("parameter is deprecated")
-		case types.PROPOSAL_TYPE_VALIDATOR:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.Validator = proposal.GetPortion().Fraction
+			p.ValidatorBonus = proposal.GetPortion().Fraction
 			if err = p.Validate(); err == nil {
 				k.delegatingKeeper.SetParams(ctx, p)
 			}
+		case types.PROPOSAL_TYPE_VALIDATOR:
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_TRANSACTION_FEE:
 			p := k.bankKeeper.GetParams(ctx)
 			p.TransactionFee = proposal.GetPortion().Fraction
@@ -365,6 +363,12 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.TransactionFeeSplitRatios.ForCompany = proposal.GetPortions().Fractions[1]
 			if err = p.Validate(); err == nil {
 				k.bankKeeper.SetParams(ctx, p)
+			}
+		case types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.AccruePercentageRanges = proposal.GetAccruePercentageRanges().AccruePercentageRanges
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
 			}
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)

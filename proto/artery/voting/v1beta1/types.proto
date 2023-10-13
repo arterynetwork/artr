@@ -37,6 +37,7 @@ message Proposal {
       (gogoproto.moretags) = "yaml:\"price,omitempty"
     ];
     DelegationAwardArgs delegation_award = 6 [
+      deprecated = true,
       (gogoproto.jsontag)  = "delegation_award,omitempty",
       (gogoproto.moretags) = "yaml:\"delegation_award,omitempty"
     ];
@@ -81,6 +82,7 @@ message Proposal {
       (gogoproto.jsontag)  = "portions,omitempty",
       (gogoproto.moretags) = "yaml:\"portions,omitempty"
     ];
+    AccruePercentageRangesArgs accrue_percentage_ranges = 18;
   }
 }
 
