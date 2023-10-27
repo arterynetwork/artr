@@ -40,6 +40,16 @@ func AddStringSorted(arr *[]string, item string) bool {
 	return true
 }
 
+func AddStringOntoEnd(arr *[]string, item string) bool {
+	for _, s := range *arr {
+		if s == item {
+			return false
+		}
+	}
+	*arr = append(*arr, item)
+	return true
+}
+
 func MergeStringsSorted(arr1 []string, arr2 []string) []string {
 	if len(arr2) == 0 {
 		return arr1

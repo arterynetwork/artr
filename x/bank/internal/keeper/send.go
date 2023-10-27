@@ -28,6 +28,9 @@ type SendKeeper interface {
 	GetParams(ctx sdk.Context) types.Params
 	SetParams(ctx sdk.Context, params types.Params)
 
+	AddBlockedSender(ctx sdk.Context, acc sdk.AccAddress)
+	RemoveBlockedSender(ctx sdk.Context, acc sdk.AccAddress)
+
 	BlockedAddr(addr sdk.AccAddress) bool
 
 	AddHook(event string, name string, hook func(ctx sdk.Context, addr sdk.AccAddress) error)
@@ -199,6 +202,18 @@ func (keeper BaseSendKeeper) SetMinSend(ctx sdk.Context, minSend int64) {
 	keeper.paramSpace.Set(ctx, types.ParamStoreKeyMinSend, &minSend)
 }
 
+// BlockedSenderAddr checks if a given address is blacklisted (i.e restricted from
+// sending funds)
+func (keeper BaseSendKeeper) BlockedSenderAddr(ctx sdk.Context, addr sdk.AccAddress) bool {
+	bech32 := addr.String()
+	for _, v := range keeper.GetParams(ctx).BlockedSenders {
+		if v == bech32 {
+			return true
+		}
+	}
+	return false
+}
+
 // BlacklistedAddr checks if a given address is blacklisted (i.e restricted from
 // receiving funds)
 func (keeper BaseSendKeeper) BlockedAddr(addr sdk.AccAddress) bool {
@@ -214,4 +229,16 @@ func (k BaseSendKeeper) GetParams(ctx sdk.Context) (params types.Params) {
 // SetParams sets the total set of bank parameters.
 func (k BaseSendKeeper) SetParams(ctx sdk.Context, params types.Params) {
 	k.paramSpace.SetParamSet(ctx, &params)
+}
+
+func (k BaseSendKeeper) AddBlockedSender(ctx sdk.Context, blockedSender sdk.AccAddress) {
+	params := k.GetParams(ctx)
+	util.AddStringOntoEnd(&params.BlockedSenders, blockedSender.String())
+	k.SetParams(ctx, params)
+}
+
+func (k BaseSendKeeper) RemoveBlockedSender(ctx sdk.Context, blockedSender sdk.AccAddress) {
+	params := k.GetParams(ctx)
+	util.RemoveStringFast(&params.BlockedSenders, blockedSender.String())
+	k.SetParams(ctx, params)
 }

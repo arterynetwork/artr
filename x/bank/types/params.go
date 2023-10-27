@@ -27,6 +27,7 @@ var (
 		ForProposer: util.FractionInt(1),
 		ForCompany:  util.FractionZero(),
 	}
+	DefaultBlockedSenders []sdk.AccAddress = nil
 )
 
 var (
@@ -36,6 +37,7 @@ var (
 	ParamStoreKeyMaxTransactionFee         = []byte("maxtxfee")
 	ParamStoreKeyTransactionFeeSplitRatios = []byte("txfeesplitratios")
 	ParamStoreKeyCompanyAccount            = []byte("companyaccount")
+	ParamStoreKeyBlockedSenders            = []byte("blockedsenders")
 )
 
 // ParamKeyTable type declaration for parameters
@@ -48,6 +50,25 @@ func (p TransactionFeeSplitRatios) String() string {
 	return string(out)
 }
 
+func (p Params) GetBlockedSenders() []sdk.AccAddress {
+	res := make([]sdk.AccAddress, len(p.BlockedSenders))
+	for i, bech32 := range p.BlockedSenders {
+		addr, err := sdk.AccAddressFromBech32(bech32)
+		if err != nil {
+			panic(err)
+		}
+		res[i] = addr
+	}
+	return res
+}
+
+func (p *Params) SetBlockedSenders(blockedSenders []sdk.AccAddress) {
+	p.BlockedSenders = make([]string, len(blockedSenders))
+	for i, addr := range blockedSenders {
+		p.BlockedSenders[i] = addr.String()
+	}
+}
+
 func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 	return paramTypes.ParamSetPairs{
 		paramTypes.NewParamSetPair(ParamStoreKeyMinSend, &p.MinSend, validateMinSend),
@@ -56,12 +77,13 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(ParamStoreKeyMaxTransactionFee, &p.MaxTransactionFee, validateMaxTransactionFee),
 		paramTypes.NewParamSetPair(ParamStoreKeyTransactionFeeSplitRatios, &p.TransactionFeeSplitRatios, validateTransactionFeeSplitRatios),
 		paramTypes.NewParamSetPair(ParamStoreKeyCompanyAccount, &p.CompanyAccount, validateCompanyAccount),
+		paramTypes.NewParamSetPair(ParamStoreKeyBlockedSenders, &p.BlockedSenders, validateAccounts),
 	}
 }
 
 // NewParams creates a new parameter configuration for the bank module
-func NewParams(minSend int64, dust int64, fee util.Fraction, maxFee int64, feeSplitRatios TransactionFeeSplitRatios, companyAccount string) Params {
-	return Params{
+func NewParams(minSend int64, dust int64, fee util.Fraction, maxFee int64, feeSplitRatios TransactionFeeSplitRatios, companyAccount string, blockedSenders []sdk.AccAddress) Params {
+	p := Params{
 		MinSend:                   minSend,
 		DustDelegation:            dust,
 		TransactionFee:            fee,
@@ -69,17 +91,23 @@ func NewParams(minSend int64, dust int64, fee util.Fraction, maxFee int64, feeSp
 		TransactionFeeSplitRatios: feeSplitRatios,
 		CompanyAccount:            companyAccount,
 	}
+	p.SetBlockedSenders(blockedSenders)
+
+	return p
 }
 
 // DefaultParams defines the parameters for the bank module
 func DefaultParams() Params {
-	return Params{
+	p := Params{
 		MinSend:                   DefaultMinSend,
 		DustDelegation:            DefaultDustDelegation,
 		TransactionFee:            DefaultTransactionFee,
 		MaxTransactionFee:         DefaultMaxTransactionFee,
 		TransactionFeeSplitRatios: DefaultTransactionFeeSplitRatios,
 	}
+	p.SetBlockedSenders(DefaultBlockedSenders)
+
+	return p
 }
 
 // Validate all bank module parameters
@@ -101,6 +129,9 @@ func (p Params) Validate() error {
 	}
 	if err := validateCompanyAccount(p.CompanyAccount); err != nil {
 		return errors.Wrap(err, "invalid company_account")
+	}
+	if err := validateAccounts(p.BlockedSenders); err != nil {
+		return errors.Wrap(err, "invalid blocked_senders")
 	}
 	return nil
 }
@@ -180,6 +211,22 @@ func validateCompanyAccount(i interface{}) error {
 	}
 	if _, err := sdk.AccAddressFromBech32(dt); err != nil {
 		return errors.Wrap(err, "cannot parse account address")
+	}
+
+	return nil
+}
+
+func validateAccounts(i interface{}) error {
+	v, ok := i.([]string)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	for i, bech32 := range v {
+		_, err := sdk.AccAddressFromBech32(bech32)
+		if err != nil {
+			return errors.Wrapf(err, "invalid acc address #%d", i)
+		}
 	}
 
 	return nil

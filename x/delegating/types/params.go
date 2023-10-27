@@ -26,9 +26,9 @@ const (
 )
 
 var (
-	DefaultValidatorBonus = util.Percent(0)
-	DefaultValidator    = util.Percent(15)
-	DefaultBurnOnRevoke = util.Percent(5)
+	DefaultValidatorBonus         = util.Percent(0)
+	DefaultValidator              = util.Percent(15)
+	DefaultBurnOnRevoke           = util.Percent(5)
 	DefaultAccruePercentageRanges = []PercentageRange{
 		{Start: 0, Percent: util.Percent(DefaultMinimalPercent)},
 		{Start: 1_000_000000, Percent: util.Percent(DefaultThousandPlusPercent)},
@@ -39,12 +39,12 @@ var (
 
 // Parameter store keys
 var (
-	KeyPercentage   = []byte("Percentage")
-	KeyMinDelegate  = []byte("MinDelegate")
-	KeyRevokePeriod = []byte("RevokePeriod")
-	KeyValidatorBonus = []byte("ValidatorBonus")
-	KeyValidator    = []byte("Validator")
-	KeyBurnOnRevoke = []byte("BurnOnRevoke")
+	KeyPercentage             = []byte("Percentage")
+	KeyMinDelegate            = []byte("MinDelegate")
+	KeyRevokePeriod           = []byte("RevokePeriod")
+	KeyValidatorBonus         = []byte("ValidatorBonus")
+	KeyValidator              = []byte("Validator")
+	KeyBurnOnRevoke           = []byte("BurnOnRevoke")
 	KeyAccruePercentageRanges = []byte("AccruePercentageRanges")
 )
 
@@ -72,12 +72,12 @@ func (p Percentage) Validate() error { return validatePercentage(p) }
 // NewParams creates a new Params object
 func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction, validator util.Fraction, burnOnRevoke util.Fraction, accruePercentageRanges []PercentageRange) *Params {
 	return &Params{
-		Percentage:   percentage,
-		MinDelegate:  minDelegate,
-		RevokePeriod: revokePeriod,
-		ValidatorBonus: validatorBonus,
-		Validator:    validator,
-		BurnOnRevoke: burnOnRevoke,
+		Percentage:             percentage,
+		MinDelegate:            minDelegate,
+		RevokePeriod:           revokePeriod,
+		ValidatorBonus:         validatorBonus,
+		Validator:              validator,
+		BurnOnRevoke:           burnOnRevoke,
 		AccruePercentageRanges: accruePercentageRanges,
 	}
 }

@@ -406,6 +406,10 @@ func NewArteryApp(
 		InitAccruePercentageRangesAndValidatorBonusParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.4.8", Chain(
+		InitBlockedSendersParam(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(

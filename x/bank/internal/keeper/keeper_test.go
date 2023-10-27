@@ -108,3 +108,49 @@ func (s *Suite) TestBurn() {
 	s.EqualValues(1_900_000000, ri.Coins[1].Int64())
 	s.EqualValues(0, ri.Delegated[1].Int64())
 }
+
+func (s *Suite) TestSendWithBlockedAddress() {
+	var (
+		user1  = app.DefaultGenesisUsers["user1"]
+		user15 = app.DefaultGenesisUsers["user15"]
+		coins  = sdk.NewCoins(sdk.NewInt64Coin(util.ConfigMainDenom, 1))
+		msg    *types.MsgSend
+		sdkCtx = sdk.WrapSDKContext(s.ctx)
+		err    error
+	)
+
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.k.GetBalance(s.ctx, user1),
+	)
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		s.k.GetBalance(s.ctx, user15),
+	)
+
+	msg = types.NewMsgSend(user1, user15, coins)
+	_, err = s.k.Send(sdkCtx, msg)
+	s.NoError(err)
+
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999))),
+		s.k.GetBalance(s.ctx, user1),
+	)
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000001))),
+		s.k.GetBalance(s.ctx, user15),
+	)
+
+	msg = types.NewMsgSend(user15, user1, coins)
+	_, err = s.k.Send(sdkCtx, msg)
+	s.Error(err)
+
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999))),
+		s.k.GetBalance(s.ctx, user1),
+	)
+	s.Equal(
+		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000001))),
+		s.k.GetBalance(s.ctx, user15),
+	)
+}

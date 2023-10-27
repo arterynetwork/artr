@@ -39,6 +39,9 @@ func (k BaseKeeper) Send(ctx context.Context, msg *types.MsgSend) (*types.MsgSen
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrInvalidAddress, "cannot parse sender address")
 	}
+	if k.BlockedSenderAddr(sdkCtx, fromAddress) {
+		return nil, sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "%s is not allowed to send transactions", msg.FromAddress)
+	}
 
 	_, err = k.PayTxFee(sdkCtx, fromAddress, msg.Amount)
 	if err != nil {

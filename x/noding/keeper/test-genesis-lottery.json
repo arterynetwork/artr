@@ -149,7 +149,8 @@
           "for_proposer": "1",
           "for_company": "0"
         },
-        "company_account": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3"
+        "company_account": "artr135qfyv227zu3cclmyycnc4u7f7vm86t80dvsw3",
+        "blocked_senders": []
       }
     },
     "auth": {

@@ -70,6 +70,8 @@ func NewTxCmd() *cobra.Command {
 		cmdSetMaxTransactionFee(),
 		cmdSetTransactionFeeSplitRatios(),
 		cmdSetAccruePercentageRanges(),
+		cmdAddBlockedSender(),
+		cmdRemoveBlockedSender(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -1802,6 +1804,88 @@ func cmdSetAccruePercentageRanges() *cobra.Command {
 					Args: &types.Proposal_AccruePercentageRanges{
 						AccruePercentageRanges: &types.AccruePercentageRangesArgs{
 							AccruePercentageRanges: value,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdAddBlockedSender() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "add-blocked-sender <address> <proposal name> <author key or address>",
+		Aliases: []string{"add_blocked_sender", "abs"},
+		Short:   "Propose to add an account to the blocked senders list",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+			addr := args[0]
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_BLOCKED_SENDER_ADD,
+					Args: &types.Proposal_Address{
+						Address: &types.AddressArgs{
+							Address: addr,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdRemoveBlockedSender() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "remove-blocked-sender <address> <proposal name> <author key or address>",
+		Aliases: []string{"remove_blocked_sender", "rbs"},
+		Short:   "Propose to remove an account from the blocked senders list",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+			addr := args[0]
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_BLOCKED_SENDER_REMOVE,
+					Args: &types.Proposal_Address{
+						Address: &types.AddressArgs{
+							Address: addr,
 						},
 					},
 				},

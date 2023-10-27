@@ -28863,7 +28863,8 @@
           "for_proposer": "1",
           "for_company": "0"
         },
-        "company_account": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
+        "company_account": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
+        "blocked_senders": []
       }
     },
     "auth": {

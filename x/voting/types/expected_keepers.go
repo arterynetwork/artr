@@ -79,4 +79,6 @@ type EarningKeeper signersKeeper
 type BankKeeper interface {
 	GetParams(ctx sdk.Context) bank.Params
 	SetParams(ctx sdk.Context, params bank.Params)
+	AddBlockedSender(ctx sdk.Context, acc sdk.AccAddress)
+	RemoveBlockedSender(ctx sdk.Context, acc sdk.AccAddress)
 }

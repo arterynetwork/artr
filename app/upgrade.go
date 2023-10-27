@@ -1037,3 +1037,21 @@ func InitAccruePercentageRangesAndValidatorBonusParams(k delegatingK.Keeper, par
 		logger.Info("... InitAccruePercentageRangesAndValidatorBonusParams done!", "params", pz)
 	}
 }
+
+func InitBlockedSendersParam(k bank.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitBlockedSendersParam ...")
+
+		var pz bankT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, bankT.ParamStoreKeyBlockedSenders) {
+				pz.SetBlockedSenders(bankT.DefaultBlockedSenders)
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitBlockedSendersParam done!", "params", pz)
+	}
+}

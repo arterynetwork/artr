@@ -8,6 +8,7 @@ option go_package = "github.com/arterynetwork/artr/x/bank/types";
 
 // Params defines the parameters for the bank module.
 message Params {
+  option (gogoproto.goproto_getters)  = false;
   option (gogoproto.goproto_stringer) = false;
 
   int64 min_send = 1 [
@@ -34,6 +35,8 @@ message Params {
 
   // CompanyAccount - company account for fee payment
   string company_account = 6;
+
+  repeated string blocked_senders = 7;
 }
 
 // The proportions in which the amount will be split among the proposer and company, the rest will be burned. The sum of proportions must be less than or equal 1.

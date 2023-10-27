@@ -89,4 +89,8 @@ enum ProposalType {
   PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS = 39;
   // Вознаграждение за делегирование с возможностью указать произвольные диапазоны
   PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES = 40;
+  // Адреса с которых заблокированна отправка токенов (включение / исключение участника)
+  PROPOSAL_TYPE_BLOCKED_SENDER_ADD = 41;
+  // Адреса с которых заблокированна отправка токенов (включение / исключение участника)
+  PROPOSAL_TYPE_BLOCKED_SENDER_REMOVE = 42;
 }

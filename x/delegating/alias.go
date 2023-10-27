@@ -30,11 +30,11 @@ var (
 )
 
 type (
-	Keeper       = keeper.Keeper
-	GenesisState = types.GenesisState
-	Params       = types.Params
-	Percentage   = types.Percentage
+	Keeper          = keeper.Keeper
+	GenesisState    = types.GenesisState
+	Params          = types.Params
+	Percentage      = types.Percentage
 	PercentageRange = types.PercentageRange
-	MsgDelegate  = types.MsgDelegate
-	MsgRevoke    = types.MsgRevoke
+	MsgDelegate     = types.MsgDelegate
+	MsgRevoke       = types.MsgRevoke
 )
