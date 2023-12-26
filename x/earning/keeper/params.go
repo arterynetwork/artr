@@ -18,16 +18,6 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 	k.paramspace.SetParamSet(ctx, &params)
 }
 
-func (k Keeper) GetState(ctx sdk.Context) (state types.StateParams) {
-	k.paramspace.GetParamSet(ctx, &state)
-	return state
-}
-
-func (k Keeper) SetState(ctx sdk.Context, state types.StateParams) {
-	k.Logger(ctx).Debug("SetState", "state", state)
-	k.paramspace.SetParamSet(ctx, &state)
-}
-
 func (k Keeper) AddSigner(ctx sdk.Context, address sdk.AccAddress) {
 	p := k.GetParams(ctx)
 	p.Signers = append(p.Signers, address.String())

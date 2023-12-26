@@ -28,6 +28,7 @@ type Keeper struct {
 	profileKeeper  types.ProfileKeeper
 	refKeeper      types.ReferralKeeper
 	nodingKeeper   types.NodingKeeper
+	earningKeeper  types.EarningKeeper
 }
 
 // NewKeeper creates a delegating keeper
@@ -46,12 +47,14 @@ func NewKeeper(
 		bankKeeper:     bankKeeper,
 		refKeeper:      refKeeper,
 		nodingKeeper:   nil, // must be set later
+		earningKeeper:  nil, // must be set later
 	}
 	return &keeper
 }
 
-func (k *Keeper) SetKeepers(nodingKeeper types.NodingKeeper) {
+func (k *Keeper) SetKeepers(nodingKeeper types.NodingKeeper, earningKeeper types.EarningKeeper) {
 	k.nodingKeeper = nodingKeeper
+	k.earningKeeper = earningKeeper
 }
 
 // Logger returns a module-specific logger.
@@ -256,7 +259,11 @@ func (k Keeper) GetAccumulation(ctx sdk.Context, acc sdk.AccAddress) (*types.Acc
 	if err != nil {
 		panic(err)
 	}
-	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator)
+	isActiveVpn, isActiveStorage, err := k.earningKeeper.IsActiveEarner(ctx, acc)
+	if err != nil {
+		panic(err)
+	}
+	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator, isActiveVpn, isActiveStorage)
 	paymentTotal := percent.MulInt64(delegated.Int64()).Reduce()
 	paymentCurrent := paymentTotal.Mul(dayPart)
 
@@ -380,7 +387,7 @@ func (k Keeper) undelegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) 
 	return nil
 }
 
-func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
+func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int, bonusFlags uint32) {
 	if ucoins.IsZero() {
 		return
 	}
@@ -416,6 +423,7 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int) {
 			Account: acc.String(),
 			Ucoins:  ucoins.Uint64(),
 			Fee:     fee.Uint64(),
+			BonusFlags: bonusFlags,
 		},
 	)
 }
@@ -486,10 +494,15 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 		if err != nil {
 			panic(err)
 		}
-		interest := k.percent(ctx, delegated, isActiveProfile, isActiveValidator).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
+		isActiveVpn, isActiveStorage, err := k.earningKeeper.IsActiveEarner(ctx, acc)
+		if err != nil {
+			panic(err)
+		}
+		bonusFlags := getBitmap(isActiveValidator, isActiveProfile, isActiveVpn, isActiveStorage)
+		interest := k.percent(ctx, delegated, isActiveProfile, isActiveValidator, isActiveVpn, isActiveStorage).Mul(dayPart).Reduce().MulInt64(delegated.Int64()).Int64()
 		interestToValidator := dayPart.Reduce().MulInt64(delegated.Int64()).Int64()
 		if interest > 0 {
-			k.accrue(ctx, acc, sdk.NewInt(interest))
+			k.accrue(ctx, acc, sdk.NewInt(interest), bonusFlags)
 			k.accrueToValidator(ctx, acc, sdk.NewInt(interestToValidator))
 		}
 		k.scheduleKeeper.Delete(ctx, *item.NextAccrue, types.AccrueHookName, acc)
@@ -497,7 +510,7 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 	item.NextAccrue = &nextPayment
 }
 
-func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool, isActiveValidator bool) util.Fraction {
+func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool, isActiveValidator bool, isActiveVpn bool, isActiveStorage bool) util.Fraction {
 	var (
 		params  = k.GetParams(ctx)
 		ladder  = params.AccruePercentageRanges
@@ -520,7 +533,13 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool
 		percent = percent.Add(params.ValidatorBonus)
 	}
 	if isActiveProfile {
-		percent = percent.Add(util.Percent(1))
+		percent = percent.Add(params.SubscriptionBonus)
+	}
+	if isActiveVpn {
+		percent = percent.Add(params.VpnBonus)
+	}
+	if isActiveStorage {
+		percent = percent.Add(params.StorageBonus)
 	}
 	percent = percent.Div(util.NewFraction(30, 1)) // to days from months
 	return percent.Reduce()
@@ -528,4 +547,14 @@ func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool
 
 func (k Keeper) dayPart(ctx sdk.Context, end time.Time) util.Fraction {
 	return util.FractionInt(1).Sub(util.NewFraction(end.Sub(ctx.BlockTime()).Nanoseconds(), k.scheduleKeeper.OneDay(ctx).Nanoseconds()).Reduce())
+}
+
+func getBitmap(flags ...bool) uint32 {
+	var bitmap uint32 = 0
+	for i, v := range flags {
+		if v {
+			bitmap += 1 << i
+		}
+	}
+	return bitmap
 }

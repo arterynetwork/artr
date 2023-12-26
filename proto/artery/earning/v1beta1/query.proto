@@ -14,9 +14,13 @@ service Query {
   rpc Params(ParamsRequest) returns (ParamsResponse) {
     option (google.api.http).get = "/artery/earning/v1beta1/params";
   }
-  // State queries the scheduled payment (if any) parameters
-  rpc State(StateRequest) returns (StateResponse) {
-    option (google.api.http).get = "/artery/earning/v1beta1/state";
+  // Get queries a earner info by address
+  rpc Get(GetRequest) returns (GetResponse) {
+    option (google.api.http).get = "/artery/earning/v1beta1/get/{address}";
+  }
+  // GetMultiple queries a earners info by addresses list
+  rpc GetMultiple(GetMultipleRequest) returns (GetMultipleResponse) {
+    option (google.api.http).get = "/artery/earning/v1beta1/get-multiple";
   }
   // List queries a loaded earner list
   rpc List(ListRequest) returns (ListResponse) {
@@ -42,22 +46,44 @@ message ParamsResponse {
   Params params = 1 [(gogoproto.nullable) = false];
 }
 
-message StateRequest {
+message GetRequest {
   option (gogoproto.equal)                = false;
   option (gogoproto.goproto_getters)      = false;
   option (gogoproto.goproto_unrecognized) = false;
   option (gogoproto.goproto_unkeyed)      = false;
   option (gogoproto.goproto_sizecache)    = false;
+
+  string address = 1;
 }
 
-message StateResponse {
+message GetResponse {
   option (gogoproto.equal)                = false;
   option (gogoproto.goproto_getters)      = false;
   option (gogoproto.goproto_unrecognized) = false;
   option (gogoproto.goproto_unkeyed)      = false;
   option (gogoproto.goproto_sizecache)    = false;
 
-  StateParams state = 1 [(gogoproto.nullable) = false];
+  Earner earner = 1 [(gogoproto.nullable) = false];
+}
+
+message GetMultipleRequest {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  repeated string addresses = 1;
+}
+
+message GetMultipleResponse {
+  option (gogoproto.equal)                = false;
+  option (gogoproto.goproto_getters)      = false;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_unkeyed)      = false;
+  option (gogoproto.goproto_sizecache)    = false;
+
+  repeated Earner earners = 1 [(gogoproto.nullable) = false];
 }
 
 message ListRequest {
@@ -66,6 +92,9 @@ message ListRequest {
   option (gogoproto.goproto_unrecognized) = false;
   option (gogoproto.goproto_unkeyed)      = false;
   option (gogoproto.goproto_sizecache)    = false;
+
+  int32 limit = 2 [(gogoproto.moretags) = "yaml:\"limit,omitempty\""];
+  int32 page  = 3 [(gogoproto.moretags) = "yaml:\"page,omitempty\""];
 }
 
 message ListResponse {

@@ -11,8 +11,6 @@ const (
 	StoreKey             = types.StoreKey
 	DefaultParamspace    = types.DefaultParamspace
 	QuerierRoute         = types.QuerierRoute
-	StartHookName        = types.StartHookName
-	ContinueHookName     = types.ContinueHookName
 	VpnCollectorName     = types.VpnCollectorName
 	StorageCollectorName = types.StorageCollectorName
 )
@@ -25,23 +23,16 @@ var (
 	DefaultGenesisState = types.DefaultGenesisState
 	ValidateGenesis     = types.ValidateGenesis
 	NewEarner           = types.NewEarner
-	NewPoints           = types.NewPoints
+	NewTimestamps       = types.NewTimestamps
 
 	// variable aliases
 	ModuleCdc = types.ModuleCdc
-
-	ErrAlreadyListed = types.ErrAlreadyListed
-	ErrTooLate       = types.ErrTooLate
-	ErrLocked        = types.ErrLocked
-	ErrNotLocked     = types.ErrNotLocked
-	ErrNoMoney       = types.ErrNoMoney
 )
 
 type (
 	Keeper       = keeper.Keeper
 	GenesisState = types.GenesisState
 	Params       = types.Params
-	StateParams  = types.StateParams
 	Earner       = types.Earner
-	Points       = types.Points
+	Timestamps   = types.Timestamps
 )

@@ -15,14 +15,11 @@ func NewHandler(k Keeper) sdk.Handler {
 		sdkCtx := sdk.WrapSDKContext(ctx)
 
 		switch msg := msg.(type) {
-		case *types.MsgListEarners:
-			res, err := srv.ListEarners(sdkCtx, msg)
+		case *types.MsgSet:
+			res, err := srv.Set(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
-		case *types.MsgReset:
-			res, err := srv.Reset(sdkCtx, msg)
-			return sdk.WrapServiceResult(ctx, res, err)
-		case *types.MsgRun:
-			res, err := srv.Run(sdkCtx, msg)
+		case *types.MsgSetMultiple:
+			res, err := srv.SetMultiple(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)

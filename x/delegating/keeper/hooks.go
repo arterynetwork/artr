@@ -81,7 +81,12 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 	if err != nil {
 		panic(err)
 	}
-	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator)
+	isActiveVpn, isActiveStorage, err := k.earningKeeper.IsActiveEarner(ctx, acc)
+	if err != nil {
+		panic(err)
+	}
+	bonusFlags := getBitmap(isActiveValidator, isActiveProfile, isActiveVpn, isActiveStorage)
+	percent := k.percent(ctx, delegated, isActiveProfile, isActiveValidator, isActiveVpn, isActiveStorage)
 	if percent.IsZero() {
 		data.NextAccrue = nil
 	} else {
@@ -92,7 +97,7 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 			interestToValidator -= data.MissedPart.MulInt64(interestToValidator).Int64()
 			data.MissedPart = nil
 		}
-		k.accrue(ctx, acc, sdk.NewInt(interest))
+		k.accrue(ctx, acc, sdk.NewInt(interest), bonusFlags)
 		k.accrueToValidator(ctx, acc, sdk.NewInt(interestToValidator))
 		*data.NextAccrue = time.Add(k.scheduleKeeper.OneDay(ctx))
 		k.scheduleKeeper.ScheduleTask(ctx, *data.NextAccrue, types.AccrueHookName, acc)

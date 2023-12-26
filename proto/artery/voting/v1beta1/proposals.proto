@@ -77,6 +77,12 @@ enum ProposalType {
   PROPOSAL_TYPE_VOTING_POWER = 33;
   // PROPOSAL_TYPE_VALIDATOR_BONUS - Дополнительный процент с делегирования, который получают активные валидаторы
   PROPOSAL_TYPE_VALIDATOR_BONUS = 34;
+  // PROPOSAL_TYPE_SUBSCRIPTION_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной подпиской
+  PROPOSAL_TYPE_SUBSCRIPTION_BONUS = 43;
+  // PROPOSAL_TYPE_VPN_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной vpn нодой
+  PROPOSAL_TYPE_VPN_BONUS = 44;
+  // PROPOSAL_TYPE_STORAGE_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной storage нодой
+  PROPOSAL_TYPE_STORAGE_BONUS = 45;
   // PROPOSAL_TYPE_VALIDATOR - Процент с делегирования, который получают активные валидаторы
   PROPOSAL_TYPE_VALIDATOR = 35 [deprecated = true];
   // Комиссия за перевод

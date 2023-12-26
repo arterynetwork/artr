@@ -61,3 +61,7 @@ type ReferralKeeper interface {
 type NodingKeeper interface {
 	IsActiveValidator(ctx sdk.Context, accAddr sdk.AccAddress) (bool, error)
 }
+
+type EarningKeeper interface {
+	IsActiveEarner(ctx sdk.Context, accAddr sdk.AccAddress) (vpn bool, storage bool, err error)
+}

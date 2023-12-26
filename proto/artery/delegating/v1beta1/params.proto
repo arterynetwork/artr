@@ -28,6 +28,24 @@ message Params {
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
+  // SubscriptionBonus is an extra award that a user gets while theirs subscriptions is active (a delegation amount fraction).
+  string subscription_bonus = 8 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+
+  // VpnBonus is an extra award that a user gets while theirs vpn node is active (a delegation amount fraction).
+  string vpn_bonus = 9 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+
+  // StorageBonus is an extra award that a user gets while theirs storage node is active (a delegation amount fraction).
+  string storage_bonus = 10 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+
   // Validator is an increased award that a validator gets while they's active (a delegation amount fraction).
   string validator = 5 [
     deprecated=true,

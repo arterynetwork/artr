@@ -11,15 +11,13 @@ option go_package = "github.com/arterynetwork/artr/x/earning/types";
 message GenesisState {
   option (gogoproto.goproto_getters) = false;
 
+  reserved 2;
+  reserved "state";
+
   Params params = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "params",
     (gogoproto.moretags) = "yaml:\"params\""
-  ];
-  StateParams state = 2 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "state,omitempty",
-    (gogoproto.moretags) = "yaml:\"state,omitempty\""
   ];
   repeated Earner earners = 3 [
     (gogoproto.nullable) = false,

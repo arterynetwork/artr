@@ -65,6 +65,9 @@ func NewTxCmd() *cobra.Command {
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
 		cmdSetValidatorBonus(),
+		cmdSetSubscriptionBonus(),
+		cmdSetVpnBonus(),
+		cmdSetStorageBonus(),
 		cmdSetTransactionFee(),
 		cmdSetBurnOnRevoke(),
 		cmdSetMaxTransactionFee(),
@@ -1553,6 +1556,144 @@ func cmdSetValidatorBonus() *cobra.Command {
 					Author: author,
 					Name:   proposalName,
 					Type:   types.PROPOSAL_TYPE_VALIDATOR_BONUS,
+					Args: &types.Proposal_Portion{
+						Portion: &types.PortionArgs{
+							Fraction: q,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetSubscriptionBonus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-subscription-bonus <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-subscription-bonus 1% "Increase active users' delegation award by 1%" ivan`,
+		Aliases: []string{"set_subscription_bonus", "ssb"},
+		Short:   "Propose to set active users' delegation award bonus",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := util.ParseFraction(args[0])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_SUBSCRIPTION_BONUS,
+					Args: &types.Proposal_Portion{
+						Portion: &types.PortionArgs{
+							Fraction: q,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetVpnBonus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-vpn-bonus <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-vpn-bonus 1% "Increase delegation award for users with active vpn node by 1%" ivan`,
+		Aliases: []string{"set_vpn_bonus", "svpnb"},
+		Short:   "Propose to set delegation award bonus for users with active vpn node",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := util.ParseFraction(args[0])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_VPN_BONUS,
+					Args: &types.Proposal_Portion{
+						Portion: &types.PortionArgs{
+							Fraction: q,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetStorageBonus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-storage-bonus <value> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-storage-bonus 1% "Increase delegation award for users with active storage node by 1%" ivan`,
+		Aliases: []string{"set_storage_bonus", "sstorb"},
+		Short:   "Propose to set delegation award bonus for users with active storage node",
+		Args:    cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[1]
+
+			q, err := util.ParseFraction(args[0])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_STORAGE_BONUS,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,

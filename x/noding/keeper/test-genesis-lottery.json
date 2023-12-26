@@ -302,6 +302,9 @@
         },
         "revoke_period": 14,
         "validator_bonus": "0%",
+        "subscription_bonus": "1%",
+        "vpn_bonus": "0%",
+        "storage_bonus": "0%",
         "validator": "15%",
         "burn_on_revoke": "5%",
         "accrue_percentage_ranges": [

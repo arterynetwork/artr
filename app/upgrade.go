@@ -1055,3 +1055,45 @@ func InitBlockedSendersParam(k bank.Keeper, paramspace params.Subspace) upgrade.
 		logger.Info("... InitBlockedSendersParam done!", "params", pz)
 	}
 }
+
+func CleanEarningStore(storeKey sdk.StoreKey) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting CleanEarningStore ...")
+
+		store := ctx.KVStore(storeKey)
+		var keys [][]byte
+		it := store.Iterator(nil, nil)
+		for ; it.Valid(); it.Next() {
+			keys = append(keys, it.Key())
+		}
+		it.Close()
+		for _, key := range keys {
+			store.Delete(key)
+		}
+
+		logger.Info("... CleanEarningStore done!")
+	}
+}
+
+func InitSubscriptionVpnStorageBonusesParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitSubscriptionVpnStorageBonusesParams ...")
+
+		var pz delegatingT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, delegatingT.KeySubscriptionBonus) {
+				pz.SubscriptionBonus = delegatingT.DefaultSubscriptionBonus
+			} else if bytes.Equal(pair.Key, delegatingT.KeyVpnBonus) {
+				pz.VpnBonus = delegatingT.DefaultVpnBonus
+			} else if bytes.Equal(pair.Key, delegatingT.KeyStorageBonus) {
+				pz.StorageBonus = delegatingT.DefaultStorageBonus
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitSubscriptionVpnStorageBonusesParams done!", "params", pz)
+	}
+}

@@ -3,12 +3,14 @@ package artery.earning.v1beta1;
 
 option go_package = "github.com/arterynetwork/artr/x/earning/types";
 
-message EventStartPaying {}
+message EventStartPaying {option deprecated = true;}
 
 message EventEarn {
+  option deprecated = true;
+
   string address = 1;
   uint64 vpn = 2;
   uint64 storage = 3;
 }
 
-message EventFinishPaying {}
+message EventFinishPaying {option deprecated = true;}

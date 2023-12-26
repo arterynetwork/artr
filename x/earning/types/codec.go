@@ -10,6 +10,8 @@ import (
 
 // RegisterCodec registers concrete types on codec
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
+	cdc.RegisterConcrete(MsgSet{}, "earning/set", nil)
+	cdc.RegisterConcrete(MsgSetMultiple{}, "earning/setMultiple", nil)
 	cdc.RegisterConcrete(MsgListEarners{}, "earning/listEarners", nil)
 	cdc.RegisterConcrete(MsgRun{}, "earning/run", nil)
 	cdc.RegisterConcrete(MsgReset{}, "earning/reset", nil)
@@ -17,6 +19,8 @@ func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
+		&MsgSet{},
+		&MsgSetMultiple{},
 		&MsgListEarners{},
 		&MsgRun{},
 		&MsgReset{},

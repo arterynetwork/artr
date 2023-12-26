@@ -309,7 +309,7 @@ func NewArteryApp(
 	)
 
 	app.referralKeeper.SetKeepers(app.nodingKeeper)
-	app.delegatingKeeper.SetKeepers(app.nodingKeeper)
+	app.delegatingKeeper.SetKeepers(app.nodingKeeper, app.earningKeeper)
 
 	app.bankKeeper.AddHook("SetCoins", "update-referral",
 		func(ctx sdk.Context, addr sdk.AccAddress) error {
@@ -327,8 +327,6 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(profileTypes.RefreshImHookName, app.profileKeeper.HandleRenewImHook)
 	app.scheduleKeeper.AddHook(votingTypes.VoteHookName, app.votingKeeper.ProcessSchedule)
 	app.scheduleKeeper.AddHook(votingTypes.PollHookName, app.votingKeeper.EndPollHandler)
-	app.scheduleKeeper.AddHook(earning.StartHookName, app.earningKeeper.MustPerformStart)
-	app.scheduleKeeper.AddHook(earning.ContinueHookName, app.earningKeeper.MustPerformContinue)
 	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
 	app.scheduleKeeper.AddHook(delegating.AccrueHookName, app.delegatingKeeper.MustPerformAccrue)
 	app.scheduleKeeper.AddHook(referral.BanishHookName, app.referralKeeper.PerformBanish)
@@ -408,6 +406,11 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.8", Chain(
 		InitBlockedSendersParam(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
+	))
+
+	app.upgradeKeeper.SetUpgradeHandler("2.5.0", Chain(
+		CleanEarningStore(keys[earning.StoreKey]),
+		InitSubscriptionVpnStorageBonusesParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

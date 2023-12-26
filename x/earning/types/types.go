@@ -1,15 +1,19 @@
 package types
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
+import (
+	"time"
 
-func NewPoints(vpn int64, storage int64) Points {
-	return Points{
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
+func NewTimestamps(vpn *time.Time, storage *time.Time) Timestamps {
+	return Timestamps{
 		Vpn:     vpn,
 		Storage: storage,
 	}
 }
 
-func NewEarner(acc sdk.AccAddress, vpn int64, storage int64) Earner {
+func NewEarner(acc sdk.AccAddress, vpn *time.Time, storage *time.Time) Earner {
 	return Earner{
 		Account: acc.String(),
 		Vpn:     vpn,
@@ -25,8 +29,8 @@ func (e Earner) GetAccount() sdk.AccAddress {
 	return acc
 }
 
-func (e Earner) GetPoints() Points {
-	return Points{
+func (e Earner) GetTimestamps() Timestamps {
+	return Timestamps{
 		Vpn:     e.Vpn,
 		Storage: e.Storage,
 	}

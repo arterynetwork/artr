@@ -24,6 +24,7 @@ message EventAccrue {
   string account = 1;
   uint64 ucoins = 2;
   uint64 fee = 3;
+  uint32 bonus_flags = 4;
 }
 
 message EventValidatorAccrue {

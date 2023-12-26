@@ -3,6 +3,9 @@ package keeper
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/x/earning/types"
@@ -12,36 +15,34 @@ type MsgServer Keeper
 
 var _ types.MsgServer = MsgServer{}
 
-func (s MsgServer) ListEarners(ctx context.Context, msg *types.MsgListEarners) (*types.MsgListEarnersResponse, error) {
-	k := Keeper(s)
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	if err := k.ListEarners(sdkCtx, msg.Earners); err != nil {
+func (s MsgServer) Set(ctx context.Context, msg *types.MsgSet) (resp *types.MsgSetResponse, err error) {
+	_, err = s.SetMultiple(ctx, &types.MsgSetMultiple{Earners: []types.Earner{msg.Earner}})
+	if err != nil {
 		return nil, err
 	}
-	return &types.MsgListEarnersResponse{}, nil
+
+	return &types.MsgSetResponse{}, nil
 }
 
-func (s MsgServer) Run(ctx context.Context, msg *types.MsgRun) (*types.MsgRunResponse, error) {
+func (s MsgServer) SetMultiple(ctx context.Context, msg *types.MsgSetMultiple) (resp *types.MsgSetMultipleResponse, err error) {
 	k := Keeper(s)
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	if err := k.Run(
-		sdkCtx,
-		msg.FundPart,
-		msg.PerBlock,
-		types.Points{
-			Vpn:     msg.TotalVpn,
-			Storage: msg.TotalStorage,
-		},
-		msg.Time,
-	); err != nil {
-		return nil, err
+
+	for _, earner := range msg.Earners {
+		var acc sdk.AccAddress
+		acc, err = sdk.AccAddressFromBech32(earner.Account)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "cannot parse account address: %s", earner.Account)
+		}
+		if earner.Vpn == nil && earner.Storage == nil {
+			k.delete(sdkCtx, acc)
+		} else {
+			err = k.set(sdkCtx, acc, earner.GetTimestamps())
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-	return &types.MsgRunResponse{}, nil
-}
 
-func (s MsgServer) Reset(ctx context.Context, msg *types.MsgReset) (*types.MsgResetResponse, error) {
-	k := Keeper(s)
-	sdkCtx := sdk.UnwrapSDKContext(ctx)
-	k.Reset(sdkCtx)
-	return &types.MsgResetResponse{}, nil
+	return &types.MsgSetMultipleResponse{}, nil
 }

@@ -337,6 +337,24 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			if err = p.Validate(); err == nil {
 				k.delegatingKeeper.SetParams(ctx, p)
 			}
+		case types.PROPOSAL_TYPE_SUBSCRIPTION_BONUS:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.SubscriptionBonus = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
+			}
+		case types.PROPOSAL_TYPE_VPN_BONUS:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.VpnBonus = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
+			}
+		case types.PROPOSAL_TYPE_STORAGE_BONUS:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.StorageBonus = proposal.GetPortion().Fraction
+			if err = p.Validate(); err == nil {
+				k.delegatingKeeper.SetParams(ctx, p)
+			}
 		case types.PROPOSAL_TYPE_VALIDATOR:
 			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_TRANSACTION_FEE:

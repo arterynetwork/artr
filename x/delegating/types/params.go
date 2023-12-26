@@ -27,6 +27,9 @@ const (
 
 var (
 	DefaultValidatorBonus         = util.Percent(0)
+	DefaultSubscriptionBonus      = util.Percent(1)
+	DefaultVpnBonus               = util.Percent(0)
+	DefaultStorageBonus           = util.Percent(0)
 	DefaultValidator              = util.Percent(15)
 	DefaultBurnOnRevoke           = util.Percent(5)
 	DefaultAccruePercentageRanges = []PercentageRange{
@@ -43,6 +46,9 @@ var (
 	KeyMinDelegate            = []byte("MinDelegate")
 	KeyRevokePeriod           = []byte("RevokePeriod")
 	KeyValidatorBonus         = []byte("ValidatorBonus")
+	KeySubscriptionBonus      = []byte("SubscriptionBonus")
+	KeyVpnBonus               = []byte("VpnBonus")
+	KeyStorageBonus           = []byte("StorageBonus")
 	KeyValidator              = []byte("Validator")
 	KeyBurnOnRevoke           = []byte("BurnOnRevoke")
 	KeyAccruePercentageRanges = []byte("AccruePercentageRanges")
@@ -70,12 +76,15 @@ func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction, validator util.Fraction, burnOnRevoke util.Fraction, accruePercentageRanges []PercentageRange) *Params {
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction, subscriptionBonus util.Fraction, vpnBonus util.Fraction, storageBonus util.Fraction, validator util.Fraction, burnOnRevoke util.Fraction, accruePercentageRanges []PercentageRange) *Params {
 	return &Params{
 		Percentage:             percentage,
 		MinDelegate:            minDelegate,
 		RevokePeriod:           revokePeriod,
 		ValidatorBonus:         validatorBonus,
+		SubscriptionBonus:      subscriptionBonus,
+		VpnBonus:               vpnBonus,
+		StorageBonus:           storageBonus,
 		Validator:              validator,
 		BurnOnRevoke:           burnOnRevoke,
 		AccruePercentageRanges: accruePercentageRanges,
@@ -89,6 +98,9 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
 		paramTypes.NewParamSetPair(KeyValidatorBonus, &p.ValidatorBonus, validateValidatorBonus),
+		paramTypes.NewParamSetPair(KeySubscriptionBonus, &p.SubscriptionBonus, validateSubscriptionBonus),
+		paramTypes.NewParamSetPair(KeyVpnBonus, &p.VpnBonus, validateVpnBonus),
+		paramTypes.NewParamSetPair(KeyStorageBonus, &p.StorageBonus, validateStorageBonus),
 		paramTypes.NewParamSetPair(KeyValidator, &p.Validator, validateValidator),
 		paramTypes.NewParamSetPair(KeyBurnOnRevoke, &p.BurnOnRevoke, validateBurnOnRevoke),
 		paramTypes.NewParamSetPair(KeyAccruePercentageRanges, &p.AccruePercentageRanges, validateAccruePercentageRanges),
@@ -107,6 +119,9 @@ func DefaultParams() *Params {
 		DefaultMinDelegate,
 		DefaultRevokePeriod,
 		DefaultValidatorBonus,
+		DefaultSubscriptionBonus,
+		DefaultVpnBonus,
+		DefaultStorageBonus,
 		DefaultValidator,
 		DefaultBurnOnRevoke,
 		DefaultAccruePercentageRanges,
@@ -125,6 +140,15 @@ func (p Params) Validate() error {
 	}
 	if err := validateValidatorBonus(p.ValidatorBonus); err != nil {
 		return errors.Wrap(err, "invalid ValidatorBonus")
+	}
+	if err := validateSubscriptionBonus(p.SubscriptionBonus); err != nil {
+		return errors.Wrap(err, "invalid SubscriptionBonus")
+	}
+	if err := validateVpnBonus(p.VpnBonus); err != nil {
+		return errors.Wrap(err, "invalid VpnBonus")
+	}
+	if err := validateStorageBonus(p.StorageBonus); err != nil {
+		return errors.Wrap(err, "invalid StorageBonus")
 	}
 	if err := validateValidator(p.Validator); err != nil {
 		return errors.Wrap(err, "invalid Validator")
@@ -211,6 +235,48 @@ func validateValidatorBonus(i interface{}) error {
 	}
 	if vb.IsNegative() {
 		return errors.New("ValidatorBonus must be non-negative")
+	}
+	return nil
+}
+
+func validateSubscriptionBonus(i interface{}) error {
+	sb, ok := i.(util.Fraction)
+	if !ok {
+		return errors.Errorf("invalid SubscriptionBonus parameter type: %T", i)
+	}
+	if sb.IsNullValue() {
+		return errors.New("SubscriptionBonus must be non-null")
+	}
+	if sb.IsNegative() {
+		return errors.New("SubscriptionBonus must be non-negative")
+	}
+	return nil
+}
+
+func validateVpnBonus(i interface{}) error {
+	vb, ok := i.(util.Fraction)
+	if !ok {
+		return errors.Errorf("invalid VpnBonus parameter type: %T", i)
+	}
+	if vb.IsNullValue() {
+		return errors.New("VpnBonus must be non-null")
+	}
+	if vb.IsNegative() {
+		return errors.New("VpnBonus must be non-negative")
+	}
+	return nil
+}
+
+func validateStorageBonus(i interface{}) error {
+	sb, ok := i.(util.Fraction)
+	if !ok {
+		return errors.Errorf("invalid StorageBonus parameter type: %T", i)
+	}
+	if sb.IsNullValue() {
+		return errors.New("StorageBonus must be non-null")
+	}
+	if sb.IsNegative() {
+		return errors.New("StorageBonus must be non-negative")
 	}
 	return nil
 }

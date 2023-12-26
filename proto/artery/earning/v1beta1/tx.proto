@@ -8,12 +8,38 @@ import "artery/earning/v1beta1/types.proto";
 option go_package = "github.com/arterynetwork/artr/x/earning/types";
 
 service Msg {
-  rpc ListEarners(MsgListEarners) returns (MsgListEarnersResponse);
-  rpc Run(MsgRun) returns (MsgRunResponse);
-  rpc Reset(MsgReset) returns (MsgResetResponse);
+  rpc Set(MsgSet) returns (MsgSetResponse);
+  rpc SetMultiple(MsgSetMultiple) returns (MsgSetMultipleResponse);
 }
 
+message MsgSet {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  Earner earner = 1 [
+    (gogoproto.nullable)   = false
+  ];
+
+  string signer = 2;
+}
+
+message MsgSetResponse {}
+
+message MsgSetMultiple {
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  repeated Earner earners = 1 [
+    (gogoproto.nullable)   = false
+  ];
+
+  string signer = 2;
+}
+
+message MsgSetMultipleResponse {}
+
 message MsgListEarners {
+  option deprecated = true;
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
@@ -28,9 +54,10 @@ message MsgListEarners {
   ];
 }
 
-message MsgListEarnersResponse {}
+message MsgListEarnersResponse {option deprecated = true;}
 
 message MsgRun {
+  option deprecated = true;
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
@@ -62,9 +89,10 @@ message MsgRun {
   ];
 }
 
-message MsgRunResponse {}
+message MsgRunResponse {option deprecated = true;}
 
 message MsgReset {
+  option deprecated = true;
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
@@ -74,4 +102,4 @@ message MsgReset {
   ];
 }
 
-message MsgResetResponse {}
+message MsgResetResponse {option deprecated = true;}

@@ -2,6 +2,7 @@ syntax = "proto3";
 package artery.earning.v1beta1;
 
 import "gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/earning/types";
 
@@ -9,26 +10,28 @@ message Earner {
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
+  reserved 1,2;
+  reserved "vpn","storage";
+
   string account = 3 [
     (gogoproto.jsontag)  = "account",
     (gogoproto.moretags) = "yaml:\"account\""
   ];
-  int64 vpn = 1 [
-    (gogoproto.moretags) = "yaml:\"vpn,omitempty\""
+
+  google.protobuf.Timestamp vpn_last_seen = 4 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.customname) = "Vpn"
   ];
-  int64 storage = 2 [
-    (gogoproto.moretags) = "yaml:\"storage,omitempty\""
+  google.protobuf.Timestamp storage_last_seen = 5 [
+    (gogoproto.stdtime)  = true,
+    (gogoproto.customname) = "Storage"
   ];
 }
 
-message Points {
+message Timestamps {
   option (gogoproto.equal)           = false;
   option (gogoproto.goproto_getters) = false;
 
-  int64 vpn = 1 [
-    (gogoproto.moretags) = "yaml:\"vpn,omitempty\""
-  ];
-  int64 storage = 2 [
-    (gogoproto.moretags) = "yaml:\"storage,omitempty\""
-  ];
+  google.protobuf.Timestamp vpn = 1 [(gogoproto.stdtime)  = true];
+  google.protobuf.Timestamp storage = 2 [(gogoproto.stdtime)  = true];
 }

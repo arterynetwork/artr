@@ -13,12 +13,24 @@ func (k Keeper) GetEarners(ctx sdk.Context) []types.Earner {
 	defer it.Close()
 	for ; it.Valid(); it.Next() {
 		acc := sdk.AccAddress(it.Key())
-		var points types.Points
-		err := k.cdc.UnmarshalBinaryBare(it.Value(), &points)
+		var timestamps types.Timestamps
+		err := k.cdc.UnmarshalBinaryBare(it.Value(), &timestamps)
 		if err != nil {
 			panic(err)
 		}
-		result = append(result, types.NewEarner(acc, points.Vpn, points.Storage))
+		result = append(result, types.NewEarner(acc, timestamps.Vpn, timestamps.Storage))
 	}
 	return result
+}
+
+func (k Keeper) SetEarners(ctx sdk.Context, earners []types.Earner) {
+	store := ctx.KVStore(k.storeKey)
+	for _, earner := range earners {
+		timestamps := earner.GetTimestamps()
+		bz, err := k.cdc.MarshalBinaryBare(&timestamps)
+		if err != nil {
+			panic(err)
+		}
+		store.Set(earner.GetAccount(), bz)
+	}
 }

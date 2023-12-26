@@ -2,7 +2,7 @@ swagger: "2.0"
 info:
   title: Artery Blockchain - gRPC Gateway docs
   description: A REST interface for state queries
-  version: "2.4.8"
+  version: "2.5.0"
 apis:
   - url: ./tmp-swagger-gen/artery/bank/v1beta1/query.swagger.json
     operationIds:
@@ -17,6 +17,11 @@ apis:
     operationIds:
       rename:
         Params: EarningParams
+        Get: EarningGet
+        GetMultiple: EarningGetMultiple
+        List: EarningList
+        Set: EarningSet
+        SetMultiple: EarningSetMultiple
         State: EarningState
   - url: ./tmp-swagger-gen/artery/noding/v1beta1/query.swagger.json
     operationIds:
@@ -34,6 +39,10 @@ apis:
         Params: ReferralParams
         Get: ReferralGet
   - url: ./tmp-swagger-gen/artery/schedule/v1beta1/query.swagger.json
+    operationIds:
+        rename:
+            Params: ScheduleParams
+            Get: ScheduleGet
   - url: ./tmp-swagger-gen/artery/voting/v1beta1/query.swagger.json
     operationIds:
       rename:

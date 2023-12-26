@@ -28,4 +28,5 @@ type BankKeeper interface {
 
 type ScheduleKeeper interface {
 	ScheduleTask(ctx sdk.Context, time time.Time, event string, data []byte)
+	OneDay(ctx sdk.Context) time.Duration
 }
