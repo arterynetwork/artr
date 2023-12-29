@@ -76,13 +76,13 @@ enum ProposalType {
   // Разбивка voting power по процентилям
   PROPOSAL_TYPE_VOTING_POWER = 33;
   // PROPOSAL_TYPE_VALIDATOR_BONUS - Дополнительный процент с делегирования, который получают активные валидаторы
-  PROPOSAL_TYPE_VALIDATOR_BONUS = 34;
+  PROPOSAL_TYPE_VALIDATOR_BONUS = 34 [deprecated = true];
   // PROPOSAL_TYPE_SUBSCRIPTION_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной подпиской
-  PROPOSAL_TYPE_SUBSCRIPTION_BONUS = 43;
+  PROPOSAL_TYPE_SUBSCRIPTION_BONUS = 43 [deprecated = true];
   // PROPOSAL_TYPE_VPN_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной vpn нодой
-  PROPOSAL_TYPE_VPN_BONUS = 44;
+  PROPOSAL_TYPE_VPN_BONUS = 44 [deprecated = true];
   // PROPOSAL_TYPE_STORAGE_BONUS - Дополнительный процент с делегирования, который получают пользователи с активной storage нодой
-  PROPOSAL_TYPE_STORAGE_BONUS = 45;
+  PROPOSAL_TYPE_STORAGE_BONUS = 45 [deprecated = true];
   // PROPOSAL_TYPE_VALIDATOR - Процент с делегирования, который получают активные валидаторы
   PROPOSAL_TYPE_VALIDATOR = 35 [deprecated = true];
   // Комиссия за перевод
@@ -94,7 +94,9 @@ enum ProposalType {
   // Пропорции в которых делится комиссия за перевод между пропозером, компанией и сжиганием
   PROPOSAL_TYPE_TRANSACTION_FEE_SPLIT_RATIOS = 39;
   // Вознаграждение за делегирование с возможностью указать произвольные диапазоны
-  PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES = 40;
+  PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES = 40 [deprecated = true];
+  // Вознаграждение за делегирование с возможностью указать произвольные диапазоны для пяти категорий: базовое, бонус валидатора, бонус за подписку, бонус за vpn ноду, бонус за storage ноду
+  PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE = 46;
   // Адреса с которых заблокированна отправка токенов (включение / исключение участника)
   PROPOSAL_TYPE_BLOCKED_SENDER_ADD = 41;
   // Адреса с которых заблокированна отправка токенов (включение / исключение участника)

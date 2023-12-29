@@ -70,14 +70,38 @@ func (s Suite) TestCleanGenesis() {
 func (s Suite) TestCurrentProposal() {
 	s.k.SetCurrentProposal(s.ctx, types.Proposal{
 		Name: "halving",
-		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
-		Args: &types.Proposal_AccruePercentageRanges{
-			AccruePercentageRanges: &types.AccruePercentageRangesArgs{
-				AccruePercentageRanges: []dt.PercentageRange{
-					{Start: 0, Percent: util.Percent(11)},
-					{Start: 1_000_000000, Percent: util.Percent(12)},
-					{Start: 10_000_000000, Percent: util.Percent(14)},
-					{Start: 100_000_000000, Percent: util.Percent(15)},
+		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE,
+		Args: &types.Proposal_AccruePercentageTable{
+			AccruePercentageTable: &types.AccruePercentageTableArgs{
+				AccruePercentageTable: []dt.PercentageListRange{
+					{Start: 0, PercentList: []util.Fraction{
+						util.Percent(11),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 1_000_000000, PercentList: []util.Fraction{
+						util.Percent(12),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 10_000_000000, PercentList: []util.Fraction{
+						util.Percent(14),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 100_000_000000, PercentList: []util.Fraction{
+						util.Percent(15),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
 				},
 			},
 		},
@@ -95,14 +119,38 @@ func (s Suite) TestCurrentProposal() {
 func (s Suite) TestHistory() {
 	proposal := types.Proposal{
 		Name: "halving",
-		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
-		Args: &types.Proposal_AccruePercentageRanges{
-			AccruePercentageRanges: &types.AccruePercentageRangesArgs{
-				AccruePercentageRanges: []dt.PercentageRange{
-					{Start: 0, Percent: util.Percent(11)},
-					{Start: 1_000_000000, Percent: util.Percent(12)},
-					{Start: 10_000_000000, Percent: util.Percent(14)},
-					{Start: 100_000_000000, Percent: util.Percent(15)},
+		Type: types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE,
+		Args: &types.Proposal_AccruePercentageTable{
+			AccruePercentageTable: &types.AccruePercentageTableArgs{
+				AccruePercentageTable: []dt.PercentageListRange{
+					{Start: 0, PercentList: []util.Fraction{
+						util.Percent(11),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 1_000_000000, PercentList: []util.Fraction{
+						util.Percent(12),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 10_000_000000, PercentList: []util.Fraction{
+						util.Percent(14),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
+					{Start: 100_000_000000, PercentList: []util.Fraction{
+						util.Percent(15),
+						util.Percent(2),
+						util.Percent(1),
+						util.Percent(0),
+						util.Percent(0),
+					}},
 				},
 			},
 		},

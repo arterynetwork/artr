@@ -332,29 +332,13 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.VotingPower = *proposal.GetVotingPower()
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_VALIDATOR_BONUS:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.ValidatorBonus = proposal.GetPortion().Fraction
-			if err = p.Validate(); err == nil {
-				k.delegatingKeeper.SetParams(ctx, p)
-			}
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_SUBSCRIPTION_BONUS:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.SubscriptionBonus = proposal.GetPortion().Fraction
-			if err = p.Validate(); err == nil {
-				k.delegatingKeeper.SetParams(ctx, p)
-			}
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_VPN_BONUS:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.VpnBonus = proposal.GetPortion().Fraction
-			if err = p.Validate(); err == nil {
-				k.delegatingKeeper.SetParams(ctx, p)
-			}
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_STORAGE_BONUS:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.StorageBonus = proposal.GetPortion().Fraction
-			if err = p.Validate(); err == nil {
-				k.delegatingKeeper.SetParams(ctx, p)
-			}
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_VALIDATOR:
 			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_TRANSACTION_FEE:
@@ -383,8 +367,10 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 				k.bankKeeper.SetParams(ctx, p)
 			}
 		case types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES:
+			err = errors.New("parameter is deprecated")
+		case types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE:
 			p := k.delegatingKeeper.GetParams(ctx)
-			p.AccruePercentageRanges = proposal.GetAccruePercentageRanges().AccruePercentageRanges
+			p.AccruePercentageTable = proposal.GetAccruePercentageTable().AccruePercentageTable
 			if err = p.Validate(); err == nil {
 				k.delegatingKeeper.SetParams(ctx, p)
 			}

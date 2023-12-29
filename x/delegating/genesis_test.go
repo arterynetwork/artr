@@ -98,6 +98,36 @@ func (s *Suite) TestParams() {
 			{Start: 10_000_000000, Percent: util.Percent(98)},
 			{Start: 100_000_000000, Percent: util.Percent(99)},
 		},
+		AccruePercentageTable: []delegating.PercentageListRange{
+			{Start: 0, PercentList: []util.Fraction{
+				util.Percent(96),
+				util.Percent(13),
+				util.Percent(1),
+				util.Percent(0),
+				util.Percent(0),
+			}},
+			{Start: 1_000_000000, PercentList: []util.Fraction{
+				util.Percent(97),
+				util.Percent(13),
+				util.Percent(1),
+				util.Percent(0),
+				util.Percent(0),
+			}},
+			{Start: 10_000_000000, PercentList: []util.Fraction{
+				util.Percent(98),
+				util.Percent(13),
+				util.Percent(1),
+				util.Percent(0),
+				util.Percent(0),
+			}},
+			{Start: 100_000_000000, PercentList: []util.Fraction{
+				util.Percent(99),
+				util.Percent(13),
+				util.Percent(1),
+				util.Percent(0),
+				util.Percent(0),
+			}},
+		},
 	})
 }
 

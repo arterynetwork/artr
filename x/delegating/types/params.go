@@ -38,6 +38,36 @@ var (
 		{Start: 10_000_000000, Percent: util.Percent(DefaultTenKPlusPercent)},
 		{Start: 100_000_000000, Percent: util.Percent(DefaultHundredKPlusPercent)},
 	}
+	DefaultAccruePercentageTable = []PercentageListRange{
+		{Start: 0, PercentList: []util.Fraction{
+			util.Percent(DefaultMinimalPercent),
+			DefaultValidatorBonus,
+			DefaultSubscriptionBonus,
+			DefaultVpnBonus,
+			DefaultStorageBonus,
+		}},
+		{Start: 1_000_000000, PercentList: []util.Fraction{
+			util.Percent(DefaultThousandPlusPercent),
+			DefaultValidatorBonus,
+			DefaultSubscriptionBonus,
+			DefaultVpnBonus,
+			DefaultStorageBonus,
+		}},
+		{Start: 10_000_000000, PercentList: []util.Fraction{
+			util.Percent(DefaultTenKPlusPercent),
+			DefaultValidatorBonus,
+			DefaultSubscriptionBonus,
+			DefaultVpnBonus,
+			DefaultStorageBonus,
+		}},
+		{Start: 100_000_000000, PercentList: []util.Fraction{
+			util.Percent(DefaultHundredKPlusPercent),
+			DefaultValidatorBonus,
+			DefaultSubscriptionBonus,
+			DefaultVpnBonus,
+			DefaultStorageBonus,
+		}},
+	}
 )
 
 // Parameter store keys
@@ -52,6 +82,7 @@ var (
 	KeyValidator              = []byte("Validator")
 	KeyBurnOnRevoke           = []byte("BurnOnRevoke")
 	KeyAccruePercentageRanges = []byte("AccruePercentageRanges")
+	KeyAccruePercentageTable  = []byte("AccruePercentageTable")
 )
 
 // ParamKeyTable for delegating module
@@ -76,7 +107,7 @@ func NewPercentage(minimal int, oneK int, tenK int, hundredK int) *Percentage {
 func (p Percentage) Validate() error { return validatePercentage(p) }
 
 // NewParams creates a new Params object
-func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction, subscriptionBonus util.Fraction, vpnBonus util.Fraction, storageBonus util.Fraction, validator util.Fraction, burnOnRevoke util.Fraction, accruePercentageRanges []PercentageRange) *Params {
+func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, validatorBonus util.Fraction, subscriptionBonus util.Fraction, vpnBonus util.Fraction, storageBonus util.Fraction, validator util.Fraction, burnOnRevoke util.Fraction, accruePercentageRanges []PercentageRange, accruePercentageTable []PercentageListRange) *Params {
 	return &Params{
 		Percentage:             percentage,
 		MinDelegate:            minDelegate,
@@ -88,6 +119,7 @@ func NewParams(percentage Percentage, minDelegate int64, revokePeriod uint32, va
 		Validator:              validator,
 		BurnOnRevoke:           burnOnRevoke,
 		AccruePercentageRanges: accruePercentageRanges,
+		AccruePercentageTable:  accruePercentageTable,
 	}
 }
 
@@ -104,6 +136,7 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyValidator, &p.Validator, validateValidator),
 		paramTypes.NewParamSetPair(KeyBurnOnRevoke, &p.BurnOnRevoke, validateBurnOnRevoke),
 		paramTypes.NewParamSetPair(KeyAccruePercentageRanges, &p.AccruePercentageRanges, validateAccruePercentageRanges),
+		paramTypes.NewParamSetPair(KeyAccruePercentageTable, &p.AccruePercentageTable, validateAccruePercentageTable),
 	}
 }
 
@@ -125,6 +158,7 @@ func DefaultParams() *Params {
 		DefaultValidator,
 		DefaultBurnOnRevoke,
 		DefaultAccruePercentageRanges,
+		DefaultAccruePercentageTable,
 	)
 }
 
@@ -158,6 +192,9 @@ func (p Params) Validate() error {
 	}
 	if err := validateAccruePercentageRanges(p.AccruePercentageRanges); err != nil {
 		return errors.Wrap(err, "invalid AccruePercentageRanges")
+	}
+	if err := validateAccruePercentageTable(p.AccruePercentageTable); err != nil {
+		return errors.Wrap(err, "invalid AccruePercentageTable")
 	}
 	return nil
 }
@@ -338,6 +375,40 @@ func validateAccruePercentageRanges(i interface{}) error {
 	}
 	if err := ValidatePercentageRanges(v); err != nil {
 		return errors.Wrap(err, "invalid AccruePercentageRanges parameter:")
+	}
+	return nil
+}
+
+func ValidatePercentageTable(ladder []PercentageListRange) error {
+	if len(ladder) == 0 {
+		return errors.New("at least one range is required")
+	}
+	var prevStep PercentageListRange
+	for index, step := range ladder {
+		if err := step.Validate(); err != nil {
+			return errors.Wrapf(err, "invalid PercentageRange #%d", index)
+		}
+		if index == 0 {
+			if step.Start != 0 {
+				return errors.Errorf("range #%d start (%d) not equal 0", index+1, step.Start)
+			}
+		} else {
+			if step.Start <= prevStep.Start {
+				return errors.Errorf("range #%d start (%d) less or equal than range #%d start (%d)", index+1, step.Start, index, prevStep.Start)
+			}
+		}
+		prevStep = step
+	}
+	return nil
+}
+
+func validateAccruePercentageTable(i interface{}) error {
+	v, ok := i.([]PercentageListRange)
+	if !ok {
+		return errors.Errorf("invalid AccruePercentageTable parameter type: %T", i)
+	}
+	if err := ValidatePercentageTable(v); err != nil {
+		return errors.Wrap(err, "invalid AccruePercentageTable parameter:")
 	}
 	return nil
 }

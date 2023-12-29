@@ -430,7 +430,9 @@ func (s *Suite) TestAccrue_ValidatorBonus() {
 
 	bonus := util.NewFraction(99, 1000)
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = bonus
+	for i := range pz.AccruePercentageTable {
+		pz.AccruePercentageTable[i].PercentList[1] = bonus
+	}
 	s.k.SetParams(s.ctx, pz)
 
 	s.Equal(
@@ -633,7 +635,9 @@ func (s *Suite) TestGetAccumulation_ValidatorBonus() {
 
 	bonus := util.NewFraction(99, 1000)
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = bonus
+	for i := range pz.AccruePercentageTable {
+		pz.AccruePercentageTable[i].PercentList[1] = bonus
+	}
 	s.k.SetParams(s.ctx, pz)
 
 	s.Equal(
@@ -732,7 +736,9 @@ func (s *Suite) TestValidatorBonus() {
 	)
 
 	pz := s.k.GetParams(s.ctx)
-	pz.ValidatorBonus = util.Percent(9)
+	for i := range pz.AccruePercentageTable {
+		pz.AccruePercentageTable[i].PercentList[1] = util.Percent(9)
+	}
 	s.k.SetParams(s.ctx, pz)
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(1_000_000000)))

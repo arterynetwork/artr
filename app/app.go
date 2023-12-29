@@ -413,6 +413,10 @@ func NewArteryApp(
 		InitSubscriptionVpnStorageBonusesParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.5.1", Chain(
+		InitAccruePercentageTableParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(

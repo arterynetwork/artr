@@ -420,9 +420,9 @@ func (k Keeper) accrue(ctx sdk.Context, acc sdk.AccAddress, ucoins sdk.Int, bonu
 	}
 	util.EmitEvent(ctx,
 		&types.EventAccrue{
-			Account: acc.String(),
-			Ucoins:  ucoins.Uint64(),
-			Fee:     fee.Uint64(),
+			Account:    acc.String(),
+			Ucoins:     ucoins.Uint64(),
+			Fee:        fee.Uint64(),
 			BonusFlags: bonusFlags,
 		},
 	)
@@ -513,33 +513,26 @@ func (k Keeper) accruePart(ctx sdk.Context, acc sdk.AccAddress, item *types.Reco
 func (k Keeper) percent(ctx sdk.Context, delegated sdk.Int, isActiveProfile bool, isActiveValidator bool, isActiveVpn bool, isActiveStorage bool) util.Fraction {
 	var (
 		params  = k.GetParams(ctx)
-		ladder  = params.AccruePercentageRanges
-		percent util.Fraction
+		table   = params.AccruePercentageTable
+		percent = util.FractionZero()
 	)
 
 	if delegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
-		return util.FractionZero()
+		return percent
 	}
 
-	percent = util.FractionZero()
-	for _, step := range ladder {
-		if delegated.GTE(sdk.NewIntFromUint64(step.Start)) {
-			percent = step.Percent
-		} else {
-			break
+	for i, v := range []bool{true, isActiveValidator, isActiveProfile, isActiveVpn, isActiveStorage} {
+		if v {
+			bonus := util.FractionZero()
+			for _, step := range table {
+				if delegated.GTE(sdk.NewIntFromUint64(step.Start)) {
+					bonus = step.PercentList[i]
+				} else {
+					break
+				}
+			}
+			percent = percent.Add(bonus)
 		}
-	}
-	if isActiveValidator {
-		percent = percent.Add(params.ValidatorBonus)
-	}
-	if isActiveProfile {
-		percent = percent.Add(params.SubscriptionBonus)
-	}
-	if isActiveVpn {
-		percent = percent.Add(params.VpnBonus)
-	}
-	if isActiveStorage {
-		percent = percent.Add(params.StorageBonus)
 	}
 	percent = percent.Div(util.NewFraction(30, 1)) // to days from months
 	return percent.Reduce()

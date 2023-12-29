@@ -24,24 +24,28 @@ message Params {
 
   // ValidatorBonus is an extra award that a validator gets while they's active (a delegation amount fraction).
   string validator_bonus = 4 [
+    deprecated=true,
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
   // SubscriptionBonus is an extra award that a user gets while theirs subscriptions is active (a delegation amount fraction).
   string subscription_bonus = 8 [
+    deprecated=true,
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
   // VpnBonus is an extra award that a user gets while theirs vpn node is active (a delegation amount fraction).
   string vpn_bonus = 9 [
+    deprecated=true,
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
   // StorageBonus is an extra award that a user gets while theirs storage node is active (a delegation amount fraction).
   string storage_bonus = 10 [
+    deprecated=true,
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
@@ -60,7 +64,10 @@ message Params {
   ];
 
   // AccruePercentageRanges - delegation award as a percentage per month depending on the delegated amount in uARTR.
-  repeated PercentageRange accrue_percentage_ranges = 7 [(gogoproto.nullable) = false];
+  repeated PercentageRange accrue_percentage_ranges = 7 [deprecated=true, (gogoproto.nullable) = false];
+
+  // AccruePercentageTable - delegation awards in five categories: base, validator bonus, subscription bonus, vpn bonus, storage bonus as list of percentages per month depending on the delegated amount in uARTR.
+  repeated PercentageListRange accrue_percentage_table = 11 [(gogoproto.nullable) = false];
 }
 
 // Percentage - function from delegation size to delegation award percent

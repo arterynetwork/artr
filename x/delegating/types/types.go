@@ -24,3 +24,20 @@ func (p PercentageRange) Validate() error {
 	}
 	return nil
 }
+
+func (pl PercentageListRange) String() string {
+	out, _ := yaml.Marshal(pl)
+	return string(out)
+}
+
+func (pl PercentageListRange) Validate() error {
+	if len(pl.PercentList) != 5 {
+		return errors.New("number of percent in list is not equal to 5")
+	}
+	for i, p := range pl.PercentList {
+		if p.IsNegative() {
+			return errors.Errorf("percent #%d is negative", i)
+		}
+	}
+	return nil
+}

@@ -1097,3 +1097,26 @@ func InitSubscriptionVpnStorageBonusesParams(k delegatingK.Keeper, paramspace pa
 		logger.Info("... InitSubscriptionVpnStorageBonusesParams done!", "params", pz)
 	}
 }
+
+func InitAccruePercentageTableParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitAccruePercentageTableParams ...")
+
+		var pz delegatingT.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, delegatingT.KeyAccruePercentageTable) {
+				for _, v := range pz.AccruePercentageRanges {
+					pz.AccruePercentageTable = append(pz.AccruePercentageTable, delegatingT.PercentageListRange{
+						Start:       v.Start,
+						PercentList: []util.Fraction{v.Percent, pz.ValidatorBonus, pz.SubscriptionBonus, pz.VpnBonus, pz.StorageBonus},
+					})
+				}
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitAccruePercentageTableParams done!", "params", pz)
+	}
+}

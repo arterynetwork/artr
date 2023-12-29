@@ -247,6 +247,19 @@ func (p Proposal) Validate() error {
 				return errors.Wrap(err, "invalid args:")
 			}
 		}
+	case
+		PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_AccruePercentageTable expected")
+		}
+		if args, ok := p.Args.(*Proposal_AccruePercentageTable); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Portions expected", p.Args)
+		} else {
+			v := args.AccruePercentageTable.AccruePercentageTable
+			if err := delegating.ValidatePercentageTable(v); err != nil {
+				return errors.Wrap(err, "invalid args:")
+			}
+		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)
 	}

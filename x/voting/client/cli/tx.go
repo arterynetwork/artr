@@ -34,7 +34,6 @@ func NewTxCmd() *cobra.Command {
 
 	votingTxCmd.AddCommand(
 		cmdEnterPrice(),
-		cmdDelegationAward(),
 		cmdDelegationNetworkAward(),
 		cmdSubscriptionNetworkAward(),
 		cmdAddGovernor(),
@@ -64,15 +63,11 @@ func NewTxCmd() *cobra.Command {
 		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
-		cmdSetValidatorBonus(),
-		cmdSetSubscriptionBonus(),
-		cmdSetVpnBonus(),
-		cmdSetStorageBonus(),
 		cmdSetTransactionFee(),
 		cmdSetBurnOnRevoke(),
 		cmdSetMaxTransactionFee(),
 		cmdSetTransactionFeeSplitRatios(),
-		cmdSetAccruePercentageRanges(),
+		cmdSetAccruePercentageTable(),
 		cmdAddBlockedSender(),
 		cmdRemoveBlockedSender(),
 		util.LineBreak(),
@@ -119,61 +114,6 @@ func cmdEnterPrice() *cobra.Command {
 					Args: &types.Proposal_Price{
 						Price: &types.PriceArgs{
 							Price: price,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdDelegationAward() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-delegation-award <minimal> <1K+> <10K+> <100K+> <proposal name> <author key or address>",
-		Aliases: []string{"set_delegation_award", "sda"},
-		Short:   "Propose to change an award for delegating funds DEPRECATED",
-		Example: `artrcli tx voting set-delegation-award 21 24 27 30 "return to default values" ivan`,
-		Args:    cobra.ExactArgs(6),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[5]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[4]
-
-			var percent [4]int64
-			for i := 0; i < 4; i++ {
-				n, err := strconv.ParseInt(args[i], 0, 64)
-				if err != nil {
-					return err
-				}
-				percent[i] = n
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
-					Args: &types.Proposal_AccruePercentageRanges{
-						AccruePercentageRanges: &types.AccruePercentageRangesArgs{
-							AccruePercentageRanges: []delegating.PercentageRange{
-								{Start: 0, Percent: util.Percent(percent[0])},
-								{Start: 1_000_000000, Percent: util.Percent(percent[1])},
-								{Start: 10_000_000000, Percent: util.Percent(percent[2])},
-								{Start: 100_000_000000, Percent: util.Percent(percent[3])},
-							},
 						},
 					},
 				},
@@ -1527,190 +1467,6 @@ func cmdSetVotingPower() *cobra.Command {
 	return cmd
 }
 
-func cmdSetValidatorBonus() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-validator-bonus <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-validator-bonus 1% "Increase active validators' delegation award by 1%" ivan`,
-		Aliases: []string{"set_validator_bonus", "svb"},
-		Short:   "Propose to set active validators' delegation award bonus",
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			q, err := util.ParseFraction(args[0])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_VALIDATOR_BONUS,
-					Args: &types.Proposal_Portion{
-						Portion: &types.PortionArgs{
-							Fraction: q,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdSetSubscriptionBonus() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-subscription-bonus <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-subscription-bonus 1% "Increase active users' delegation award by 1%" ivan`,
-		Aliases: []string{"set_subscription_bonus", "ssb"},
-		Short:   "Propose to set active users' delegation award bonus",
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			q, err := util.ParseFraction(args[0])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_SUBSCRIPTION_BONUS,
-					Args: &types.Proposal_Portion{
-						Portion: &types.PortionArgs{
-							Fraction: q,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdSetVpnBonus() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-vpn-bonus <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-vpn-bonus 1% "Increase delegation award for users with active vpn node by 1%" ivan`,
-		Aliases: []string{"set_vpn_bonus", "svpnb"},
-		Short:   "Propose to set delegation award bonus for users with active vpn node",
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			q, err := util.ParseFraction(args[0])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_VPN_BONUS,
-					Args: &types.Proposal_Portion{
-						Portion: &types.PortionArgs{
-							Fraction: q,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdSetStorageBonus() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-storage-bonus <value> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-storage-bonus 1% "Increase delegation award for users with active storage node by 1%" ivan`,
-		Aliases: []string{"set_storage_bonus", "sstorb"},
-		Short:   "Propose to set delegation award bonus for users with active storage node",
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			q, err := util.ParseFraction(args[0])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_STORAGE_BONUS,
-					Args: &types.Proposal_Portion{
-						Portion: &types.PortionArgs{
-							Fraction: q,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
 func cmdSetTransactionFee() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "set-transaction-fee <amount> <proposal name> <author key or address>",
@@ -1900,12 +1656,12 @@ func cmdSetTransactionFeeSplitRatios() *cobra.Command {
 	return cmd
 }
 
-func cmdSetAccruePercentageRanges() *cobra.Command {
+func cmdSetAccruePercentageTable() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "set-accrue-percentage-ranges <range start in uartr>:<percentage> [<range start in uartr>:<percentage> [...]] <proposal name> <author key or address>",
-		Example: `artrcli tx voting set-accrue-percentage-ranges 0:21% 1000000000:24% 10000000000:27% 100000000000:30% "return to default values" ivan`,
-		Aliases: []string{"set_accrue_percentage_ranges", "sapr"},
-		Short:   "Propose to change an award for delegating funds",
+		Use:     "set-accrue-percentage-table <range start in uartr>:<base percentage>:<validator bonus percentage>:<subscription bonus percentage>:<vpn bonus percentage>:<storage bonus percentage> [...] <proposal name> <author key or address>",
+		Example: `artrcli tx voting set-accrue-percentage-table 0:21%:2%:1%:4%:4% 1000000000:24%:2%:1%:3%:3% 10000000000:27%:2%:1%:2%:2% 100000000000:30%:2%:1%:1%:1% "return to default values" ivan`,
+		Aliases: []string{"set_accrue_percentage_table", "sapt"},
+		Short:   "Propose to change an award for delegating funds in five categories: base, validator bonus, subscription bonus, vpn bonus, storage bonus",
 		Args:    cobra.MinimumNArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Flags().Set(flags.FlagFrom, args[len(args)-1]); err != nil {
@@ -1919,32 +1675,36 @@ func cmdSetAccruePercentageRanges() *cobra.Command {
 			author := clientCtx.GetFromAddress().String()
 			proposalName := args[len(args)-2]
 
-			value := []delegating.PercentageRange(nil)
+			value := []delegating.PercentageListRange(nil)
 
 			for i := 0; i < len(args)-2; i++ {
 				parts := strings.Split(args[i], ":")
-				if len(parts) != 2 {
-					return errors.Errorf("cannot parse the range #%d: exactly one colon expected", i)
+				if len(parts) != 6 {
+					return errors.Errorf("cannot parse the range #%d: exactly five colon expected", i+1)
 				}
 				n, err := strconv.ParseUint(parts[0], 0, 64)
 				if err != nil {
-					return errors.Wrapf(err, "cannot parse the range #%d: invalid range start", i)
+					return errors.Wrapf(err, "cannot parse the range #%d: invalid range start", i+1)
 				}
-				f, err := util.ParseFraction(parts[1])
-				if err != nil {
-					return errors.Wrapf(err, "cannot parse the range #%d: invalid percentage", i)
+				fl := []util.Fraction(nil)
+				for j := 1; j < len(parts); j++ {
+					f, err := util.ParseFraction(parts[j])
+					if err != nil {
+						return errors.Wrapf(err, "cannot parse the range #%d: invalid percentage #%d", i+1, j)
+					}
+					fl = append(fl, f)
 				}
-				value = append(value, delegating.PercentageRange{Start: n, Percent: f})
+				value = append(value, delegating.PercentageListRange{Start: n, PercentList: fl})
 			}
 
 			msg := &types.MsgPropose{
 				Proposal: types.Proposal{
 					Author: author,
 					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_RANGES,
-					Args: &types.Proposal_AccruePercentageRanges{
-						AccruePercentageRanges: &types.AccruePercentageRangesArgs{
-							AccruePercentageRanges: value,
+					Type:   types.PROPOSAL_TYPE_ACCRUE_PERCENTAGE_TABLE,
+					Args: &types.Proposal_AccruePercentageTable{
+						AccruePercentageTable: &types.AccruePercentageTableArgs{
+							AccruePercentageTable: value,
 						},
 					},
 				},

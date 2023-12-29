@@ -82,7 +82,8 @@ message Proposal {
       (gogoproto.jsontag)  = "portions,omitempty",
       (gogoproto.moretags) = "yaml:\"portions,omitempty"
     ];
-    AccruePercentageRangesArgs accrue_percentage_ranges = 18;
+    AccruePercentageRangesArgs accrue_percentage_ranges = 18 [deprecated = true];
+    AccruePercentageTableArgs accrue_percentage_table = 19;
   }
 }
 

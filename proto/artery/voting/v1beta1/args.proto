@@ -135,7 +135,14 @@ message PortionsArgs {
 }
 
 message AccruePercentageRangesArgs {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   repeated artery.delegating.v1beta1.PercentageRange accrue_percentage_ranges = 1 [(gogoproto.nullable) = false];
+}
+
+message AccruePercentageTableArgs {
+  option (gogoproto.equal) = true;
+
+  repeated artery.delegating.v1beta1.PercentageListRange accrue_percentage_table = 1 [(gogoproto.nullable) = false];
 }
