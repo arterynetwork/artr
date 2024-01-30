@@ -14,9 +14,9 @@ enum ProposalType {
   //2. Вознаграждение за делегирование
   PROPOSAL_TYPE_DELEGATION_AWARD = 2 [deprecated = true];
   //3. Сетевое вознаграждение с делегирования
-  PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD = 3;
+  PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD = 3 [deprecated = true];
   //4. Сетевое вознаграждение с покупки продукта
-  PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD = 4;
+  PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD = 4 [deprecated = true];
   //5. Состав голосующего совета (включение / исключение участника)
   PROPOSAL_TYPE_GOVERNMENT_ADD = 5;
   //5. Состав голосующего совета (включение / исключение участника)

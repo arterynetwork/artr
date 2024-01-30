@@ -11,11 +11,10 @@ import (
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	bankT "github.com/arterynetwork/artr/x/bank/types"
-	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/profile/types"
 )
 
-func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32) error {
+func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32, isAutoPay bool) error {
 	p := k.GetParams(ctx)
 	profile := k.GetProfile(ctx, addr)
 
@@ -39,12 +38,9 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	// NOTE: We shouldn't use `storageGb` below this point in case it's zero.
 
 	tariffTotal := sdk.NewIntFromBigInt(p.TokenRate.MulInt64(int64(p.SubscriptionPrice)).BigInt())
-	// NOTE: `tariffTotal` cannot be just assigned to `total` here, 'cause Int is a struct over a pointer.
-	total := sdk.NewIntFromBigInt(new(big.Int).Set(tariffTotal.BigInt()))
 
 	txFeeSplitRatios := k.bankKeeper.GetParams(ctx).TransactionFeeSplitRatios
 	txFee := util.CalculateFee(tariffTotal, k.bankKeeper.GetParams(ctx).TransactionFee, k.bankKeeper.GetParams(ctx).MaxTransactionFee, txFeeSplitRatios.ForProposer, txFeeSplitRatios.ForCompany)
-	tariffTotal = tariffTotal.Sub(txFee)
 
 	if refInfo, err := k.referralKeeper.Get(ctx, addr.String()); err != nil {
 		return errors.Wrap(err, "cannot obtain referral data")
@@ -55,42 +51,10 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		}
 	}
 
-	refFees, err := k.referralKeeper.GetReferralFeesForSubscription(ctx, addr.String())
-	if err != nil {
-		return errors.Wrap(err, "cannot calculate referral fees")
-	}
-	refTotal := int64(0)
-	outputs := make([]bank.Output, len(refFees), len(refFees)+3)
-	event := &types.EventPayTariff{
-		Address:          addr.String(),
-		CommissionTo:     make([]string, len(refFees)),
-		CommissionAmount: make([]uint64, len(refFees)),
-	}
-	for i, fee := range refFees {
-		x := fee.Ratio.MulInt64(tariffTotal.Int64()).Int64()
-		refTotal += x
-		outputs[i] = bank.NewOutput(fee.GetBeneficiary(), util.Uartrs(x))
-
-		event.CommissionTo[i] = fee.Beneficiary
-		event.CommissionAmount[i] = uint64(x)
-	}
-	tariffTotal = tariffTotal.SubRaw(refTotal)
-
 	storageFeeFrac := p.TokenRate.
 		MulInt64((int64(storageB) - int64(p.BaseStorageGb)*util.GBSize) * int64(p.StorageGbPrice)).
 		DivInt64(util.GBSize).Reduce()
-	if !profile.IsActive(ctx) {
-		au := ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
-		profile.ActiveUntil = &au
-		k.scheduleRenew(ctx, addr, au)
-		k.resetLimits(p, profile)
-		util.EmitEvent(ctx,
-			&types.EventActivityChanged{
-				Address:   addr.String(),
-				ActiveNow: true,
-			},
-		)
-	} else {
+	if profile.IsActive(ctx) {
 		if storageB != profile.StorageLimit {
 			time := k.monthPart(ctx, *profile.ActiveUntil)
 			storageFeeFrac = storageFeeFrac.Add(
@@ -105,26 +69,22 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 			}
 			profile.StorageLimit = storageB
 		}
-
-		*profile.ActiveUntil = profile.ActiveUntil.Add(k.scheduleKeeper.OneMonth(ctx))
 	}
 
-	vpnFee := tariffTotal.QuoRaw(3)
+	tariffTotal = tariffTotal.Add(sdk.NewIntFromBigInt(storageFeeFrac.BigInt()))
+	// NOTE: `tariffTotal` cannot be just assigned to `total` here, 'cause Int is a struct over a pointer.
+	total := sdk.NewIntFromBigInt(new(big.Int).Set(tariffTotal.BigInt()))
+	tariffTotal = tariffTotal.Sub(txFee)
 
-	storageFee := sdk.NewIntFromBigInt(storageFeeFrac.BigInt())
-	total = total.Add(storageFee)
-	storageFee = storageFee.Add(tariffTotal.Sub(vpnFee))
-	event.Total = total.Uint64()
-	event.ExpireAt = *profile.ActiveUntil
-
+	outputs := make([]bank.Output, 0, 4)
+	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	outputs = append(outputs, bank.NewOutput(companyCollectorAcc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, tariffTotal))))
+	splittableFeeCollectorAcc := k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName)
 	if !txFee.IsZero() {
-		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee))))
-	}
-	if !vpnFee.IsZero() {
-		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(earning.VpnCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, vpnFee))))
-	}
-	if !storageFee.IsZero() {
-		outputs = append(outputs, bank.NewOutput(k.accountKeeper.GetModuleAddress(earning.StorageCollectorName), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, storageFee))))
+		outputs = append(outputs, bank.NewOutput(splittableFeeCollectorAcc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee))))
 	}
 
 	input := bank.NewInput(addr, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, total)))
@@ -134,15 +94,38 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	); err != nil {
 		return errors.Wrap(err, "cannot pay up fees")
 	}
+	if !profile.IsActive(ctx) && !isAutoPay {
+		*profile.ActiveUntil = ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
+		k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
+		k.resetLimits(p, profile)
+		util.EmitEvent(ctx,
+			&types.EventActivityChanged{
+				Address:   addr.String(),
+				ActiveNow: true,
+			},
+		)
+	} else {
+		*profile.ActiveUntil = profile.ActiveUntil.Add(k.scheduleKeeper.OneMonth(ctx))
+		if isAutoPay {
+			k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
+			k.resetLimits(p, profile)
+		}
+	}
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot save profile")
 	}
 
 	util.EmitEvents(ctx,
-		event,
+		&types.EventPayTariff{
+			Address:          addr.String(),
+			CommissionTo:     []string{companyCollectorAcc.String()},
+			CommissionAmount: []uint64{tariffTotal.Uint64()},
+			Total:            total.Uint64(),
+			ExpireAt:         *profile.ActiveUntil,
+		},
 		&bankT.EventTransfer{
 			Sender:    addr.String(),
-			Recipient: k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName).String(),
+			Recipient: splittableFeeCollectorAcc.String(),
 			Amount:    sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, txFee)),
 		},
 	)
@@ -186,7 +169,11 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 		total = total.Sub(txFee)
 	}
 
-	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
+	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
 	profile.StorageLimit += uint64(extraGb) * util.GBSize
@@ -238,7 +225,11 @@ func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint3
 		total = total.Sub(txFee)
 	}
 
-	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
+	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
 
@@ -288,7 +279,11 @@ func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error
 		coins = coins.Sub(txFee)
 	}
 
-	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.VpnCollectorName, coins); err != nil {
+	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, coins); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
 	profile.VpnLimit += uint64(vpnGb) * util.GBSize
@@ -373,31 +368,6 @@ func (k Keeper) ProlongImExtra(ctx sdk.Context, addr sdk.AccAddress) error {
 	return nil
 }
 
-func (k Keeper) payUpFees(ctx sdk.Context, addr sdk.AccAddress, amount sdk.Int) (int64, error) {
-	fees, err := k.referralKeeper.GetReferralFeesForSubscription(ctx, addr.String())
-
-	if err != nil {
-		return 0, err
-	}
-
-	totalFee := int64(0)
-	outputs := make([]bank.Output, len(fees))
-	for i, fee := range fees {
-		x := fee.Ratio.MulInt64(amount.Int64()).Int64()
-		totalFee += x
-		outputs[i] = bank.NewOutput(fee.GetBeneficiary(), util.Uartrs(x))
-	}
-
-	inputs := []bank.Input{bank.NewInput(addr, util.Uartrs(totalFee))}
-
-	err = k.bankKeeper.InputOutputCoins(ctx, inputs, outputs)
-	if err != nil {
-		return totalFee, err
-	}
-
-	return totalFee, nil
-}
-
 func (k Keeper) scheduleRenew(ctx sdk.Context, addr sdk.AccAddress, time time.Time) {
 	k.scheduleKeeper.ScheduleTask(ctx, time, types.RefreshHookName, addr.Bytes())
 }
@@ -447,7 +417,7 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 	} else {
 		// It's a payday
 		if profile.AutoPay {
-			if err := k.PayTariff(ctx, addr, 0); err != nil {
+			if err := k.PayTariff(ctx, addr, 0, true); err != nil {
 				defer k.referralKeeper.MustSetActive(ctx, addr.String(), false)
 				util.EmitEvents(ctx,
 					&types.EventAutoPayFailed{
@@ -459,8 +429,6 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 						ActiveNow: false,
 					},
 				)
-			} else {
-				k.scheduleRenew(ctx, addr, time.Add(k.scheduleKeeper.OneMonth(ctx)))
 			}
 		} else {
 			defer k.referralKeeper.MustSetActive(ctx, addr.String(), false)
@@ -534,7 +502,11 @@ func (k Keeper) prolongImExtra(ctx sdk.Context, addr sdk.AccAddress, profile *ty
 		total = total.Sub(txFee)
 	}
 
-	if err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, earning.StorageCollectorName, total); err != nil {
+	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
+	if err != nil {
+		panic(err)
+	}
+	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
 

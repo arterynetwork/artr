@@ -102252,39 +102252,7 @@
       ],
       "params": {
         "company_accounts": {
-          "for_delegating": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "for_subscription": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg",
-          "top_referrer": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
-        },
-        "delegating_award": {
-          "company": "5/1000",
-          "network": [
-            "5%",
-            "1%",
-            "1%",
-            "2%",
-            "1%",
-            "1%",
-            "1%",
-            "1%",
-            "1%",
-            "5/1000"
-          ]
-        },
-        "subscription_award": {
-          "company": "25%",
-          "network": [
-            "15%",
-            "10%",
-            "7%",
-            "7%",
-            "7%",
-            "7%",
-            "7%",
-            "5%",
-            "2%",
-            "2%"
-          ]
+          "for_subscription": "artr1yhy6d3m4utltdml7w7zte7mqx5wyuskq9rr5vg"
         }
       },
       "top_level_accounts": [

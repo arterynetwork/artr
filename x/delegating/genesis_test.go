@@ -67,10 +67,10 @@ func (s *Suite) TestRevokeAll() {
 	user := app.DefaultGenesisUsers["user1"]
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
 	s.Equal(
-		int64(8_474500),
+		int64(9_970000),
 		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
 	) // -tx_fee -15%
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(8_474500)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_970000)))
 
 	s.True(s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).IsZero())
 	s.checkExportImport()

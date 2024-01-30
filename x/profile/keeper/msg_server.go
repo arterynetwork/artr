@@ -133,7 +133,7 @@ func (s MsgServer) SetVpnCurrent(ctx context.Context, msg *types.MsgSetVpnCurren
 func (s MsgServer) PayTariff(ctx context.Context, msg *types.MsgPayTariff) (*types.MsgPayTariffResponse, error) {
 	sdkCtx := sdk.UnwrapSDKContext(ctx)
 	k := Keeper(s)
-	if err := k.PayTariff(sdkCtx, msg.GetAddress(), msg.StorageAmount); err != nil {
+	if err := k.PayTariff(sdkCtx, msg.GetAddress(), msg.StorageAmount, false); err != nil {
 		return nil, err
 	}
 	util.TagTx(sdkCtx, types.ModuleName, msg)

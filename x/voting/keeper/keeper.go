@@ -234,13 +234,9 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 		case types.PROPOSAL_TYPE_DELEGATION_AWARD:
 			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD:
-			p := k.referralKeeper.GetParams(ctx)
-			p.DelegatingAward = proposal.GetNetworkAward().Award
-			k.referralKeeper.SetParams(ctx, p)
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD:
-			p := k.referralKeeper.GetParams(ctx)
-			p.SubscriptionAward = proposal.GetNetworkAward().Award
-			k.referralKeeper.SetParams(ctx, p)
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_GOVERNMENT_ADD:
 			k.AddGovernor(ctx, proposal.GetAddress().GetAddress())
 		case types.PROPOSAL_TYPE_GOVERNMENT_REMOVE:

@@ -93,40 +93,6 @@ func (k Keeper) GetChildren(ctx sdk.Context, acc string) ([]string, error) {
 	return data.Referrals, nil
 }
 
-// GetReferralFeesForSubscription returns a set of account-ratio pairs, describing what part of monthly subscription
-// should go to what wallet. 0.85 total. The rest goes for validator and leader bonuses.
-func (k Keeper) GetReferralFeesForSubscription(ctx sdk.Context, acc string) ([]types.ReferralFee, error) {
-	var params types.Params
-	k.paramspace.GetParamSet(ctx, &params)
-	ca := params.CompanyAccounts
-
-	return k.getReferralFeesCore(
-		ctx,
-		acc,
-		ca.ForSubscription,
-		params.SubscriptionAward.Company,
-		params.SubscriptionAward.Network,
-		ca.TopReferrer,
-	)
-}
-
-// GetReferralFeesForDelegating returns a set of account-ratio pairs, describing what part of being delegated funds
-// should go to what wallet. 0.15 total. The rest should be frozen at the account's special wallet.
-func (k Keeper) GetReferralFeesForDelegating(ctx sdk.Context, acc string) ([]types.ReferralFee, error) {
-	var params types.Params
-	k.paramspace.GetParamSet(ctx, &params)
-	ca := params.CompanyAccounts
-
-	return k.getReferralFeesCore(
-		ctx,
-		acc,
-		ca.ForDelegating,
-		params.DelegatingAward.Company,
-		params.DelegatingAward.Network,
-		ca.TopReferrer,
-	)
-}
-
 // GetReferralFeesForDelegating returns a set of account-ratio pairs, describing what part of being delegated funds
 // should go to what wallet. 0.006 total. The rest goes for validator's wallets.
 func (k Keeper) GetReferralValidatorFeesForDelegating(ctx sdk.Context, acc string) ([]types.ReferralValidatorFee, error) {
@@ -1111,58 +1077,6 @@ func (k Keeper) Get(ctx sdk.Context, acc string) (types.Info, error) {
 		"no data for %s", acc,
 	)
 	return item, err
-}
-
-func (k Keeper) getReferralFeesCore(ctx sdk.Context, acc string, companyAccount string, toCompany util.Fraction, toAncestors []util.Fraction, topReferrer string) ([]types.ReferralFee, error) {
-	if len(toAncestors) != 10 {
-		return nil, errors.Errorf("toAncestors param must have exactly 10 items (%d found)", len(toAncestors))
-	}
-	excess := util.Percent(0)
-	result := make([]types.ReferralFee, 0, 12)
-	if !toCompany.IsZero() {
-		result = append(result, types.ReferralFee{Beneficiary: companyAccount, Ratio: toCompany})
-	}
-
-	ancestor, err := k.GetParent(ctx, acc)
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < 10; i++ {
-		var (
-			data types.Info
-			err  error
-		)
-		for {
-			if ancestor == "" {
-				break
-			}
-			data, err = k.Get(ctx, ancestor)
-			if err != nil {
-				return nil, err
-			}
-			if data.Active {
-				break
-			} else {
-				ancestor = data.Referrer
-			}
-		}
-		if ancestor == "" {
-			excess = excess.Add(toAncestors[i])
-			continue
-		}
-		if i < data.Status.LinesOpened() {
-			if !toAncestors[i].IsZero() {
-				result = append(result, types.ReferralFee{Beneficiary: ancestor, Ratio: toAncestors[i]})
-			}
-		} else {
-			excess = excess.Add(toAncestors[i])
-		}
-		ancestor = data.Referrer
-	}
-	if !excess.IsZero() {
-		result = append(result, types.ReferralFee{Beneficiary: topReferrer, Ratio: excess})
-	}
-	return result, nil
 }
 
 func (k Keeper) getReferralValidatorFeesCore(ctx sdk.Context, acc string, toValidators []struct {

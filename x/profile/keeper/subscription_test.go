@@ -75,7 +75,7 @@ func (s *SSuite) TestPayTariffInAdvance() {
 	s.True(p.IsActive(s.ctx))
 	s.NoError(s.bk.AddCoins(s.ctx, addr, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)))))
 
-	s.NoError(s.k.PayTariff(s.ctx, addr, 5))
+	s.NoError(s.k.PayTariff(s.ctx, addr, 5, false))
 	p = s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
 	s.Equal(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
@@ -89,6 +89,7 @@ func (s *SSuite) TestAutoPay() {
 	p := *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
 	s.Equal(wasPaidUpTo, *p.ActiveUntil)
+	s.True(p.IsActive(s.ctx))
 	s.False(p.AutoPay)
 
 	s.NoError(s.bk.AddCoins(s.ctx, addr, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)))))
@@ -106,8 +107,7 @@ func (s *SSuite) TestAutoPay() {
 
 	p = *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
-	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
-	s.True(p.ActiveUntil.After(wasPaidUpTo.Add(30 * 24 * time.Hour))) // 2 seconds for free
+	s.Equal(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
 	s.True(p.IsActive(s.ctx))
 	s.True(p.AutoPay)
 }
@@ -132,7 +132,7 @@ func (s *SSuite) TestPayTariffWhenItIsOver() {
 	s.False(p.AutoPay)
 
 	s.NoError(s.bk.AddCoins(s.ctx, addr, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)))))
-	s.NoError(s.k.PayTariff(s.ctx, addr, 5))
+	s.NoError(s.k.PayTariff(s.ctx, addr, 5, false))
 
 	p = *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
@@ -145,7 +145,7 @@ func (s *SSuite) TestPayTariff_ExtraStorage() {
 	s.Equal(uint64((5+13)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 	balance := s.bk.GetBalance(s.ctx, addr).AmountOf(util.ConfigMainDenom).Int64()
 
-	s.NoError(s.k.PayTariff(s.ctx, addr, 0))
+	s.NoError(s.k.PayTariff(s.ctx, addr, 0, false))
 	s.Equal(uint64((5+13)*util.GBSize), s.k.GetProfile(s.ctx, addr).StorageLimit)
 	s.EqualValues(
 		balance-(1990+13*10)*100000,

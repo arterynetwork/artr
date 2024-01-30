@@ -12,7 +12,6 @@ import (
 	params "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/app"
-	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/referral"
 	"github.com/arterynetwork/artr/x/referral/types"
 	schedule "github.com/arterynetwork/artr/x/schedule/types"
@@ -69,39 +68,7 @@ func (s GenSuite) TestTransition_Declined() {
 func (s GenSuite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
 		CompanyAccounts: referral.CompanyAccounts{
-			TopReferrer:     app.DefaultGenesisUsers["user1"].String(),
 			ForSubscription: app.DefaultGenesisUsers["user2"].String(),
-			ForDelegating:   app.DefaultGenesisUsers["user6"].String(),
-		},
-		DelegatingAward: referral.NetworkAward{
-			Network: []util.Fraction{
-				util.Percent(1),
-				util.Percent(2),
-				util.Percent(3),
-				util.Percent(4),
-				util.Percent(5),
-				util.Percent(6),
-				util.Percent(7),
-				util.Percent(8),
-				util.Percent(9),
-				util.Percent(10),
-			},
-			Company: util.Percent(13),
-		},
-		SubscriptionAward: referral.NetworkAward{
-			Network: []util.Fraction{
-				util.Permille(1),
-				util.Permille(2),
-				util.Permille(3),
-				util.Permille(4),
-				util.Permille(5),
-				util.Permille(6),
-				util.Permille(7),
-				util.Permille(8),
-				util.Permille(9),
-				util.Permille(10),
-			},
-			Company: util.Permille(13),
 		},
 		TransitionPrice: 49_000000,
 	})

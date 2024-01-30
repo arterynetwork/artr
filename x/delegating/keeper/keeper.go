@@ -14,7 +14,6 @@ import (
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/delegating/types"
-	"github.com/arterynetwork/artr/x/referral"
 )
 
 // Keeper of the delegating store
@@ -142,42 +141,9 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		byteKey     = []byte(acc)
 		nextPayment = ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 
-		fees     []referral.ReferralFee
 		byteItem []byte
 		item     types.Record
 	)
-
-	fees, err = k.refKeeper.GetReferralFeesForDelegating(ctx, acc.String())
-	if err != nil {
-		return err
-	}
-	k.Logger(ctx).Debug(fmt.Sprintf("Fees: %v", fees))
-
-	totalFee := int64(0)
-	outputs := make([]bank.Output, 0, len(fees))
-	event := types.EventDelegate{
-		Account:          acc.String(),
-		CommissionTo:     make([]string, 0, len(fees)),
-		CommissionAmount: make([]uint64, 0, len(fees)),
-	}
-	for _, fee := range fees {
-		x := fee.Ratio.MulInt64(uartrs.Int64()).Int64()
-		if x == 0 {
-			continue
-		}
-		totalFee += x
-		outputs = append(outputs, bank.NewOutput(fee.GetBeneficiary(), sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(x)))))
-		event.CommissionTo = append(event.CommissionTo, fee.Beneficiary)
-		event.CommissionAmount = append(event.CommissionAmount, uint64(x))
-	}
-	if totalFee != 0 {
-		inputs := []bank.Input{bank.NewInput(acc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(totalFee))))}
-
-		err = k.bankKeeper.InputOutputCoins(ctx, inputs, outputs)
-		if err != nil {
-			return err
-		}
-	}
 
 	if store.Has(byteKey) {
 		byteItem = store.Get(byteKey)
@@ -187,8 +153,7 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 	}
 
 	k.accruePart(ctx, acc, &item, nextPayment)
-	delegation := uartrs.SubRaw(totalFee)
-	if err = k.delegate(ctx, acc, delegation); err != nil {
+	if err = k.delegate(ctx, acc, uartrs); err != nil {
 		return err
 	}
 
@@ -200,8 +165,12 @@ func (k Keeper) Delegate(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) er
 		k.scheduleKeeper.ScheduleTask(ctx, time, types.AccrueHookName, acc)
 	}
 
-	event.Ucoins = delegation.Uint64()
-	util.EmitEvent(ctx, &event)
+	util.EmitEvent(ctx, &types.EventDelegate{
+		Account:          acc.String(),
+		CommissionTo:     []string{},
+		CommissionAmount: []uint64{},
+		Ucoins:           uartrs.Uint64(),
+	})
 
 	bz := k.cdc.MustMarshalBinaryBare(&item)
 	store.Set(byteKey, bz)

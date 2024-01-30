@@ -377,9 +377,9 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.2", Chain(
 		InitTransactionFeeParam(app.bankKeeper, app.subspaces[bank.DefaultParamspace]),
-		RemovePromoBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
-		RemoveStatusBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
-		RemoveLeaderBonuses(*app.referralKeeper, app.subspaces[referral.DefaultParamspace]),
+		RemovePromoBonuses(),
+		RemoveStatusBonuses(),
+		RemoveLeaderBonuses(),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.3", Chain(
@@ -415,6 +415,10 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.1", Chain(
 		InitAccruePercentageTableParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+	))
+
+	app.upgradeKeeper.SetUpgradeHandler("2.5.2", Chain(
+		EmptyEarningVpnStorageCollectors(app.accountKeeper, app.bankKeeper, *app.referralKeeper),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

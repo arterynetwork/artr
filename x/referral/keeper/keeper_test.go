@@ -282,257 +282,6 @@ func (s *Suite) TestGetCoinsInNetwork() {
 	s.Equal(uint64(0x008AA2AA), res.Uint64(), "GetDelegatedInNetwork")
 }
 
-func (s *Suite) TestReferralFees() {
-	accounts := [12]string{}
-	for i := 0; i < 12; i++ {
-		_, _, addr := testdata.KeyTestPubAddr()
-		accounts[i] = addr.String()
-		s.NoError(
-			s.setBalance(addr, sdk.Coins{sdk.Coin{
-				Denom:  util.ConfigMainDenom,
-				Amount: sdk.NewInt(1),
-			}}),
-		)
-	}
-	s.NoError(
-		s.set(accounts[0], types.Info{
-			Status:    types.STATUS_LUCKY,
-			Coins:     []sdk.Int{sdk.NewInt(1)},
-			Delegated: []sdk.Int{},
-		}),
-	)
-	s.NoError(s.k.SetActive(s.ctx, accounts[0], true, true))
-	for i := 1; i < 12; i++ {
-		s.NoError(s.k.AppendChild(s.ctx, accounts[i-1], accounts[i]))
-		s.NoError(s.k.SetActive(s.ctx, accounts[i], true, true))
-	}
-
-	var companyAccs types.CompanyAccounts
-	s.app.GetSubspaces()[referral.DefaultParamspace].Get(s.ctx, types.KeyCompanyAccounts, &companyAccs)
-
-	res, err := s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForDelegating all newbies: no error")
-	s.Equal(6, len(res), "GetReferralFeesForDelegating all newbies: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(5),
-	}, "GetReferralFesForDelegating all newbies: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[9],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all newbies: lvl 2")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[8],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all newbies: lvl 3")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[7],
-		Ratio:       util.Percent(2),
-	}, "GetReferralFesForDelegating all newbies: lvl 4")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForDelegating,
-		Ratio:       util.Permille(5),
-	}, "GetReferralFesForDelegating all newbies: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Permille(55),
-	}, "GetReferralFesForDelegating all newbies: \"top referrer\"")
-
-	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForSubscription all newbies: no error")
-	s.Equal(6, len(res), "GetReferralFeesForSubscription all newbies: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(15),
-	}, "GetReferralFeesForSubscription all newbies: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[9],
-		Ratio:       util.Percent(10),
-	}, "GetReferralFeesForSubscription all newbies: lvl 2")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[8],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFesForDelegating all newbies: lvl 3")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[7],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFesForDelegating all newbies: lvl 4")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(25),
-	}, "GetReferralFeesForSubscription all newbies: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Percent(30),
-	}, "GetReferralFeesForSubscription all newbies: \"top referrer\"")
-
-	for i := 0; i < 12; i++ {
-		s.NoError(s.update(accounts[i], func(value *types.Info) {
-			value.Status = types.STATUS_ABSOLUTE_CHAMPION
-		}))
-	}
-
-	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForDelegating all pros: no error")
-	s.Equal(11, len(res), "GetReferralFeesForDelegating all pros: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(5),
-	}, "GetReferralFesForDelegating all pros: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[9],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 2")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[8],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 3")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[7],
-		Ratio:       util.Percent(2),
-	}, "GetReferralFesForDelegating all pros: lvl 4")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[6],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 5")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[5],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 6")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[4],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 7")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[3],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 8")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[2],
-		Ratio:       util.Percent(1),
-	}, "GetReferralFesForDelegating all pros: lvl 9")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[1],
-		Ratio:       util.Permille(5),
-	}, "GetReferralFesForDelegating all pros: lvl 10")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForDelegating,
-		Ratio:       util.Permille(5),
-	}, "GetReferralFesForDelegating all pros: company")
-
-	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForSubscription all pros: no error")
-	s.Equal(11, len(res), "GetReferralFeesForSubscription all pros: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(15),
-	}, "GetReferralFeesForSubscription all pros: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[9],
-		Ratio:       util.Percent(10),
-	}, "GetReferralFeesForSubscription all pros: lvl 2")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[8],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFeesForSubscription all pros: lvl 3")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[7],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFeesForSubscription all pros: lvl 4")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[6],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFeesForSubscription all pros: lvl 5")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[5],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFeesForSubscription all pros: lvl 6")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[4],
-		Ratio:       util.Percent(7),
-	}, "GetReferralFeesForSubscription all pros: lvl 7")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[3],
-		Ratio:       util.Percent(5),
-	}, "GetReferralFeesForSubscription all pros: lvl 8")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[2],
-		Ratio:       util.Percent(2),
-	}, "GetReferralFeesForSubscription all pros: lvl 9")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[1],
-		Ratio:       util.Percent(2),
-	}, "GetReferralFeesForSubscription all pros: lvl 10")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(25),
-	}, "GetReferralFeesForSubscription all pros: company")
-
-	s.NoError(s.update(accounts[10], func(value *types.Info) {
-		value.Referrer = ""
-	}))
-
-	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForDelegating short chain: no error")
-	s.Equal(3, len(res), "GetReferralFeesForDelegating short chain: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(5),
-	}, "GetReferralFesForDelegating short chain: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForDelegating,
-		Ratio:       util.Permille(5),
-	}, "GetReferralFesForDelegating short chain: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Permille(95),
-	}, "GetReferralFesForDelegating short chain: \"top referrer\"")
-
-	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForSubscription short chain: no error")
-	s.Equal(3, len(res), "GetReferralFeesForSubscription short chain: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: accounts[10],
-		Ratio:       util.Percent(15),
-	}, "GetReferralFeesForSubscription short chain: lvl 1")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(25),
-	}, "GetReferralFeesForSubscription short chain: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Percent(54),
-	}, "GetReferralFeesForSubscription short chain: \"top referrer\"")
-
-	s.NoError(s.update(accounts[11], func(value *types.Info) {
-		value.Referrer = ""
-	}))
-
-	res, err = s.k.GetReferralFeesForDelegating(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForDelegating top account: no error")
-	s.Equal(2, len(res), "GetReferralFeesForDelegating top account: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForDelegating,
-		Ratio:       util.Permille(5),
-	}, "GetReferralFesForDelegating top account: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Permille(145),
-	}, "GetReferralFesForDelegating top account: \"top referrer\"")
-
-	res, err = s.k.GetReferralFeesForSubscription(s.ctx, accounts[11])
-	s.NoError(err, "GetReferralFeesForSubscription top account: no error")
-	s.Equal(2, len(res), "GetReferralFeesForSubscription top account: len")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.ForSubscription,
-		Ratio:       util.Percent(25),
-	}, "GetReferralFeesForSubscription top account: company")
-	s.Contains(res, types.ReferralFee{
-		Beneficiary: companyAccs.TopReferrer,
-		Ratio:       util.Percent(69),
-	}, "GetReferralFeesForSubscription top account: \"top referrer\"")
-}
-
 func (s *Suite) TestCompression() {
 	accounts := [10]string{}
 	for i := 0; i < 10; i++ {
@@ -915,7 +664,7 @@ func (s *Suite) TestAddChildAfterReactivation() {
 	s.Zero(len(info.Referrals))
 
 	// Pay tariff
-	s.NoError(s.app.GetProfileKeeper().PayTariff(s.ctx, app.DefaultGenesisUsers["user1"], 5))
+	s.NoError(s.app.GetProfileKeeper().PayTariff(s.ctx, app.DefaultGenesisUsers["user1"], 5, false))
 	info, err = s.get(user1)
 	s.NoError(err)
 	s.True(info.Active)
@@ -1266,7 +1015,7 @@ func (s Suite) TestBanishment() {
 	parent := app.DefaultGenesisUsers["user1"]
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user)
@@ -1276,7 +1025,7 @@ func (s Suite) TestBanishment() {
 	s.Equal(types.STATUS_LEADER, info.Status)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1288,7 +1037,7 @@ func (s Suite) TestBanishment() {
 	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1310,7 +1059,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	parent := app.DefaultGenesisUsers["user1"]
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user)
@@ -1320,7 +1069,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	s.Equal(types.STATUS_LEADER, info.Status)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1330,7 +1079,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	s.Equal(types.STATUS_LUCKY, info.Status)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1349,7 +1098,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	s.NotNil(info.BanishmentAt)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 4*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 4*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1367,7 +1116,7 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	parent := app.DefaultGenesisUsers["user1"]
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user)
@@ -1379,7 +1128,7 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1390,13 +1139,13 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	s.NotNil(info.BanishmentAt)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth + util.BlocksOneDay).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour + 24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.NoError(s.dk.Delegate(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(1_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err = s.get(user)
@@ -1417,15 +1166,15 @@ func (s Suite) TestComeBack() {
 	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user)
@@ -1433,10 +1182,10 @@ func (s Suite) TestComeBack() {
 	s.True(info.Banished)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth + util.BlocksOneDay).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour + 24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
-	s.NoError(s.pk.PayTariff(s.ctx, app.DefaultGenesisUsers["user2"], 5))
+	s.NoError(s.pk.PayTariff(s.ctx, app.DefaultGenesisUsers["user2"], 5, false))
 
 	info, err = s.get(user)
 	s.NoError(err)
@@ -1461,17 +1210,17 @@ func (s Suite) TestComeBack_BubbleUp() {
 	)
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
-	s.NoError(s.pk.PayTariff(s.ctx, user2, 5))
-	s.NoError(s.pk.PayTariff(s.ctx, user4, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5, false))
+	s.NoError(s.pk.PayTariff(s.ctx, user2, 5, false))
+	s.NoError(s.pk.PayTariff(s.ctx, user4, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user8.String())
@@ -1480,9 +1229,9 @@ func (s Suite) TestComeBack_BubbleUp() {
 	s.Equal(user4.String(), info.Referrer)
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 4*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 4*30*24*time.Hour))
-	s.NoError(s.pk.PayTariff(s.ctx, user1, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user1, 5, false))
 	s.nextBlock()
-	s.NoError(s.pk.PayTariff(s.ctx, user8, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, user8, 5, false))
 
 	info, err = s.get(user8.String())
 	s.NoError(err)
@@ -1573,19 +1322,19 @@ func (s Suite) TestComeBackViaDelegation() {
 	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(20_000_000000)))
 
 	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 2*util.BlocksOneMonth).
 		WithBlockTime(genesisTime.Add((8999 + 2*util.BlocksOneMonth) * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 3*util.BlocksOneMonth).
 		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth) * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	info, err := s.get(user.String())
@@ -1595,7 +1344,7 @@ func (s Suite) TestComeBackViaDelegation() {
 	s.ctx = s.ctx.
 		WithBlockHeight(8999 + 3*util.BlocksOneMonth + util.BlocksOneDay).
 		WithBlockTime(genesisTime.Add((8999 + 3*util.BlocksOneMonth + util.BlocksOneDay) * 30 * time.Second))
-	s.NoError(s.pk.PayTariff(s.ctx, parent, 5))
+	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
 	s.nextBlock()
 
 	s.NoError(s.dk.Delegate(s.ctx, user, sdk.NewInt(25_000000)))

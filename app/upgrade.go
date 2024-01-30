@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	authK "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	params "github.com/cosmos/cosmos-sdk/x/params/types"
 	upgrade "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 
@@ -20,6 +21,7 @@ import (
 	bankT "github.com/arterynetwork/artr/x/bank/types"
 	delegatingK "github.com/arterynetwork/artr/x/delegating/keeper"
 	delegatingT "github.com/arterynetwork/artr/x/delegating/types"
+	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/noding"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
@@ -702,57 +704,24 @@ func InitTransactionFeeParam(k bank.Keeper, paramspace params.Subspace) upgrade.
 	}
 }
 
-func RemovePromoBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func RemovePromoBonuses() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting RemovePromoBonuses ...")
-
-		var pz referralT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			paramspace.Get(ctx, pair.Key, pair.Value)
-
-			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
-				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... RemovePromoBonuses done!", "params", pz)
+		logger.Info("Skipping RemovePromoBonuses")
 	}
 }
 
-func RemoveStatusBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func RemoveStatusBonuses() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting RemoveStatusBonuses ...")
-
-		var pz referralT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			paramspace.Get(ctx, pair.Key, pair.Value)
-
-			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
-				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... RemoveStatusBonuses done!", "params", pz)
+		logger.Info("Skipping RemoveStatusBonuses")
 	}
 }
 
-func RemoveLeaderBonuses(k referralK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func RemoveLeaderBonuses() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting RemoveLeaderBonuses ...")
-
-		var pz referralT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			paramspace.Get(ctx, pair.Key, pair.Value)
-
-			if bytes.Equal(pair.Key, referralT.KeySubscriptionAward) {
-				pz.SubscriptionAward.Company = pz.SubscriptionAward.Company.Add(util.Percent(5))
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... RemoveLeaderBonuses done!", "params", pz)
+		logger.Info("Skipping RemoveLeaderBonuses")
 	}
 }
 
@@ -1118,5 +1087,44 @@ func InitAccruePercentageTableParams(k delegatingK.Keeper, paramspace params.Sub
 		}
 		k.SetParams(ctx, pz)
 		logger.Info("... InitAccruePercentageTableParams done!", "params", pz)
+	}
+}
+
+func EmptyEarningVpnStorageCollectors(ak authK.AccountKeeper, bk bank.Keeper, rk referralK.Keeper) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting EmptyEarningVpnStorageCollectors ...")
+
+		earningCollectorAddress := ak.GetModuleAddress(earning.ModuleName)
+		vpnCollectorAddress := ak.GetModuleAddress(earning.VpnCollectorName)
+		storageCollectorAddress := ak.GetModuleAddress(earning.StorageCollectorName)
+		companyCollectorAddress, err := sdk.AccAddressFromBech32(rk.GetParams(ctx).CompanyAccounts.ForSubscription)
+		if err != nil {
+			panic(err)
+		}
+
+		err = bk.SetBalance(ctx, companyCollectorAddress, sdk.NewCoins(
+			bk.GetBalance(ctx, companyCollectorAddress).
+				Add(bk.GetBalance(ctx, earningCollectorAddress)...).
+				Add(bk.GetBalance(ctx, vpnCollectorAddress)...).
+				Add(bk.GetBalance(ctx, storageCollectorAddress)...)...,
+		))
+		if err != nil {
+			panic(err)
+		}
+		err = bk.SetBalance(ctx, earningCollectorAddress, sdk.Coins{})
+		if err != nil {
+			panic(err)
+		}
+		err = bk.SetBalance(ctx, vpnCollectorAddress, sdk.Coins{})
+		if err != nil {
+			panic(err)
+		}
+		err = bk.SetBalance(ctx, storageCollectorAddress, sdk.Coins{})
+		if err != nil {
+			panic(err)
+		}
+
+		logger.Info("... EmptyEarningVpnStorageCollectors done!")
 	}
 }

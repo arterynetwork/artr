@@ -130,39 +130,7 @@ func (s Suite) TestAlreadyCompressed() {
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, referral.Params{
 		CompanyAccounts: referral.CompanyAccounts{
-			TopReferrer:     user(10),
 			ForSubscription: user(11),
-			ForDelegating:   user(15),
-		},
-		DelegatingAward: referral.NetworkAward{
-			Network: []util.Fraction{
-				util.Permille(1),
-				util.Permille(3),
-				util.Permille(5),
-				util.Permille(7),
-				util.Permille(9),
-				util.Permille(11),
-				util.Permille(13),
-				util.Permille(15),
-				util.Permille(17),
-				util.Permille(19),
-			},
-			Company: util.Percent(21),
-		},
-		SubscriptionAward: referral.NetworkAward{
-			Network: []util.Fraction{
-				util.Permille(2),
-				util.Permille(4),
-				util.Permille(6),
-				util.Permille(8),
-				util.Permille(10),
-				util.Permille(12),
-				util.Permille(14),
-				util.Permille(16),
-				util.Permille(18),
-				util.Permille(20),
-			},
-			Company: util.Percent(22),
 		},
 	})
 	s.checkExportImport()
@@ -180,7 +148,7 @@ func (s Suite) TestBanished() {
 	for i := 1; i <= 7; i++ {
 		user := fmt.Sprintf("user%d", i)
 		addr := app.DefaultGenesisUsers[user]
-		s.NoError(s.subKeeper.PayTariff(s.ctx, addr, 5), "pay tariff for %s (%s)", user, addr.String())
+		s.NoError(s.subKeeper.PayTariff(s.ctx, addr, 5, false), "pay tariff for %s (%s)", user, addr.String())
 	}
 
 	r, err := s.k.Get(s.ctx, user)

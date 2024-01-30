@@ -18,46 +18,10 @@ const (
 	DefaultTransitionPrice = 1_000000
 )
 
-var (
-	DefaultDelegatingAward = NetworkAward{
-		Network: []util.Fraction{
-			util.Percent(5),
-			util.Percent(1),
-			util.Percent(1),
-			util.Percent(2),
-			util.Percent(1),
-			util.Percent(1),
-			util.Percent(1),
-			util.Percent(1),
-			util.Percent(1),
-			util.Permille(5),
-		},
-		Company: util.Permille(5),
-	}
-
-	DefaultSubscriptionAward = NetworkAward{
-		Network: []util.Fraction{
-			util.Percent(15),
-			util.Percent(10),
-			util.Percent(7),
-			util.Percent(7),
-			util.Percent(7),
-			util.Percent(7),
-			util.Percent(7),
-			util.Percent(5),
-			util.Percent(2),
-			util.Percent(2),
-		},
-		Company: util.Percent(10),
-	}
-)
-
 // Parameter store keys
 var (
-	KeyCompanyAccounts   = []byte("CompanyAccounts")
-	KeyDelegatingAward   = []byte("DelegatingAward")
-	KeySubscriptionAward = []byte("SubscriptionAward")
-	KeyTransitionCost    = []byte("TransitionCost")
+	KeyCompanyAccounts = []byte("CompanyAccounts")
+	KeyTransitionCost  = []byte("TransitionCost")
 )
 
 // ParamKeyTable for referral module
@@ -72,29 +36,11 @@ func (ca CompanyAccounts) Contains(acc sdk.AccAddress) bool {
 		return false
 	}
 	bech32 := acc.String()
-	return ca.TopReferrer == bech32 ||
-		ca.ForSubscription == bech32 ||
-		ca.ForDelegating == bech32
-}
-
-func (ca CompanyAccounts) GetTopReferrer() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(ca.TopReferrer)
-	if err != nil {
-		panic(err)
-	}
-	return addr
+	return ca.ForSubscription == bech32
 }
 
 func (ca CompanyAccounts) GetForSubscription() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(ca.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
-func (ca CompanyAccounts) GetForDelegating() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(ca.ForDelegating)
 	if err != nil {
 		panic(err)
 	}
@@ -117,8 +63,6 @@ func (p Params) String() string {
 func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 	return paramTypes.ParamSetPairs{
 		paramTypes.NewParamSetPair(KeyCompanyAccounts, &p.CompanyAccounts, validateCompanyAccounts),
-		paramTypes.NewParamSetPair(KeyDelegatingAward, &p.DelegatingAward, validateNetworkAward),
-		paramTypes.NewParamSetPair(KeySubscriptionAward, &p.SubscriptionAward, validateNetworkAward),
 		paramTypes.NewParamSetPair(KeyTransitionCost, &p.TransitionPrice, validateUint64),
 	}
 }
@@ -127,21 +71,13 @@ func (p Params) Validate() error {
 	if err := validateCompanyAccounts(p.CompanyAccounts); err != nil {
 		return err
 	}
-	if err := validateNetworkAward(p.DelegatingAward); err != nil {
-		return nil
-	}
-	if err := validateNetworkAward(p.SubscriptionAward); err != nil {
-		return nil
-	}
 	return nil
 }
 
 // DefaultParams defines the parameters for this module
 func DefaultParams() Params {
 	return Params{
-		DelegatingAward:   DefaultDelegatingAward,
-		SubscriptionAward: DefaultSubscriptionAward,
-		TransitionPrice:   DefaultTransitionPrice,
+		TransitionPrice: DefaultTransitionPrice,
 	}
 }
 
@@ -150,14 +86,8 @@ func validateCompanyAccounts(i interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid parameter type: %T", i)
 	}
-	if _, err := sdk.AccAddressFromBech32(ca.TopReferrer); err != nil {
-		return errors.Wrap(err, "cannot parse top_referrer account address")
-	}
 	if _, err := sdk.AccAddressFromBech32(ca.ForSubscription); err != nil {
 		return errors.Wrap(err, "cannot parse for_subscription account address")
-	}
-	if _, err := sdk.AccAddressFromBech32(ca.ForDelegating); err != nil {
-		return errors.Wrap(err, "cannot parse for_delegating account address")
 	}
 
 	return nil

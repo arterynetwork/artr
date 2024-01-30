@@ -42,6 +42,7 @@ message Proposal {
       (gogoproto.moretags) = "yaml:\"delegation_award,omitempty"
     ];
     NetworkAwardArgs network_award = 7 [
+      deprecated = true,
       (gogoproto.jsontag)  = "network_award,omitempty",
       (gogoproto.moretags) = "yaml:\"network_award,omitempty"
     ];

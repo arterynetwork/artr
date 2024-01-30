@@ -34,8 +34,6 @@ func NewTxCmd() *cobra.Command {
 
 	votingTxCmd.AddCommand(
 		cmdEnterPrice(),
-		cmdDelegationNetworkAward(),
-		cmdSubscriptionNetworkAward(),
 		cmdAddGovernor(),
 		cmdRemoveGovernor(),
 		cmdProductVpnBasePrice(),
@@ -126,116 +124,6 @@ func cmdEnterPrice() *cobra.Command {
 	}
 	util.AddTxFlagsToCmd(cmd)
 	return cmd
-}
-
-func cmdDelegationNetworkAward() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-delegation-network-award <company> <lvl 1> <lvl 2> ... <lvl 10> <proposal name> <author key or address>",
-		Aliases: []string{"set_delegation_network_award", "sdna"},
-		Short:   "Propose to change the network commission for delegations",
-		Example: `artrcli tx voting set-delegation-network-award 5/1000 5% 1% 1% 2% 1% 1% 1% 1% 1% 5/1000 "return to default values" ivan`,
-		Args:    cobra.ExactArgs(13),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[11]
-
-			award, err := parseNetworkAward(args[:11])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_DELEGATION_NETWORK_AWARD,
-					Args: &types.Proposal_NetworkAward{
-						NetworkAward: &types.NetworkAwardArgs{
-							Award: award,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdSubscriptionNetworkAward() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-subscription-network-award <company> <lvl 1> <lvl 2> ... <lvl 10> <proposal name> <author key or address>",
-		Aliases: []string{"set_subscription_network_award", "ssna"},
-		Short:   "Propose to change the network commission for subscription payments",
-		Example: `artrcli tx voting set-subscription-network-award 10% 15% 10% 7% 7% 7% 7% 7% 5% 2% 2% "return to default values" ivan`,
-		Args:    cobra.ExactArgs(13),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[12]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[11]
-
-			award, err := parseNetworkAward(args[:11])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_PRODUCT_NETWORK_AWARD,
-					Args: &types.Proposal_NetworkAward{
-						NetworkAward: &types.NetworkAwardArgs{
-							Award: award,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func parseNetworkAward(args []string) (referral.NetworkAward, error) {
-	var percent [11]util.Fraction
-	for i := 0; i < 11; i++ {
-		n, err := util.ParseFraction(args[i])
-		if err != nil {
-			return referral.NetworkAward{}, errors.Wrapf(err, "cannot parse arg #%d (%s)", i, args[i])
-		}
-		percent[i] = n
-	}
-
-	award := referral.NetworkAward{
-		Company: percent[0],
-		Network: percent[1:],
-	}
-
-	return award, nil
 }
 
 // GetCmdAddGovernor is the CLI command for creating AddGovernor proposal

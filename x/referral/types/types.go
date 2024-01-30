@@ -93,19 +93,6 @@ func (r Info) IsEmpty() bool {
 	return r.Status == STATUS_UNSPECIFIED && !r.Banished
 }
 
-type ReferralFee struct {
-	Beneficiary string        `json:"beneficiary" yaml:"beneficiary"`
-	Ratio       util.Fraction `json:"ratio" yaml:"ratio"`
-}
-
-func (fee ReferralFee) GetBeneficiary() sdk.AccAddress {
-	addr, err := sdk.AccAddressFromBech32(fee.Beneficiary)
-	if err != nil {
-		panic(err)
-	}
-	return addr
-}
-
 type ReferralValidatorFee struct {
 	Beneficiary string        `json:"beneficiary" yaml:"beneficiary"`
 	Ratio       util.Fraction `json:"ratio" yaml:"ratio"`

@@ -31,6 +31,7 @@ message DelegationAwardArgs {
 }
 
 message NetworkAwardArgs {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   artery.referral.v1beta1.NetworkAward award = 1 [

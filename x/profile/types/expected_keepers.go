@@ -34,6 +34,7 @@ type BankKeeper interface {
 
 	AddCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
 	SubtractCoins(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coins) error
+	SendCoins(ctx sdk.Context, fromAddr sdk.AccAddress, toAddr sdk.AccAddress, amt sdk.Coins) error
 	SendCoinsFromAccountToModule(ctx sdk.Context, senderAddr sdk.AccAddress, recipientModule string, amt sdk.Coins) error
 
 	PayTxFee(ctx sdk.Context, senderAddr sdk.AccAddress, amt sdk.Coins) (fee sdk.Coins, err error)
@@ -42,10 +43,10 @@ type BankKeeper interface {
 }
 
 type ReferralKeeper interface {
+	GetParams(ctx sdk.Context) (params ref.Params)
 	Get(ctx sdk.Context, acc string) (ref.Info, error)
 	AppendChild(ctx sdk.Context, parentAcc string, childAcc string) error
 	ScheduleCompression(ctx sdk.Context, acc string, compressionAt time.Time)
-	GetReferralFeesForSubscription(ctx sdk.Context, acc string) ([]ref.ReferralFee, error)
 	MustSetActive(ctx sdk.Context, acc string, value bool)
 	MustSetActiveWithoutStatusUpdate(ctx sdk.Context, acc string, value bool)
 	Iterate(ctx sdk.Context, callback func(acc string, r *ref.Info) (changed, checkForStatusUpdate bool))

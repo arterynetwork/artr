@@ -48,7 +48,6 @@ var (
 type (
 	Keeper            = keeper.Keeper
 	GenesisState      = types.GenesisState
-	ReferralFee       = types.ReferralFee
 	Params            = types.Params
 	CompanyAccounts   = types.CompanyAccounts
 	NetworkAward      = types.NetworkAward

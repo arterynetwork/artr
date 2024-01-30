@@ -9,20 +9,13 @@ option go_package = "github.com/arterynetwork/artr/x/referral/types";
 message Params {
   option (gogoproto.goproto_stringer) = false;
 
+  reserved 2,3;
+  reserved "delegating_award","subscription_award";
+
   CompanyAccounts company_accounts = 1 [
     (gogoproto.nullable) = false,
     (gogoproto.jsontag)  = "company_accounts",
     (gogoproto.moretags) = "yaml:\"company_accounts\""
-  ];
-  NetworkAward delegating_award = 2 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "delegating_award",
-    (gogoproto.moretags) = "yaml:\"delegating_award\""
-  ];
-  NetworkAward subscription_award = 3 [
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "subscription_award",
-    (gogoproto.moretags) = "yaml:\"subscription_award\""
   ];
   uint64 transition_price = 4 [
     (gogoproto.jsontag)  = "transition_price",
@@ -33,15 +26,14 @@ message Params {
 message CompanyAccounts {
   option (gogoproto.goproto_getters) = false;
 
-  reserved 3,4,5;
-  reserved "promo_bonuses","status_bonuses","leader_bonuses";
+  reserved 1,3,4,5,6;
+  reserved "top_referrer","promo_bonuses","status_bonuses","leader_bonuses","for_delegating";
 
-  string top_referrer     = 1 [(gogoproto.jsontag) = "top_referrer", (gogoproto.moretags) = "yaml:\"top_referrer\""];
   string for_subscription = 2 [(gogoproto.jsontag) = "for_subscription", (gogoproto.moretags) = "yaml:\"for_subscription\""];
-  string for_delegating   = 6 [(gogoproto.jsontag) = "for_delegating", (gogoproto.moretags) = "yaml:\"for_delegating\""];
 }
 
 message NetworkAward {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   repeated string network = 1 [
