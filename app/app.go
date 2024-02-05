@@ -421,6 +421,10 @@ func NewArteryApp(
 		EmptyEarningVpnStorageCollectors(app.accountKeeper, app.bankKeeper, *app.referralKeeper),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.5.3", Chain(
+		NopUpgradeHandler,
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(

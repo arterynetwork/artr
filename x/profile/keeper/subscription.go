@@ -95,7 +95,8 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 		return errors.Wrap(err, "cannot pay up fees")
 	}
 	if !profile.IsActive(ctx) && !isAutoPay {
-		*profile.ActiveUntil = ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
+		au := ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
+		profile.ActiveUntil = &au
 		k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
 		k.resetLimits(p, profile)
 		util.EmitEvent(ctx,
