@@ -107,7 +107,9 @@ func (s *SSuite) TestAutoPay() {
 
 	p = *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
-	s.Equal(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
+	s.NotEqual(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
+	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
+	s.True(p.ActiveUntil.After(wasPaidUpTo.Add(30 * 24 * time.Hour))) // 2 seconds for free
 	s.True(p.IsActive(s.ctx))
 	s.True(p.AutoPay)
 }

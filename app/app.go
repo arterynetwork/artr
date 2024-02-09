@@ -425,6 +425,10 @@ func NewArteryApp(
 		NopUpgradeHandler,
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.5.4", Chain(
+		NopUpgradeHandler,
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
