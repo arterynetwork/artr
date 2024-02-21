@@ -3,6 +3,7 @@ package artery.voting.v1beta1;
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
+import "artery/noding/v1beta1/types.proto";
 import "artery/referral/v1beta1/params.proto";
 import "artery/referral/v1beta1/types.proto";
 import "artery/delegating/v1beta1/params.proto";
@@ -99,12 +100,19 @@ message CountArgs {
 }
 
 message StatusArgs {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   artery.referral.v1beta1.Status status = 1 [
     (gogoproto.jsontag)  = "status",
     (gogoproto.moretags) = "yaml:\"status\""
   ];
+}
+
+message MinCriteriaArgs {
+  option (gogoproto.equal) = true;
+
+  artery.noding.v1beta1.MinCriteria min_criteria = 1;
 }
 
 message PeriodArgs {

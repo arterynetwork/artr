@@ -179,6 +179,17 @@ func (p Proposal) Validate() error {
 				return errors.Wrap(err, "invalid args")
 			}
 		}
+	case PROPOSAL_TYPE_VALIDATOR_MINIMAL_CRITERIA:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_Criteria expected")
+		}
+		if args, ok := p.Args.(*Proposal_MinCriteria); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Criteria expected", p.Args)
+		} else {
+			if err := args.MinCriteria.Validate(); err != nil {
+				return errors.Wrap(err, "invalid args")
+			}
+		}
 	case PROPOSAL_TYPE_REVOKE_PERIOD:
 		if p.Args == nil {
 			return errors.New("invalid args: nil, *Proposal_Period expected")
@@ -406,8 +417,8 @@ func (p Poll) Validate() error {
 	case *Poll_CanValidate:
 		// pass
 	case *Poll_MinStatus:
-		if r.MinStatus < referral.MinimumStatus || r.MinStatus > referral.MaximumStatus {
-			return errors.New("min_status is out of range")
+		if err := r.MinStatus.Validate(); err != nil {
+			return err
 		}
 	}
 	if p.StartTime != nil && p.EndTime != nil && !p.EndTime.After(*p.StartTime) {

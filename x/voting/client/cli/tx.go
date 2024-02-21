@@ -56,7 +56,7 @@ func NewTxCmd() *cobra.Command {
 		cmdSetMaxValidators(),
 		cmdSetLotteryValidators(),
 		cmdGeneralAmnesty(),
-		cmdSetValidatorMinStatus(),
+		cmdSetValidatorMinCriteria(),
 		cmdSetJailAfter(),
 		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
@@ -1095,14 +1095,14 @@ func cmdGeneralAmnesty() *cobra.Command {
 	return cmd
 }
 
-func cmdSetValidatorMinStatus() *cobra.Command {
+func cmdSetValidatorMinCriteria() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "set-validator-min-status <status (number)> <proposal name> <author key or address>",
-		Aliases: []string{"set_validator_min_status", "svms"},
-		Short:   `Propose to set minimal status required for validation`,
-		Args:    cobra.ExactArgs(3),
+		Use:     "set-validator-min-criteria <status (number)> <self stake> <total stake> <proposal name> <author key or address>",
+		Aliases: []string{"set_validator_min_criteria", "svmc"},
+		Short:   `Propose to set minimal criteria required for validation (stakes set in uARTR)`,
+		Args:    cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[4]); err != nil {
 				return err
 			}
 			clientCtx, err := client.GetClientTxContext(cmd)
@@ -1111,25 +1111,36 @@ func cmdSetValidatorMinStatus() *cobra.Command {
 			}
 
 			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
+			proposalName := args[3]
 
-			var status referral.Status
-			{
-				n, err := strconv.ParseUint(args[0], 0, 8)
-				if err != nil {
-					return err
-				}
-				status = referral.Status(n)
+			n, err := strconv.ParseUint(args[0], 0, 8)
+			if err != nil {
+				return err
+			}
+			status := referral.Status(n)
+
+			selfStake, err := strconv.ParseUint(args[1], 0, 64)
+			if err != nil {
+				return err
+			}
+
+			totalStake, err := strconv.ParseUint(args[2], 0, 64)
+			if err != nil {
+				return err
 			}
 
 			msg := &types.MsgPropose{
 				Proposal: types.Proposal{
 					Author: author,
 					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS,
-					Args: &types.Proposal_Status{
-						Status: &types.StatusArgs{
-							Status: status,
+					Type:   types.PROPOSAL_TYPE_VALIDATOR_MINIMAL_CRITERIA,
+					Args: &types.Proposal_MinCriteria{
+						MinCriteria: &types.MinCriteriaArgs{
+							MinCriteria: &noding.MinCriteria{
+								Status:     status,
+								SelfStake:  selfStake,
+								TotalStake: totalStake,
+							},
 						},
 					},
 				},
@@ -1760,10 +1771,11 @@ func cmdStartPoll() *cobra.Command {
 					if !strings.HasPrefix(name, "STATUS_") {
 						name = "STATUS_" + name
 					}
-					if s, ok := referral.Status_value[name]; !ok {
-						return errors.New("cannot parse status")
-					} else {
-						status = referral.Status(s)
+					if status, err = referral.ParseStatus(name); err != nil {
+						return err
+					}
+					if err = status.Validate(); err != nil {
+						return err
 					}
 				}
 

@@ -19,11 +19,7 @@ protoc_gen_gocosmos
 #protoc_gen_doc
 
 for binary in `ls proto/proto-*.bin`; do
-  if echo $binary | grep -q "proto/proto-2\.4\.[1,2,3,4,5,6]\.bin"; then
-    buf breaking --against $binary --config "buf_revert_validator_bonus.yaml"
-  else
-    buf breaking --against $binary
-  fi
+  buf breaking --against $binary
 done
 
 proto_dirs=$(find ./proto -path -prune -o -name '*.proto' -print0 | xargs -0 -n1 dirname | sort | uniq)

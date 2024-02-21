@@ -23,6 +23,7 @@ import (
 	delegatingT "github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/noding"
+	nodingT "github.com/arterynetwork/artr/x/noding/types"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
 	scheduleK "github.com/arterynetwork/artr/x/schedule/keeper"
@@ -668,21 +669,10 @@ func InitValidatorBonusParam() upgrade.UpgradeHandler {
 	}
 }
 
-func InitValidatorParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitValidatorParam() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitValidatorParam ...")
-
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyValidator) {
-				pz.Validator = delegatingT.DefaultValidator
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitValidatorParam done!", "params", pz)
+		logger.Info("Skipping InitValidatorParam")
 	}
 }
 
@@ -979,31 +969,10 @@ func InitTransactionFeeSplitRatiosAndCompanyAccountParams(k bank.Keeper, paramsp
 	}
 }
 
-func InitAccruePercentageRangesAndValidatorBonusParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitAccruePercentageRangesAndValidatorBonusParams() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitAccruePercentageRangesAndValidatorBonusParams ...")
-
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyAccruePercentageRanges) {
-				pz.AccruePercentageRanges = []delegatingT.PercentageRange{
-					{Start: 0, Percent: util.Percent(pz.Percentage.Minimal)},
-					{Start: 1_000_000000, Percent: util.Percent(pz.Percentage.ThousandPlus)},
-					{Start: 10_000_000000, Percent: util.Percent(pz.Percentage.TenKPlus)},
-					{Start: 100_000_000000, Percent: util.Percent(pz.Percentage.HundredKPlus)},
-				}
-			} else if bytes.Equal(pair.Key, delegatingT.KeyValidatorBonus) {
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
-			}
-		}
-		pz.ValidatorBonus = pz.Validator.Sub(util.Percent(pz.Percentage.HundredKPlus))
-		if pz.ValidatorBonus.IsNegative() {
-			pz.ValidatorBonus = util.FractionZero()
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitAccruePercentageRangesAndValidatorBonusParams done!", "params", pz)
+		logger.Info("Skipping InitAccruePercentageRangesAndValidatorBonusParams")
 	}
 }
 
@@ -1045,48 +1014,17 @@ func CleanEarningStore(storeKey sdk.StoreKey) upgrade.UpgradeHandler {
 	}
 }
 
-func InitSubscriptionVpnStorageBonusesParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitSubscriptionVpnStorageBonusesParams() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitSubscriptionVpnStorageBonusesParams ...")
-
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeySubscriptionBonus) {
-				pz.SubscriptionBonus = delegatingT.DefaultSubscriptionBonus
-			} else if bytes.Equal(pair.Key, delegatingT.KeyVpnBonus) {
-				pz.VpnBonus = delegatingT.DefaultVpnBonus
-			} else if bytes.Equal(pair.Key, delegatingT.KeyStorageBonus) {
-				pz.StorageBonus = delegatingT.DefaultStorageBonus
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitSubscriptionVpnStorageBonusesParams done!", "params", pz)
+		logger.Info("Skipping InitSubscriptionVpnStorageBonusesParams")
 	}
 }
 
-func InitAccruePercentageTableParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitAccruePercentageTableParams() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitAccruePercentageTableParams ...")
-
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyAccruePercentageTable) {
-				for _, v := range pz.AccruePercentageRanges {
-					pz.AccruePercentageTable = append(pz.AccruePercentageTable, delegatingT.PercentageListRange{
-						Start:       v.Start,
-						PercentList: []util.Fraction{v.Percent, pz.ValidatorBonus, pz.SubscriptionBonus, pz.VpnBonus, pz.StorageBonus},
-					})
-				}
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitAccruePercentageTableParams done!", "params", pz)
+		logger.Info("Skipping InitAccruePercentageTableParams")
 	}
 }
 
@@ -1098,12 +1036,9 @@ func EmptyEarningVpnStorageCollectors(ak authK.AccountKeeper, bk bank.Keeper, rk
 		earningCollectorAddress := ak.GetModuleAddress(earning.ModuleName)
 		vpnCollectorAddress := ak.GetModuleAddress(earning.VpnCollectorName)
 		storageCollectorAddress := ak.GetModuleAddress(earning.StorageCollectorName)
-		companyCollectorAddress, err := sdk.AccAddressFromBech32(rk.GetParams(ctx).CompanyAccounts.ForSubscription)
-		if err != nil {
-			panic(err)
-		}
+		companyCollectorAddress := rk.GetParams(ctx).CompanyAccounts.GetForSubscription()
 
-		err = bk.SetBalance(ctx, companyCollectorAddress, sdk.NewCoins(
+		err := bk.SetBalance(ctx, companyCollectorAddress, sdk.NewCoins(
 			bk.GetBalance(ctx, companyCollectorAddress).
 				Add(bk.GetBalance(ctx, earningCollectorAddress)...).
 				Add(bk.GetBalance(ctx, vpnCollectorAddress)...).
@@ -1126,5 +1061,25 @@ func EmptyEarningVpnStorageCollectors(ak authK.AccountKeeper, bk bank.Keeper, rk
 		}
 
 		logger.Info("... EmptyEarningVpnStorageCollectors done!")
+	}
+}
+
+func InitMinCriteriaParam(k noding.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitMinCriteriaParam ...")
+
+		var pz noding.Params
+		for _, pair := range pz.ParamSetPairs() {
+			if bytes.Equal(pair.Key, nodingT.KeyMinCriteria) {
+				pz.MinCriteria.Status = pz.MinStatus
+				pz.MinCriteria.SelfStake = 0
+				pz.MinCriteria.TotalStake = 10_000_000000
+			} else {
+				paramspace.Get(ctx, pair.Key, pair.Value)
+			}
+		}
+		k.SetParams(ctx, pz)
+		logger.Info("... InitMinCriteriaParam done!", "params", pz)
 	}
 }

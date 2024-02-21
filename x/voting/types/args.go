@@ -4,8 +4,6 @@ import (
 	"github.com/pkg/errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-
-	"github.com/arterynetwork/artr/x/referral/types"
 )
 
 func (args *PriceArgs) Validate() error           { return nil }
@@ -30,8 +28,14 @@ func (args *SoftwareUpgradeArgs) Validate() error {
 func (args *MinAmountArgs) Validate() error { return nil }
 func (args *CountArgs) Validate() error     { return nil }
 func (args *StatusArgs) Validate() error {
-	if _, ok := types.Status_name[int32(args.Status)]; !ok || args.Status == types.STATUS_UNSPECIFIED {
-		return errors.New("enum value out of range")
+	if err := args.Status.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+func (args *MinCriteriaArgs) Validate() error {
+	if err := args.MinCriteria.Validate(); err != nil {
+		return err
 	}
 	return nil
 }

@@ -37,11 +37,25 @@ message Record {
   ];
 }
 
+// Percentage - function from delegation size to delegation award percent
+message Percentage {
+  option deprecated = true;
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+  option (gogoproto.equal)            = true;
+
+  int64 minimal        = 1 [(gogoproto.jsontag) = "minimal", (gogoproto.moretags) = "yaml:\"minimal\""];
+  int64 thousand_plus  = 2 [(gogoproto.jsontag) = "thousand_plus", (gogoproto.moretags) = "yaml:\"thousand_plus\""];
+  int64 ten_k_plus     = 3 [(gogoproto.jsontag) = "ten_k_plus", (gogoproto.moretags) = "yaml:\"ten_k_plus\""];
+  int64 hundred_k_plus = 4 [(gogoproto.jsontag) = "hundred_k_plus", (gogoproto.moretags) = "yaml:\"hundred_k_plus\""];
+}
+
 // Percentage value associated with a range of uARTR. Used as a sequence of repeated elements:
 // the end boundary of the range is the start boundary of the net range, or infinity if the range is last one in the sequence.
 message PercentageRange {
   option deprecated = true;
   option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
   option (gogoproto.equal)            = true;
 
   // Start boundary of a range in uARTR. Must be non-negative.
@@ -58,6 +72,7 @@ message PercentageRange {
 // the end boundary of the range is the start boundary of the net range, or infinity if the range is last one in the sequence.
 message PercentageListRange {
   option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
   option (gogoproto.equal)            = true;
 
   // Start boundary of a range in uARTR. Must be non-negative.

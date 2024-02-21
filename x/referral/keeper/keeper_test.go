@@ -731,13 +731,19 @@ func (s Suite) TestTransition() {
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
-		util.Uartrs(990_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 
 	s.NoError(s.k.AffirmTransition(s.ctx, subj.String()), "affirm transition")
 	s.Equal(
-		util.Uartrs(990_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 
@@ -790,9 +796,9 @@ func (s Suite) TestTransition() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		54_990_000000,
-		24_000_000000, 29_990_000000,
-		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		154_990_000000,
+		44_000_000000, 89_990_000000,
+		22_990_000000, 23_000_000000, 23_000_000000, 23_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
@@ -808,13 +814,19 @@ func (s Suite) TestTransition_Decline() {
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
-		util.Uartrs(990_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 
 	s.NoError(s.k.CancelTransition(s.ctx, subj.String(), false), "decline transition")
 	s.Equal(
-		util.Uartrs(990_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 
@@ -857,9 +869,9 @@ func (s Suite) TestTransition_Decline() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		54_990_000000,
-		26_990_000000, 27_000_000000,
-		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		154_990_000000,
+		66_990_000000, 67_000_000000,
+		22_990_000000, 23_000_000000, 23_000_000000, 23_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
@@ -876,23 +888,29 @@ func (s Suite) TestTransition_Timeout() {
 
 	s.NoError(s.k.RequestTransition(s.ctx, subj.String(), dest.String()), "request transition")
 	s.Equal(
-		util.Uartrs(990_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 
 	for i, n := range []sdk.Coins{
-		THOUSAND,
+		STAKE,
 		STAKE, STAKE,
-		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND, // transition fee
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		), STAKE, STAKE, STAKE, // transition fee
 		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
 	} {
 		cz := s.bk.GetBalance(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
 		s.Equal(n, cz)
 	}
 	for i, n := range []int64{
-		54_990_000000,
-		26_990_000000, 27_000_000000,
-		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		154_990_000000,
+		66_990_000000, 67_000_000000,
+		22_990_000000, 23_000_000000, 23_000_000000, 23_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
@@ -903,9 +921,15 @@ func (s Suite) TestTransition_Timeout() {
 	s.ctx = s.ctx.WithBlockHeight(util.BlocksOneDay).WithBlockTime(genesisTime.Add(24 * time.Hour))
 	s.nextBlock()
 	for i, n := range []sdk.Coins{
-		util.Uartrs(1_010_000000), // validator's award
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_010_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		), // validator's award
 		STAKE, STAKE,
-		util.Uartrs(990_000000), THOUSAND, THOUSAND, THOUSAND,
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(990_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		), STAKE, STAKE, STAKE,
 		THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND, THOUSAND,
 	} {
 		cz := s.bk.GetBalance(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)])
@@ -951,9 +975,9 @@ func (s Suite) TestTransition_Timeout() {
 	s.Equal("", acc, "pending transition")
 
 	for i, n := range []int64{
-		55_000_000000,
-		26_990_000000, 27_000_000000,
-		2_990_000000, 3_000_000000, 3_000_000000, 3_000_000000,
+		155_000_000000,
+		66_990_000000, 67_000_000000,
+		22_990_000000, 23_000_000000, 23_000_000000, 23_000_000000,
 		1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000, 1_000_000000,
 	} {
 		cz, err := s.k.GetCoinsInNetwork(s.ctx, app.DefaultGenesisUsers[fmt.Sprintf("user%d", i+1)].String(), 10)
@@ -1004,7 +1028,10 @@ func (s Suite) TestTransition_Validate_OldParent() {
 		"transition is invalid: destination address is already subject's referrer",
 	)
 	s.Equal(
-		util.Uartrs(1_000_000000),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.bk.GetBalance(s.ctx, subj),
 	)
 }

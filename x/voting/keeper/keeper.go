@@ -308,8 +308,10 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.LotteryValidators = proposal.GetCount().Count
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS:
+			err = errors.New("parameter is deprecated")
+		case types.PROPOSAL_TYPE_VALIDATOR_MINIMAL_CRITERIA:
 			p := k.nodingKeeper.GetParams(ctx)
-			p.MinStatus = proposal.GetStatus().Status
+			p.MinCriteria = *proposal.GetMinCriteria().MinCriteria
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_JAIL_AFTER:
 			p := k.nodingKeeper.GetParams(ctx)

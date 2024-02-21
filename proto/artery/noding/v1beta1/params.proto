@@ -14,6 +14,7 @@ message Params {
   uint32 jail_after = 2;
   uint32 unjail_after = 3;
   uint32 lottery_validators = 4;
-  artery.referral.v1beta1.Status min_status = 5;
+  artery.referral.v1beta1.Status min_status = 5 [deprecated = true];
+  MinCriteria min_criteria = 7 [(gogoproto.nullable) = false];
   Distribution voting_power = 6 [(gogoproto.nullable) = false];
 }

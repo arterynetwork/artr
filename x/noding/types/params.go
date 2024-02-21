@@ -21,10 +21,18 @@ const (
 	DefaultUnjailAfter       = util.BlocksOneHour
 	DefaultLotteryValidators = 0
 	DefaultMinStatus         = referral.StatusLeader
+	DefaultMinSelfStake      = 10_000_000000
+	DefaultMinTotalStake     = 50_000_000000
 )
 
 // Parameter store keys
 var (
+	DefaultMinCriteria = MinCriteria{
+		Status:     DefaultMinStatus,
+		SelfStake:  DefaultMinSelfStake,
+		TotalStake: DefaultMinTotalStake,
+	}
+
 	DefaultVotingPower = Distribution{
 		Slices: []Distribution_Slice{
 			{
@@ -43,6 +51,7 @@ var (
 	KeyUnjailAfter       = []byte("UnjailAfter")
 	KeyLotteryValidators = []byte("LotteryValidators")
 	KeyMinStatus         = []byte("MinStatus")
+	KeyMinCriteria       = []byte("MinCriteria")
 	KeyVotingPower       = []byte("VotingPower")
 )
 
@@ -52,13 +61,13 @@ func ParamKeyTable() params.KeyTable {
 }
 
 // NewParams creates a new Params object
-func NewParams(maxValidators, jailAfter, unjailAfter, lotteryValidators uint32, minStatus referral.Status) Params {
+func NewParams(maxValidators, jailAfter, unjailAfter, lotteryValidators uint32, minCriteria MinCriteria) Params {
 	return Params{
 		MaxValidators:     maxValidators,
 		JailAfter:         jailAfter,
 		UnjailAfter:       unjailAfter,
 		LotteryValidators: lotteryValidators,
-		MinStatus:         minStatus,
+		MinCriteria:       minCriteria,
 	}
 }
 
@@ -79,6 +88,7 @@ func (p *Params) ParamSetPairs() params.ParamSetPairs {
 		params.NewParamSetPair(KeyUnjailAfter, &p.UnjailAfter, validateUnjailAfter),
 		params.NewParamSetPair(KeyLotteryValidators, &p.LotteryValidators, validateAdditionalValidators),
 		params.NewParamSetPair(KeyMinStatus, &p.MinStatus, validateStatus),
+		params.NewParamSetPair(KeyMinCriteria, &p.MinCriteria, validateMinCriteria),
 		params.NewParamSetPair(KeyVotingPower, &p.VotingPower, validateVotingPower),
 	}
 }
@@ -90,7 +100,7 @@ func DefaultParams() Params {
 		DefaultJailAfter,
 		DefaultUnjailAfter,
 		DefaultLotteryValidators,
-		DefaultMinStatus,
+		DefaultMinCriteria,
 	)
 }
 
@@ -140,11 +150,19 @@ func validateStatus(i interface{}) error {
 	if !ok {
 		return fmt.Errorf("invalid min_status type (uint8 expected): %T", i)
 	}
-	if status < referral.StatusLucky {
-		return fmt.Errorf("status beyond min: %d", status)
+	if err := status.Validate(); err != nil {
+		return errors.Wrap(err, "invalid min_status parameter:")
 	}
-	if status > referral.StatusAbsoluteChampion {
-		return fmt.Errorf("status above max: %d", status)
+	return nil
+}
+
+func validateMinCriteria(i interface{}) error {
+	mc, ok := i.(MinCriteria)
+	if !ok {
+		return fmt.Errorf("invalid min_criteria type: %T", i)
+	}
+	if err := mc.Validate(); err != nil {
+		return errors.Wrap(err, "invalid min_criteria parameter:")
 	}
 	return nil
 }
@@ -175,6 +193,9 @@ func (p *Params) Validate() error {
 	}
 	if err := validateStatus(p.MinStatus); err != nil {
 		return sdkerrors.Wrap(err, "invalid MinStatus")
+	}
+	if err := validateMinCriteria(p.MinCriteria); err != nil {
+		return sdkerrors.Wrap(err, "invalid MinCriteria")
 	}
 	if err := validateVotingPower(p.VotingPower); err != nil {
 		return err

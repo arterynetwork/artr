@@ -36067,37 +36067,8 @@
       "accounts": [],
       "params": {
         "min_delegate": "1000",
-        "percentage": {
-          "hundred_k_plus": "30",
-          "minimal": "21",
-          "ten_k_plus": "27",
-          "thousand_plus": "24"
-        },
         "revoke_period": 14,
-        "validator_bonus": "0%",
-        "subscription_bonus": "1%",
-        "vpn_bonus": "0%",
-        "storage_bonus": "0%",
-        "validator": "15%",
         "burn_on_revoke": "5%",
-        "accrue_percentage_ranges": [
-          {
-            "start": "0",
-            "percent": "21%"
-          },
-          {
-            "start": "1000000000",
-            "percent": "24%"
-          },
-          {
-            "start": "10000000000",
-            "percent": "27%"
-          },
-          {
-            "start": "100000000000",
-            "percent": "30%"
-          }
-        ],
         "accrue_percentage_table": [
           {
             "start": "0",
@@ -36138,6 +36109,11 @@
         "jail_after": 2,
         "max_validators": 100,
         "min_status": "STATUS_LEADER",
+        "min_criteria": {
+          "status": "STATUS_LEADER",
+          "self_stake": "10000000000",
+          "total_stake": "50000000000"
+        },
         "unjail_after": "120",
         "voting_power": {
           "slices": [

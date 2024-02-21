@@ -110,7 +110,7 @@ func (s *VASuite) TestReferralValidatorFees() {
 			s.setStatusHelper(addr.String(), status),
 			s.bk.SetBalance(s.ctx, addr, sdk.Coins{sdk.Coin{
 				Denom:  util.ConfigDelegatedDenom,
-				Amount: sdk.NewInt(10_000_000000),
+				Amount: sdk.NewInt(50_000_000000),
 			}}),
 			s.nk.SwitchOn(s.ctx, addr, consPubKey),
 		)

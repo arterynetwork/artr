@@ -77,10 +77,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	tariffTotal = tariffTotal.Sub(txFee)
 
 	outputs := make([]bank.Output, 0, 4)
-	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
+	companyCollectorAcc := k.referralKeeper.GetParams(ctx).CompanyAccounts.GetForSubscription()
 	outputs = append(outputs, bank.NewOutput(companyCollectorAcc, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, tariffTotal))))
 	splittableFeeCollectorAcc := k.accountKeeper.GetModuleAddress(util.SplittableFeeCollectorName)
 	if !txFee.IsZero() {
@@ -172,10 +169,7 @@ func (k Keeper) BuyStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint32)
 		total = total.Sub(txFee)
 	}
 
-	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
+	companyCollectorAcc := k.referralKeeper.GetParams(ctx).CompanyAccounts.GetForSubscription()
 	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
@@ -228,10 +222,7 @@ func (k Keeper) BuyImStorage(ctx sdk.Context, addr sdk.AccAddress, extraGb uint3
 		total = total.Sub(txFee)
 	}
 
-	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
+	companyCollectorAcc := k.referralKeeper.GetParams(ctx).CompanyAccounts.GetForSubscription()
 	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
@@ -282,10 +273,7 @@ func (k Keeper) BuyVpn(ctx sdk.Context, addr sdk.AccAddress, vpnGb uint32) error
 		coins = coins.Sub(txFee)
 	}
 
-	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
+	companyCollectorAcc := k.referralKeeper.GetParams(ctx).CompanyAccounts.GetForSubscription()
 	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, coins); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}
@@ -505,10 +493,7 @@ func (k Keeper) prolongImExtra(ctx sdk.Context, addr sdk.AccAddress, profile *ty
 		total = total.Sub(txFee)
 	}
 
-	companyCollectorAcc, err := sdk.AccAddressFromBech32(k.referralKeeper.GetParams(ctx).CompanyAccounts.ForSubscription)
-	if err != nil {
-		panic(err)
-	}
+	companyCollectorAcc := k.referralKeeper.GetParams(ctx).CompanyAccounts.GetForSubscription()
 	if err := k.bankKeeper.SendCoins(ctx, addr, companyCollectorAcc, total); err != nil {
 		return errors.Wrap(err, "cannot pay up fee")
 	}

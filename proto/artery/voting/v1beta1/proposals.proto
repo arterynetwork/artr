@@ -66,7 +66,9 @@ enum ProposalType {
   // Амнистия
   PROPOSAL_TYPE_GENERAL_AMNESTY = 28;
   // Статус, начиная с которого доступна валидация
-  PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS = 29;
+  PROPOSAL_TYPE_VALIDATOR_MINIMAL_STATUS = 29 [deprecated = true];
+  // Критерии, после удовлетворения которым доступна валидация
+  PROPOSAL_TYPE_VALIDATOR_MINIMAL_CRITERIA = 47;
   // Количество блоков, которое надо пропустить чтобы заработать jail
   PROPOSAL_TYPE_JAIL_AFTER = 30;
   // Через сколько дней монеты вернутся с делегирования

@@ -67,37 +67,23 @@ func (s *Suite) TestRevokeAll() {
 	user := app.DefaultGenesisUsers["user1"]
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
 	s.Equal(
-		int64(9_970000),
+		int64(20_009_970000),
 		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
 	) // -tx_fee -15%
 	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_970000)))
 
-	s.True(s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).IsZero())
+	s.Equal(
+		int64(20_000_000000),
+		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
+	)
 	s.checkExportImport()
 }
 
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, delegating.Params{
-		Percentage: delegating.Percentage{
-			Minimal:      96,
-			ThousandPlus: 97,
-			TenKPlus:     98,
-			HundredKPlus: 99,
-		},
-		MinDelegate:       123456,
-		RevokePeriod:      28,
-		ValidatorBonus:    util.Percent(13),
-		SubscriptionBonus: util.Percent(1),
-		VpnBonus:          util.Percent(0),
-		StorageBonus:      util.Percent(0),
-		Validator:         util.Percent(100),
-		BurnOnRevoke:      util.Percent(50),
-		AccruePercentageRanges: []delegating.PercentageRange{
-			{Start: 0, Percent: util.Percent(96)},
-			{Start: 1_000_000000, Percent: util.Percent(97)},
-			{Start: 10_000_000000, Percent: util.Percent(98)},
-			{Start: 100_000_000000, Percent: util.Percent(99)},
-		},
+		MinDelegate:  123456,
+		RevokePeriod: 28,
+		BurnOnRevoke: util.Percent(50),
 		AccruePercentageTable: []delegating.PercentageListRange{
 			{Start: 0, PercentList: []util.Fraction{
 				util.Percent(96),

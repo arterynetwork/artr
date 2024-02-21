@@ -136,8 +136,8 @@ func (k Keeper) GetReferralValidatorFeesForDelegating(ctx sdk.Context, acc strin
 // AreStatusRequirementsFulfilled validates if the account suffices the status requirement.
 // The actual account status doesn't matter and won't be updated.
 func (k Keeper) AreStatusRequirementsFulfilled(ctx sdk.Context, acc string, s types.Status) (types.StatusCheckResult, error) {
-	if s < types.MinimumStatus || s > types.MaximumStatus || s == types.HeroDeprecatedStatus {
-		return types.StatusCheckResult{Overall: false}, fmt.Errorf("there is no such status: %d", s)
+	if err := s.Validate(); err != nil {
+		return types.StatusCheckResult{Overall: false}, err
 	}
 	data, err := k.Get(ctx, acc)
 	if err != nil {

@@ -59,26 +59,29 @@ func (s *Suite) TestBurn() {
 	)
 
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))).String(),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		).String(),
 		s.k.GetBalance(s.ctx, user).String(),
 	)
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2015_000_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(40_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(140_000_000000)),
 		).String(),
 		sdk.Coins(s.k.GetSupply(s.ctx).Total).String(),
 	)
 
 	ri, err := s.rk.Get(s.ctx, user.String())
 	s.NoError(err)
-	s.EqualValues(1_000_000000, ri.Coins[0].Int64())
-	s.EqualValues(0, ri.Delegated[0].Int64())
+	s.EqualValues(21_000_000000, ri.Coins[0].Int64())
+	s.EqualValues(20_000_000000, ri.Delegated[0].Int64())
 
 	ri, err = s.rk.Get(s.ctx, parent.String())
 	s.NoError(err)
-	s.EqualValues(2_000_000000, ri.Coins[1].Int64())
-	s.EqualValues(0, ri.Delegated[1].Int64())
+	s.EqualValues(42_000_000000, ri.Coins[1].Int64())
+	s.EqualValues(40_000_000000, ri.Delegated[1].Int64())
 
 	_, err = s.k.Burn(sdk.WrapSDKContext(s.ctx), &types.MsgBurn{
 		Account: user.String(),
@@ -87,26 +90,29 @@ func (s *Suite) TestBurn() {
 	s.NoError(err)
 
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(900_000000))).String(),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(900_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		).String(),
 		s.k.GetBalance(s.ctx, user).String(),
 	)
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(2014_900_000000)),
-			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(40_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(140_000_000000)),
 		).String(),
 		sdk.Coins(s.k.GetSupply(s.ctx).Total).String(),
 	)
 
 	ri, err = s.rk.Get(s.ctx, user.String())
 	s.NoError(err)
-	s.EqualValues(900_000000, ri.Coins[0].Int64())
-	s.EqualValues(0, ri.Delegated[0].Int64())
+	s.EqualValues(20_900_000000, ri.Coins[0].Int64())
+	s.EqualValues(20_000_000000, ri.Delegated[0].Int64())
 
 	ri, err = s.rk.Get(s.ctx, parent.String())
 	s.NoError(err)
-	s.EqualValues(1_900_000000, ri.Coins[1].Int64())
-	s.EqualValues(0, ri.Delegated[1].Int64())
+	s.EqualValues(41_900_000000, ri.Coins[1].Int64())
+	s.EqualValues(40_000_000000, ri.Delegated[1].Int64())
 }
 
 func (s *Suite) TestSendWithBlockedAddress() {
@@ -120,7 +126,10 @@ func (s *Suite) TestSendWithBlockedAddress() {
 	)
 
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000))),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.k.GetBalance(s.ctx, user1),
 	)
 	s.Equal(
@@ -133,7 +142,10 @@ func (s *Suite) TestSendWithBlockedAddress() {
 	s.NoError(err)
 
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999))),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.k.GetBalance(s.ctx, user1),
 	)
 	s.Equal(
@@ -146,7 +158,10 @@ func (s *Suite) TestSendWithBlockedAddress() {
 	s.Error(err)
 
 	s.Equal(
-		sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999))),
+		sdk.NewCoins(
+			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(999_999999)),
+			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(20_000_000000)),
+		),
 		s.k.GetBalance(s.ctx, user1),
 	)
 	s.Equal(

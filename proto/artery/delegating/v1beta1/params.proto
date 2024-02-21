@@ -11,51 +11,13 @@ message Params {
   option (gogoproto.goproto_stringer) = false;
   option (gogoproto.goproto_getters)  = false;
 
-  Percentage percentage = 1 [
-    deprecated=true,
-    (gogoproto.nullable) = false,
-    (gogoproto.jsontag)  = "percentage",
-    (gogoproto.moretags) = "yaml:\"percentage\""
-  ];
+  reserved 1,4,5,7,8,9,10;
+  reserved "percentage","validator_bonus","validator","accrue_percentage_ranges","subscription_bonus","vpn_bonus","storage_bonus";
+
   int64 min_delegate  = 2;
 
   // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
   uint32 revoke_period = 3;
-
-  // ValidatorBonus is an extra award that a validator gets while they's active (a delegation amount fraction).
-  string validator_bonus = 4 [
-    deprecated=true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
-
-  // SubscriptionBonus is an extra award that a user gets while theirs subscriptions is active (a delegation amount fraction).
-  string subscription_bonus = 8 [
-    deprecated=true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
-
-  // VpnBonus is an extra award that a user gets while theirs vpn node is active (a delegation amount fraction).
-  string vpn_bonus = 9 [
-    deprecated=true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
-
-  // StorageBonus is an extra award that a user gets while theirs storage node is active (a delegation amount fraction).
-  string storage_bonus = 10 [
-    deprecated=true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
-
-  // Validator is an increased award that a validator gets while they's active (a delegation amount fraction).
-  string validator = 5 [
-    deprecated=true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
 
   // BurnOnRevoke - share of revoke amount, that burns. Must be in range [0, 1).
   string burn_on_revoke = 6 [
@@ -63,21 +25,6 @@ message Params {
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 
-  // AccruePercentageRanges - delegation award as a percentage per month depending on the delegated amount in uARTR.
-  repeated PercentageRange accrue_percentage_ranges = 7 [deprecated=true, (gogoproto.nullable) = false];
-
   // AccruePercentageTable - delegation awards in five categories: base, validator bonus, subscription bonus, vpn bonus, storage bonus as list of percentages per month depending on the delegated amount in uARTR.
   repeated PercentageListRange accrue_percentage_table = 11 [(gogoproto.nullable) = false];
-}
-
-// Percentage - function from delegation size to delegation award percent
-message Percentage {
-  option deprecated = true;
-  option (gogoproto.goproto_stringer) = false;
-  option (gogoproto.equal)            = true;
-
-  int64 minimal        = 1 [(gogoproto.jsontag) = "minimal", (gogoproto.moretags) = "yaml:\"minimal\""];
-  int64 thousand_plus  = 2 [(gogoproto.jsontag) = "thousand_plus", (gogoproto.moretags) = "yaml:\"thousand_plus\""];
-  int64 ten_k_plus     = 3 [(gogoproto.jsontag) = "ten_k_plus", (gogoproto.moretags) = "yaml:\"ten_k_plus\""];
-  int64 hundred_k_plus = 4 [(gogoproto.jsontag) = "hundred_k_plus", (gogoproto.moretags) = "yaml:\"hundred_k_plus\""];
 }

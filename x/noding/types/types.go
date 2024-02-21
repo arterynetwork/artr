@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/pkg/errors"
@@ -65,6 +66,16 @@ var (
 	ErrFractionNonPositive    = errors.New("part must be positive")
 	ErrWrongPartsTotal        = errors.New("parts total must be equal 100%")
 )
+
+func (c MinCriteria) Validate() error {
+	if err := c.Status.Validate(); err != nil {
+		return errors.Wrap(err, "invalid status")
+	}
+	if c.TotalStake < c.SelfStake {
+		return fmt.Errorf("TotalStake must be greate or equal than SelfStake (%d < %d)", c.TotalStake, c.SelfStake)
+	}
+	return nil
+}
 
 func (x Distribution) Validate() error {
 	if x.LuckiesVotingPower <= 0 {

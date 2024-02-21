@@ -90,19 +90,28 @@ func (k Keeper) IsQualified(ctx sdk.Context, accAddr sdk.AccAddress) (result boo
 		}
 	}
 
+	minCriteria := k.GetParams(ctx).MinCriteria
+
 	// Check minimal status
 	status, err := k.referralKeeper.GetStatus(ctx, accAddr.String())
 	if err != nil {
 		return
 	}
-	if !result && status < k.GetParams(ctx).MinStatus {
+	if !result && status < minCriteria.Status {
 		reason = types.REASON_NOT_ENOUGH_STATUS
 		return
 	}
 
-	// 10k ARTR delegated
-	if !result && delegation.Int64() < 10_000_000000 {
-		reason = types.REASON_NOT_ENOUGH_STAKE
+	// Check minimal self delegated
+	selfDelegation := k.bankKeeper.GetBalance(ctx, accAddr).AmountOf(util.ConfigDelegatedDenom)
+	if !result && selfDelegation.Uint64() < minCriteria.SelfStake {
+		reason = types.REASON_NOT_ENOUGH_SELF_STAKE
+		return
+	}
+
+	// Check minimal total delegated
+	if !result && delegation.Uint64() < minCriteria.TotalStake {
+		reason = types.REASON_NOT_ENOUGH_TOTAL_STAKE
 		return
 	}
 

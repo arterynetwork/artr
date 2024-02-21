@@ -372,7 +372,7 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.0", InitValidatorBonusParam())
 	app.upgradeKeeper.SetUpgradeHandler("2.4.1",
-		InitValidatorParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitValidatorParam(),
 	)
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.2", Chain(
@@ -401,7 +401,7 @@ func NewArteryApp(
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.7", Chain(
-		InitAccruePercentageRangesAndValidatorBonusParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitAccruePercentageRangesAndValidatorBonusParams(),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.8", Chain(
@@ -410,11 +410,11 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.0", Chain(
 		CleanEarningStore(keys[earning.StoreKey]),
-		InitSubscriptionVpnStorageBonusesParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitSubscriptionVpnStorageBonusesParams(),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.1", Chain(
-		InitAccruePercentageTableParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitAccruePercentageTableParams(),
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.2", Chain(
@@ -427,6 +427,10 @@ func NewArteryApp(
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.4", Chain(
 		NopUpgradeHandler,
+	))
+
+	app.upgradeKeeper.SetUpgradeHandler("2.5.5", Chain(
+		InitMinCriteriaParam(app.nodingKeeper, app.subspaces[noding.DefaultParamspace]),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

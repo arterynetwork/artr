@@ -2,6 +2,7 @@ syntax = "proto3";
 package artery.noding.v1beta1;
 
 import "gogoproto/gogo.proto";
+import "artery/referral/v1beta1/types.proto";
 import "tendermint/abci/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/noding/types";
@@ -93,10 +94,21 @@ enum ValidatorState {
 
 enum Reason {
   option (gogoproto.goproto_enum_prefix) = false;
+  option allow_alias = true;
 
-  REASON_UNSPECIFIED       = 0;
-  REASON_NOT_ENOUGH_STATUS = 1;
-  REASON_NOT_ENOUGH_STAKE  = 2;
+  REASON_UNSPECIFIED            = 0;
+  REASON_NOT_ENOUGH_STATUS      = 1;
+  REASON_NOT_ENOUGH_SELF_STAKE  = 3;
+  REASON_NOT_ENOUGH_TOTAL_STAKE = 2;
+  REASON_NOT_ENOUGH_STAKE       = 2 [deprecated=true];
+}
+
+message MinCriteria {
+  option (gogoproto.equal) = true;
+
+  artery.referral.v1beta1.Status status = 1;
+  uint64 self_stake = 2;
+  uint64 total_stake = 3;
 }
 
 message Distribution {

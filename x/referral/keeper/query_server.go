@@ -86,7 +86,10 @@ func (qs QueryServer) AllWithStatus(ctx context.Context, req *types.AllWithStatu
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
-	if req.Status < minIndexedStatus || req.Status > types.MaximumStatus {
+	if err := req.Status.Validate(); err != nil {
+		return nil, err
+	}
+	if req.Status < minIndexedStatus {
 		return nil, status.Errorf(codes.NotFound, "status %s is not indexed", req.Status)
 	}
 	sdkCtx := sdk.UnwrapSDKContext(ctx)

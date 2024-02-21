@@ -2,12 +2,14 @@ syntax = "proto3";
 package artery.referral.v1beta1;
 
 import "gogoproto/gogo.proto";
+import "artery/referral/v1beta1/types.proto";
 
 option go_package = "github.com/arterynetwork/artr/x/referral/types";
 
 // Params - used for initializing default parameter for x/referral at genesis
 message Params {
   option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
 
   reserved 2,3;
   reserved "delegating_award","subscription_award";
@@ -20,31 +22,5 @@ message Params {
   uint64 transition_price = 4 [
     (gogoproto.jsontag)  = "transition_price",
     (gogoproto.moretags) = "yaml:\"transition_price\""
-  ];
-}
-
-message CompanyAccounts {
-  option (gogoproto.goproto_getters) = false;
-
-  reserved 1,3,4,5,6;
-  reserved "top_referrer","promo_bonuses","status_bonuses","leader_bonuses","for_delegating";
-
-  string for_subscription = 2 [(gogoproto.jsontag) = "for_subscription", (gogoproto.moretags) = "yaml:\"for_subscription\""];
-}
-
-message NetworkAward {
-  option deprecated = true;
-  option (gogoproto.equal) = true;
-
-  repeated string network = 1 [
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
-    (gogoproto.jsontag)    = "network",
-    (gogoproto.moretags)   = "yaml:\"network,flow\""
-  ];
-  string company = 2 [
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction",
-    (gogoproto.nullable)   = false,
-    (gogoproto.jsontag)    = "company",
-    (gogoproto.moretags)   = "yaml:\"company\""
   ];
 }

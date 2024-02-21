@@ -63,9 +63,11 @@ message Proposal {
       (gogoproto.moretags) = "yaml:\"count,omitempty"
     ];
     StatusArgs status = 12 [
+      deprecated = true,
       (gogoproto.jsontag)  = "status,omitempty",
       (gogoproto.moretags) = "yaml:\"status,omitempty"
     ];
+    MinCriteriaArgs min_criteria = 20;
     PeriodArgs period = 13 [
       (gogoproto.jsontag)  = "period,omitempty",
       (gogoproto.moretags) = "yaml:\"period,omitempty"
