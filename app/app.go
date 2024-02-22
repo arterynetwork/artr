@@ -433,6 +433,10 @@ func NewArteryApp(
 		InitMinCriteriaParam(app.nodingKeeper, app.subspaces[noding.DefaultParamspace]),
 	))
 
+	app.upgradeKeeper.SetUpgradeHandler("2.5.6", Chain(
+		NopUpgradeHandler,
+	))
+
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 	app.mm = module.NewManager(
