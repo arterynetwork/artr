@@ -25,26 +25,17 @@ func (args *SoftwareUpgradeArgs) Validate() error {
 	}
 	return nil
 }
-func (args *MinAmountArgs) Validate() error { return nil }
-func (args *CountArgs) Validate() error     { return nil }
-func (args *StatusArgs) Validate() error {
-	if err := args.Status.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
-func (args *MinCriteriaArgs) Validate() error {
-	if err := args.MinCriteria.Validate(); err != nil {
-		return err
-	}
-	return nil
-}
+func (args *MinAmountArgs) Validate() error   { return nil }
+func (args *CountArgs) Validate() error       { return nil }
+func (args *StatusArgs) Validate() error      { return args.Status.Validate() }
+func (args *MinCriteriaArgs) Validate() error { return args.MinCriteria.Validate() }
 func (args *PeriodArgs) Validate() error {
 	if args.Days < 1 {
 		return errors.New("period must be at least one day")
 	}
 	return nil
 }
+func (args *RevokeArgs) Validate() error { return args.Revoke.Validate() }
 
 func (args *AddressArgs) GetAddress() sdk.AccAddress {
 	addr, err := sdk.AccAddressFromBech32(args.Address)

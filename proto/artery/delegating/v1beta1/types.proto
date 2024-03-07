@@ -84,3 +84,18 @@ message PercentageListRange {
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
 }
+
+message Revoke {
+  option (gogoproto.goproto_stringer) = false;
+  option (gogoproto.goproto_getters)  = false;
+  option (gogoproto.equal)            = true;
+
+  // Period is a number of days being undelegated funds arrive a main wallet after
+  uint32 period = 1;
+
+  // Burn - share of revoke amount, that burns. Must be in range [0, 1).
+  string burn = 2 [
+    (gogoproto.nullable)   = false,
+    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
+  ];
+}

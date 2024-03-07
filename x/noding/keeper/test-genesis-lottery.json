@@ -296,6 +296,14 @@
         "min_delegate": "1000",
         "revoke_period": 14,
         "burn_on_revoke": "5%",
+        "revoke": {
+          "period": 14,
+          "burn": "5%"
+        },
+        "express_revoke": {
+          "period": 7,
+          "burn": "10%"
+        },
         "accrue_percentage_table": [
           {
             "start": "0",
@@ -373,7 +381,6 @@
         "jail_after": 2,
         "lottery_validators": 2,
         "max_validators": 3,
-        "min_status": "STATUS_LEADER",
         "min_criteria": {
           "status": "STATUS_LEADER",
           "self_stake": "10000000000",

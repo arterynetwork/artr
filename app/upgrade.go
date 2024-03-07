@@ -23,7 +23,6 @@ import (
 	delegatingT "github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/noding"
-	nodingT "github.com/arterynetwork/artr/x/noding/types"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
 	scheduleK "github.com/arterynetwork/artr/x/schedule/keeper"
@@ -723,7 +722,7 @@ func InitBurnOnRevokeParam(k delegatingK.Keeper, paramspace params.Subspace) upg
 		var pz delegatingT.Params
 		for _, pair := range pz.ParamSetPairs() {
 			if bytes.Equal(pair.Key, delegatingT.KeyBurnOnRevoke) {
-				pz.BurnOnRevoke = delegatingT.DefaultBurnOnRevoke
+				pz.BurnOnRevoke = delegatingT.DefaultRevoke.Burn
 			} else {
 				paramspace.Get(ctx, pair.Key, pair.Value)
 			}
@@ -1064,22 +1063,35 @@ func EmptyEarningVpnStorageCollectors(ak authK.AccountKeeper, bk bank.Keeper, rk
 	}
 }
 
-func InitMinCriteriaParam(k noding.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitMinCriteriaParam() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitMinCriteriaParam ...")
+		logger.Info("Skipping InitMinCriteriaParam")
+	}
+}
 
-		var pz noding.Params
+func InitRevokeAndExpressRevokeParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting InitRevokeAndExpressRevokeParams ...")
+
+		var pz delegatingT.Params
 		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, nodingT.KeyMinCriteria) {
-				pz.MinCriteria.Status = pz.MinStatus
-				pz.MinCriteria.SelfStake = 0
-				pz.MinCriteria.TotalStake = 10_000_000000
+			if bytes.Equal(pair.Key, delegatingT.KeyRevoke) {
+				pz.Revoke = delegatingT.Revoke{
+					Period: pz.RevokePeriod,
+					Burn:   pz.BurnOnRevoke,
+				}
+			} else if bytes.Equal(pair.Key, delegatingT.KeyExpressRevoke) {
+				pz.ExpressRevoke = delegatingT.Revoke{
+					Period: 10,
+					Burn:   util.Percent(10),
+				}
 			} else {
 				paramspace.Get(ctx, pair.Key, pair.Value)
 			}
 		}
 		k.SetParams(ctx, pz)
-		logger.Info("... InitMinCriteriaParam done!", "params", pz)
+		logger.Info("... InitRevokeAndExpressRevokeParams done!")
 	}
 }

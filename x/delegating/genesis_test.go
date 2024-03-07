@@ -57,7 +57,7 @@ func (s Suite) TestDelegateAndRevoke() {
 	if err := s.k.Delegate(s.ctx, user1, sdk.NewInt(10_000000)); err != nil {
 		panic(err)
 	}
-	if err := s.k.Revoke(s.ctx, user1, sdk.NewInt(5_000000)); err != nil {
+	if err := s.k.Revoke(s.ctx, user1, sdk.NewInt(5_000000), false); err != nil {
 		panic(err)
 	}
 	s.checkExportImport()
@@ -70,7 +70,7 @@ func (s *Suite) TestRevokeAll() {
 		int64(20_009_970000),
 		s.app.GetBankKeeper().GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64(),
 	) // -tx_fee -15%
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_970000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_970000), false))
 
 	s.Equal(
 		int64(20_000_000000),
@@ -84,6 +84,14 @@ func (s *Suite) TestParams() {
 		MinDelegate:  123456,
 		RevokePeriod: 28,
 		BurnOnRevoke: util.Percent(50),
+		Revoke: delegating.Revoke{
+			Period: 28,
+			Burn:   util.Percent(50),
+		},
+		ExpressRevoke: delegating.Revoke{
+			Period: 14,
+			Burn:   util.Percent(75),
+		},
 		AccruePercentageTable: []delegating.PercentageListRange{
 			{Start: 0, PercentList: []util.Fraction{
 				util.Percent(96),

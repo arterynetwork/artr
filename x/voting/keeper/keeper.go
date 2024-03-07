@@ -318,9 +318,7 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			p.JailAfter = proposal.GetCount().Count
 			k.nodingKeeper.SetParams(ctx, p)
 		case types.PROPOSAL_TYPE_REVOKE_PERIOD:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.RevokePeriod = proposal.GetPeriod().Days
-			k.delegatingKeeper.SetParams(ctx, p)
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_DUST_DELEGATION:
 			p := k.bankKeeper.GetParams(ctx)
 			p.DustDelegation = proposal.GetMinAmount().MinAmount
@@ -346,11 +344,7 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 				k.bankKeeper.SetParams(ctx, p)
 			}
 		case types.PROPOSAL_TYPE_BURN_ON_REVOKE:
-			p := k.delegatingKeeper.GetParams(ctx)
-			p.BurnOnRevoke = proposal.GetPortion().Fraction
-			if err = p.Validate(); err == nil {
-				k.delegatingKeeper.SetParams(ctx, p)
-			}
+			err = errors.New("parameter is deprecated")
 		case types.PROPOSAL_TYPE_MAX_TRANSACTION_FEE:
 			p := k.bankKeeper.GetParams(ctx)
 			p.MaxTransactionFee = proposal.GetMinAmount().MinAmount
@@ -376,6 +370,14 @@ func (k Keeper) EndProposal(ctx sdk.Context, proposal types.Proposal, agreed boo
 			k.bankKeeper.AddBlockedSender(ctx, proposal.GetAddress().GetAddress())
 		case types.PROPOSAL_TYPE_BLOCKED_SENDER_REMOVE:
 			k.bankKeeper.RemoveBlockedSender(ctx, proposal.GetAddress().GetAddress())
+		case types.PROPOSAL_TYPE_REVOKE:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.Revoke = *proposal.GetRevoke().Revoke
+			k.delegatingKeeper.SetParams(ctx, p)
+		case types.PROPOSAL_TYPE_EXPRESS_REVOKE:
+			p := k.delegatingKeeper.GetParams(ctx)
+			p.ExpressRevoke = *proposal.GetRevoke().Revoke
+			k.delegatingKeeper.SetParams(ctx, p)
 		default:
 			err = errors.Errorf("unknown proposal type %d", proposal.Type)
 		}

@@ -22,6 +22,9 @@ func NewHandler(k Keeper) sdk.Handler {
 		case *types.MsgRevoke:
 			res, err := srv.Revoke(sdkCtx, msg)
 			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgExpressRevoke:
+			res, err := srv.ExpressRevoke(sdkCtx, msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized %s message type: %T", types.ModuleName, msg)
 		}

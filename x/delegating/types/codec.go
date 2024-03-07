@@ -12,12 +12,14 @@ import (
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(MsgDelegate{}, "delegating/Delegate", nil)
 	cdc.RegisterConcrete(MsgRevoke{}, "delegating/Revoke", nil)
+	cdc.RegisterConcrete(MsgExpressRevoke{}, "delegating/ExpressRevoke", nil)
 }
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgDelegate{},
 		&MsgRevoke{},
+		&MsgExpressRevoke{},
 	)
 
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)

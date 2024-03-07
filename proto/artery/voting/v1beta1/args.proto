@@ -116,6 +116,7 @@ message MinCriteriaArgs {
 }
 
 message PeriodArgs {
+  option deprecated = true;
   option (gogoproto.equal) = true;
 
   uint32 days = 1;
@@ -154,4 +155,10 @@ message AccruePercentageTableArgs {
   option (gogoproto.equal) = true;
 
   repeated artery.delegating.v1beta1.PercentageListRange accrue_percentage_table = 1 [(gogoproto.nullable) = false];
+}
+
+message RevokeArgs {
+  option (gogoproto.equal) = true;
+
+  artery.delegating.v1beta1.Revoke revoke = 1;
 }

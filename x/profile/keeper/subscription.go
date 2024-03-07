@@ -103,12 +103,10 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 			},
 		)
 	} else {
+		*profile.ActiveUntil = profile.ActiveUntil.Add(k.scheduleKeeper.OneMonth(ctx))
 		if isAutoPay {
-			*profile.ActiveUntil = ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
 			k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
 			k.resetLimits(p, profile)
-		} else {
-			*profile.ActiveUntil = profile.ActiveUntil.Add(k.scheduleKeeper.OneMonth(ctx))
 		}
 	}
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {

@@ -108,7 +108,7 @@ func (k Keeper) MustPerformAccrue(ctx sdk.Context, payload []byte, time time.Tim
 func (k Keeper) OnBanished(ctx sdk.Context, acc sdk.AccAddress) error {
 	d, _ := k.getDelegated(ctx, acc)
 	if !d.IsZero() {
-		if err := k.Revoke(ctx, acc, d); err != nil {
+		if err := k.Revoke(ctx, acc, d, false); err != nil {
 			return errors.Wrap(err, "cannot revoke delegation")
 		}
 	}

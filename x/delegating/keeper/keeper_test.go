@@ -100,7 +100,7 @@ func (s *Suite) TestDelegatingAndRevoking() {
 		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(997_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(997_000000), false))
 	s.Equal(
 		sdk.NewCoins(sdk.NewCoin(util.ConfigRevokingDenom, sdk.NewInt(947_150000))),
 		s.bk.GetBalance(s.ctx, user),
@@ -151,7 +151,7 @@ func (s *Suite) TestAccrueAfterRevoke() {
 		s.bk.GetBalance(s.ctx, validator).Add(s.bk.GetBalance(s.ctx, s.accKeeper.GetModuleAddress(util.SplittableFeeCollectorName))...),
 	)
 
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000), false))
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigDelegatedDenom, sdk.NewInt(647_000000)),
@@ -252,7 +252,7 @@ func (s *Suite) TestAccrueOnRevoke() {
 	s.Equal(genesisTime.Add(24*time.Hour), acc.End)
 	s.Equal(int64(3_655666), acc.CurrentUartrs)
 
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(350_000000), false))
 	s.Equal(
 		sdk.NewCoins(
 			sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(3_644700)),
@@ -387,7 +387,7 @@ func (s *Suite) TestAccrueOnRevoke_MissedPart() {
 	for t := 0; t < util.BlocksOneDay/4; t++ {
 		s.nextBlock()
 	}
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(100_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(100_000000), false))
 
 	s.Equal(
 		sdk.NewCoins(
@@ -492,7 +492,7 @@ func (s *Suite) TestLeaveDust() {
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(10_000000)))
 	s.nextBlock()
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(9_000000), false))
 
 	s.Equal(int64(970000), s.bk.GetBalance(s.ctx, user).AmountOf(util.ConfigDelegatedDenom).Int64())
 	resp, err := s.k.GetAccumulation(s.ctx, user)
@@ -505,7 +505,7 @@ func (s *Suite) TestRevokePeriod() {
 	genesisTime := s.ctx.BlockTime()
 
 	s.NoError(s.k.Delegate(s.ctx, user, sdk.NewInt(100_000000)))
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(1_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(1_000000), false))
 
 	s.Equal(
 		[]types.RevokeRequest{
@@ -519,11 +519,11 @@ func (s *Suite) TestRevokePeriod() {
 
 	s.nextBlock()
 	pz := s.k.GetParams(s.ctx)
-	pz.RevokePeriod = 7
+	pz.Revoke.Period = 7
 	s.k.SetParams(s.ctx, pz)
 	s.nextBlock()
 
-	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(2_000000)))
+	s.NoError(s.k.Revoke(s.ctx, user, sdk.NewInt(2_000000), false))
 
 	s.Equal(
 		[]types.RevokeRequest{

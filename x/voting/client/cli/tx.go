@@ -58,16 +58,16 @@ func NewTxCmd() *cobra.Command {
 		cmdGeneralAmnesty(),
 		cmdSetValidatorMinCriteria(),
 		cmdSetJailAfter(),
-		cmdSetRevokePeriod(),
 		cmdSetDustDelegation(),
 		cmdSetVotingPower(),
 		cmdSetTransactionFee(),
-		cmdSetBurnOnRevoke(),
 		cmdSetMaxTransactionFee(),
 		cmdSetTransactionFeeSplitRatios(),
 		cmdSetAccruePercentageTable(),
 		cmdAddBlockedSender(),
 		cmdRemoveBlockedSender(),
+		cmdSetRevoke(),
+		cmdSetExpressRevoke(),
 		util.LineBreak(),
 		cmdVote(),
 		util.LineBreak(),
@@ -1254,55 +1254,6 @@ func cmdSetDustDelegation() *cobra.Command {
 	return cmd
 }
 
-func cmdSetRevokePeriod() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-revoke-period <days> <proposal name> <author key or address>",
-		Aliases: []string{"set_revoke_period", "srp"},
-		Short:   `Set a number of days, coins are returned from delegation after`,
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			var days uint32
-			{
-				n, err := strconv.ParseUint(args[0], 0, 32)
-				if err != nil {
-					return err
-				}
-				days = uint32(n)
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_REVOKE_PERIOD,
-					Args: &types.Proposal_Period{
-						Period: &types.PeriodArgs{
-							Days: days,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
 func cmdSetVotingPower() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     `set-voting-power <part>:<voting power> [<part>:<voting power> [...]] <"luckies" voting power> <proposal name> <author key or address>`,
@@ -1395,52 +1346,6 @@ func cmdSetTransactionFee() *cobra.Command {
 					Author: author,
 					Name:   proposalName,
 					Type:   types.PROPOSAL_TYPE_TRANSACTION_FEE,
-					Args: &types.Proposal_Portion{
-						Portion: &types.PortionArgs{
-							Fraction: q,
-						},
-					},
-				},
-			}
-			if err = msg.ValidateBasic(); err != nil {
-				return err
-			}
-			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
-		},
-	}
-	util.AddTxFlagsToCmd(cmd)
-	return cmd
-}
-
-func cmdSetBurnOnRevoke() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "set-burn-on-revoke <amount> <proposal name> <author key or address>",
-		Example: `artrd tx voting set-burn-on-revoke 5% "Set burn on revoke percent of 5%" ivan`,
-		Aliases: []string{"set_burn_on_revoke", "sbr"},
-		Short:   "Propose to change burn on revoke percent",
-		Args:    cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := cmd.Flags().Set(flags.FlagFrom, args[2]); err != nil {
-				return err
-			}
-			clientCtx, err := client.GetClientTxContext(cmd)
-			if err != nil {
-				return err
-			}
-
-			author := clientCtx.GetFromAddress().String()
-			proposalName := args[1]
-
-			q, err := util.ParseFraction(args[0])
-			if err != nil {
-				return err
-			}
-
-			msg := &types.MsgPropose{
-				Proposal: types.Proposal{
-					Author: author,
-					Name:   proposalName,
-					Type:   types.PROPOSAL_TYPE_BURN_ON_REVOKE,
 					Args: &types.Proposal_Portion{
 						Portion: &types.PortionArgs{
 							Fraction: q,
@@ -1686,6 +1591,116 @@ func cmdRemoveBlockedSender() *cobra.Command {
 					Args: &types.Proposal_Address{
 						Address: &types.AddressArgs{
 							Address: addr,
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetRevoke() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-revoke <days> <burn percentage> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-revoke 14 5% "Set revoke params" ivan`,
+		Aliases: []string{"set_revoke", "sr"},
+		Short:   `Set params of common revoke: a number of days, coins are returned from delegation after, and burn on revoke percent`,
+		Args:    cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[3]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[2]
+
+			n, err := strconv.ParseUint(args[0], 0, 32)
+			if err != nil {
+				return err
+			}
+			days := uint32(n)
+
+			percentage, err := util.ParseFraction(args[1])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_REVOKE,
+					Args: &types.Proposal_Revoke{
+						Revoke: &types.RevokeArgs{
+							Revoke: &delegating.Revoke{
+								Period: days,
+								Burn:   percentage,
+							},
+						},
+					},
+				},
+			}
+			if err = msg.ValidateBasic(); err != nil {
+				return err
+			}
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func cmdSetExpressRevoke() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "set-express-revoke <days> <burn percentage> <proposal name> <author key or address>",
+		Example: `artrd tx voting set-express-revoke 14 5% "Set express revoke params" ivan`,
+		Aliases: []string{"set_express_revoke", "ser"},
+		Short:   `Set params of express revoke: a number of days, coins are returned from delegation after, and burn on revoke percent`,
+		Args:    cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cmd.Flags().Set(flags.FlagFrom, args[3]); err != nil {
+				return err
+			}
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			author := clientCtx.GetFromAddress().String()
+			proposalName := args[2]
+
+			n, err := strconv.ParseUint(args[0], 0, 32)
+			if err != nil {
+				return err
+			}
+			days := uint32(n)
+
+			percentage, err := util.ParseFraction(args[1])
+			if err != nil {
+				return err
+			}
+
+			msg := &types.MsgPropose{
+				Proposal: types.Proposal{
+					Author: author,
+					Name:   proposalName,
+					Type:   types.PROPOSAL_TYPE_EXPRESS_REVOKE,
+					Args: &types.Proposal_Revoke{
+						Revoke: &types.RevokeArgs{
+							Revoke: &delegating.Revoke{
+								Period: days,
+								Burn:   percentage,
+							},
 						},
 					},
 				},

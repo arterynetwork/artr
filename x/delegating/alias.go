@@ -34,9 +34,11 @@ type (
 	Keeper              = keeper.Keeper
 	GenesisState        = types.GenesisState
 	Params              = types.Params
+	Revoke              = types.Revoke
 	Percentage          = types.Percentage
 	PercentageRange     = types.PercentageRange
 	PercentageListRange = types.PercentageListRange
 	MsgDelegate         = types.MsgDelegate
 	MsgRevoke           = types.MsgRevoke
+	MsgExpressRevoke    = types.MsgExpressRevoke
 )

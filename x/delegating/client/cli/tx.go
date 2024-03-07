@@ -28,6 +28,7 @@ func NewTxCmd() *cobra.Command {
 	delegatingTxCmd.AddCommand(
 		GetCmdDelegate(),
 		GetCmdRevoke(),
+		GetCmdExpressRevoke(),
 	)
 
 	return delegatingTxCmd
@@ -93,6 +94,43 @@ func GetCmdRevoke() *cobra.Command {
 			}
 
 			msg := types.NewMsgRevoke(clientCtx.GetFromAddress(), sdk.NewIntFromUint64(amount))
+			err = msg.ValidateBasic()
+			if err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), &msg)
+		},
+	}
+
+	util.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+func GetCmdExpressRevoke() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "express-revoke <key_or_address> <microARTRs>",
+		Aliases: []string{"er", "eu"},
+		Short:   "express revoke funds from delegating",
+		Args:    cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			err := cmd.Flags().Set(flags.FlagFrom, args[0])
+			if err != nil {
+				return err
+			}
+
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			var amount uint64
+			_, err = fmt.Sscan(args[1], &amount)
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgExpressRevoke(clientCtx.GetFromAddress(), sdk.NewIntFromUint64(amount))
 			err = msg.ValidateBasic()
 			if err != nil {
 				return err

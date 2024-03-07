@@ -1,12 +1,9 @@
 package types
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramTypes "github.com/cosmos/cosmos-sdk/x/params/types"
 
 	"github.com/arterynetwork/artr/util"
@@ -16,12 +13,18 @@ import (
 const (
 	DefaultParamspace = ModuleName
 
-	DefaultMinDelegate  = 1000
-	DefaultRevokePeriod = 14
+	DefaultMinDelegate = 1000
 )
 
 var (
-	DefaultBurnOnRevoke          = util.Percent(5)
+	DefaultRevoke = Revoke{
+		Period: 14,
+		Burn:   util.Percent(5),
+	}
+	DefaultExpressRevoke = Revoke{
+		Period: DefaultRevoke.Period / 2,
+		Burn:   DefaultRevoke.Burn.MulInt64(2),
+	}
 	DefaultAccruePercentageTable = []PercentageListRange{
 		{Start: 0, PercentList: []util.Fraction{
 			util.Percent(21),
@@ -59,6 +62,8 @@ var (
 	KeyMinDelegate           = []byte("MinDelegate")
 	KeyRevokePeriod          = []byte("RevokePeriod")
 	KeyBurnOnRevoke          = []byte("BurnOnRevoke")
+	KeyRevoke                = []byte("Revoke")
+	KeyExpressRevoke         = []byte("ExpressRevoke")
 	KeyAccruePercentageTable = []byte("AccruePercentageTable")
 )
 
@@ -68,11 +73,11 @@ func ParamKeyTable() paramTypes.KeyTable {
 }
 
 // NewParams creates a new Params object
-func NewParams(minDelegate int64, revokePeriod uint32, burnOnRevoke util.Fraction, accruePercentageTable []PercentageListRange) *Params {
+func NewParams(minDelegate int64, revoke Revoke, expressRevoke Revoke, accruePercentageTable []PercentageListRange) *Params {
 	return &Params{
 		MinDelegate:           minDelegate,
-		RevokePeriod:          revokePeriod,
-		BurnOnRevoke:          burnOnRevoke,
+		Revoke:                revoke,
+		ExpressRevoke:         expressRevoke,
 		AccruePercentageTable: accruePercentageTable,
 	}
 }
@@ -81,8 +86,8 @@ func NewParams(minDelegate int64, revokePeriod uint32, burnOnRevoke util.Fractio
 func DefaultParams() *Params {
 	return NewParams(
 		DefaultMinDelegate,
-		DefaultRevokePeriod,
-		DefaultBurnOnRevoke,
+		DefaultRevoke,
+		DefaultExpressRevoke,
 		DefaultAccruePercentageTable,
 	)
 }
@@ -101,6 +106,8 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
 		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
 		paramTypes.NewParamSetPair(KeyBurnOnRevoke, &p.BurnOnRevoke, validateBurnOnRevoke),
+		paramTypes.NewParamSetPair(KeyRevoke, &p.Revoke, validateRevoke),
+		paramTypes.NewParamSetPair(KeyExpressRevoke, &p.ExpressRevoke, validateRevoke),
 		paramTypes.NewParamSetPair(KeyAccruePercentageTable, &p.AccruePercentageTable, validateAccruePercentageTable),
 	}
 }
@@ -114,6 +121,12 @@ func (p Params) Validate() error {
 	}
 	if err := validateBurnOnRevoke(p.BurnOnRevoke); err != nil {
 		return errors.Wrap(err, "invalid BurnOnRevoke")
+	}
+	if err := validateRevoke(p.Revoke); err != nil {
+		return errors.Wrap(err, "invalid Revoke")
+	}
+	if err := validateRevoke(p.ExpressRevoke); err != nil {
+		return errors.Wrap(err, "invalid ExpressRevoke")
 	}
 	if err := validateAccruePercentageTable(p.AccruePercentageTable); err != nil {
 		return errors.Wrap(err, "invalid AccruePercentageTable")
@@ -157,6 +170,17 @@ func validateBurnOnRevoke(i interface{}) error {
 	return nil
 }
 
+func validateRevoke(i interface{}) error {
+	r, ok := i.(Revoke)
+	if !ok {
+		return errors.Errorf("invalid Revoke parameter type: %T", i)
+	}
+	if err := r.Validate(); err != nil {
+		return errors.Wrap(err, "invalid Revoke parameter:")
+	}
+	return nil
+}
+
 func validateAccruePercentageTable(i interface{}) error {
 	v, ok := i.([]PercentageListRange)
 	if !ok {
@@ -166,8 +190,4 @@ func validateAccruePercentageTable(i interface{}) error {
 		return errors.Wrap(err, "invalid AccruePercentageTable parameter:")
 	}
 	return nil
-}
-
-func (p Params) GetRevokePeriod(sk ScheduleKeeper, ctx sdk.Context) time.Duration {
-	return time.Duration(p.RevokePeriod) * sk.OneDay(ctx)
 }

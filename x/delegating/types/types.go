@@ -1,8 +1,14 @@
 package types
 
 import (
+	"time"
+
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	"github.com/arterynetwork/artr/util"
 )
 
 func NewRecord() Record {
@@ -115,4 +121,26 @@ func ValidatePercentageTable(ladder []PercentageListRange) error {
 		prevStep = step
 	}
 	return nil
+}
+
+func (r Revoke) String() string {
+	out, _ := yaml.Marshal(r)
+	return string(out)
+}
+
+func (r Revoke) Validate() error {
+	if r.Period < 1 {
+		return errors.New("Period must be at least 1")
+	}
+	if r.Burn.GT(util.Percent(100)) {
+		return errors.New("Burn must be less than 100%")
+	}
+	if r.Burn.IsNegative() {
+		return errors.New("Burn must be non-negative")
+	}
+	return nil
+}
+
+func (r Revoke) GetPeriod(sk ScheduleKeeper, ctx sdk.Context) time.Duration {
+	return time.Duration(r.Period) * sk.OneDay(ctx)
 }

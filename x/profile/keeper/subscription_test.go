@@ -13,12 +13,14 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/arterynetwork/artr/app"
 	"github.com/arterynetwork/artr/util"
 	"github.com/arterynetwork/artr/x/bank"
 	"github.com/arterynetwork/artr/x/profile/keeper"
+	"github.com/arterynetwork/artr/x/profile/types"
 )
 
 func TestSubscription(t *testing.T) {
@@ -65,6 +67,24 @@ func (s *SSuite) TearDownTest() {
 	}
 }
 
+func (s *SSuite) TestPayTariffFirstTime() {
+	_, _, addr := testdata.KeyTestPubAddr()
+	var p *types.Profile
+	s.NoError(s.bk.AddCoins(s.ctx, addr, sdk.NewCoins(sdk.NewCoin(util.ConfigMainDenom, sdk.NewInt(1_000_000000)))))
+	s.NoError(s.k.CreateAccount(s.ctx, addr, app.DefaultGenesisUsers["root"]))
+
+	p = s.k.GetProfile(s.ctx, addr)
+	s.Nil(p.ActiveUntil)
+	s.False(p.IsActive(s.ctx))
+
+	s.NoError(s.k.PayTariff(s.ctx, addr, 0, false))
+
+	p = s.k.GetProfile(s.ctx, addr)
+	s.NotNil(p.ActiveUntil)
+	s.True(p.IsActive(s.ctx))
+	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
+}
+
 func (s *SSuite) TestPayTariffInAdvance() {
 	wasPaidUpTo, _ := time.Parse(time.RFC3339, "2022-01-04T03:00:00Z")
 	addr := app.DefaultGenesisUsers["user1"]
@@ -107,9 +127,7 @@ func (s *SSuite) TestAutoPay() {
 
 	p = *s.k.GetProfile(s.ctx, addr)
 	s.NotNil(p.ActiveUntil)
-	s.NotEqual(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
-	s.Equal(s.ctx.BlockTime().Add(30*24*time.Hour), *p.ActiveUntil)
-	s.True(p.ActiveUntil.After(wasPaidUpTo.Add(30 * 24 * time.Hour))) // 2 seconds for free
+	s.Equal(wasPaidUpTo.Add(30*24*time.Hour), *p.ActiveUntil)
 	s.True(p.IsActive(s.ctx))
 	s.True(p.AutoPay)
 }

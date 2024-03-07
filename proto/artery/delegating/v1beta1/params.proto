@@ -17,13 +17,20 @@ message Params {
   int64 min_delegate  = 2;
 
   // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
-  uint32 revoke_period = 3;
+  uint32 revoke_period = 3 [deprecated = true];
 
   // BurnOnRevoke - share of revoke amount, that burns. Must be in range [0, 1).
   string burn_on_revoke = 6 [
+    deprecated = true,
     (gogoproto.nullable)   = false,
     (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
   ];
+
+  // Revoke - params of common revoke
+  Revoke revoke = 12 [(gogoproto.nullable) = false];
+
+  // ExpressRevoke - params of express revoke
+  Revoke express_revoke = 13 [(gogoproto.nullable) = false];
 
   // AccruePercentageTable - delegation awards in five categories: base, validator bonus, subscription bonus, vpn bonus, storage bonus as list of percentages per month depending on the delegated amount in uARTR.
   repeated PercentageListRange accrue_percentage_table = 11 [(gogoproto.nullable) = false];

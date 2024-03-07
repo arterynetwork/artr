@@ -87,7 +87,6 @@ func (p *Params) ParamSetPairs() params.ParamSetPairs {
 		params.NewParamSetPair(KeyJailAfter, &p.JailAfter, validateJailAfter),
 		params.NewParamSetPair(KeyUnjailAfter, &p.UnjailAfter, validateUnjailAfter),
 		params.NewParamSetPair(KeyLotteryValidators, &p.LotteryValidators, validateAdditionalValidators),
-		params.NewParamSetPair(KeyMinStatus, &p.MinStatus, validateStatus),
 		params.NewParamSetPair(KeyMinCriteria, &p.MinCriteria, validateMinCriteria),
 		params.NewParamSetPair(KeyVotingPower, &p.VotingPower, validateVotingPower),
 	}
@@ -190,9 +189,6 @@ func (p *Params) Validate() error {
 	}
 	if err := validateAdditionalValidators(p.LotteryValidators); err != nil {
 		return sdkerrors.Wrap(err, "invalid LotteryValidators")
-	}
-	if err := validateStatus(p.MinStatus); err != nil {
-		return sdkerrors.Wrap(err, "invalid MinStatus")
 	}
 	if err := validateMinCriteria(p.MinCriteria); err != nil {
 		return sdkerrors.Wrap(err, "invalid MinCriteria")

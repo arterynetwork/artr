@@ -69,6 +69,7 @@ message Proposal {
     ];
     MinCriteriaArgs min_criteria = 20;
     PeriodArgs period = 13 [
+      deprecated = true,
       (gogoproto.jsontag)  = "period,omitempty",
       (gogoproto.moretags) = "yaml:\"period,omitempty"
     ];
@@ -87,6 +88,7 @@ message Proposal {
     ];
     AccruePercentageRangesArgs accrue_percentage_ranges = 18 [deprecated = true];
     AccruePercentageTableArgs accrue_percentage_table = 19;
+    RevokeArgs revoke = 21;
   }
 }
 

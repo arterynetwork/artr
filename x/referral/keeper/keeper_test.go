@@ -1061,7 +1061,7 @@ func (s Suite) TestBanishment() {
 	s.Zero(len(info.Referrals))
 	s.Equal(types.STATUS_LUCKY, info.Status)
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000), false))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 3*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 3*30*24*time.Hour))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
@@ -1118,7 +1118,7 @@ func (s Suite) TestBanishment_Undelegation() {
 	s.Equal(parent.String(), info.Referrer)
 	s.Nil(info.BanishmentAt)
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000), false))
 
 	info, err = s.get(user)
 	s.NoError(err)
@@ -1152,7 +1152,7 @@ func (s Suite) TestBanishment_DelegationAfterCompression() {
 	s.NotZero(len(info.Referrals))
 	s.Equal(types.STATUS_LEADER, info.Status)
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000), false))
 
 	s.ctx = s.ctx.WithBlockHeight(9000 + 2*util.BlocksOneMonth).WithBlockTime(genesisTime.Add(9000*30*time.Second + 2*30*24*time.Hour))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
@@ -1190,7 +1190,7 @@ func (s Suite) TestComeBack() {
 	user := app.DefaultGenesisUsers["user2"].String()
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, app.DefaultGenesisUsers["user2"], sdk.NewInt(20_000_000000), false))
 
 	s.ctx = s.ctx.WithBlockHeight(9000).WithBlockTime(genesisTime.Add(9000 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))
@@ -1346,7 +1346,7 @@ func (s Suite) TestComeBackViaDelegation() {
 	user := app.DefaultGenesisUsers["user2"]
 	parent := app.DefaultGenesisUsers["user1"]
 
-	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(20_000_000000)))
+	s.NoError(s.dk.Revoke(s.ctx, user, sdk.NewInt(20_000_000000), false))
 
 	s.ctx = s.ctx.WithBlockHeight(8999).WithBlockTime(genesisTime.Add(8999 * 30 * time.Second))
 	s.NoError(s.pk.PayTariff(s.ctx, parent, 5, false))

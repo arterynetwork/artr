@@ -271,6 +271,19 @@ func (p Proposal) Validate() error {
 				return errors.Wrap(err, "invalid args:")
 			}
 		}
+	case
+		PROPOSAL_TYPE_REVOKE,
+		PROPOSAL_TYPE_EXPRESS_REVOKE:
+		if p.Args == nil {
+			return errors.New("invalid args: nil, *Proposal_Revoke expected")
+		}
+		if args, ok := p.Args.(*Proposal_Revoke); !ok {
+			return errors.Errorf("invalid args: %T, *Proposal_Revoke expected", p.Args)
+		} else {
+			if err := args.Revoke.Validate(); err != nil {
+				return errors.Wrap(err, "invalid args")
+			}
+		}
 	default:
 		return errors.Errorf("invalid type: %s", p.Type)
 	}

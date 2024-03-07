@@ -34,8 +34,21 @@ func (s MsgServer) Revoke(ctx context.Context, msg *types.MsgRevoke) (*types.Msg
 		sdk.UnwrapSDKContext(ctx),
 		msg.GetAddress(),
 		msg.MicroCoins,
+		false,
 	); err != nil {
 		return nil, err
 	}
 	return &types.MsgRevokeResponse{}, nil
+}
+
+func (s MsgServer) ExpressRevoke(ctx context.Context, msg *types.MsgExpressRevoke) (*types.MsgExpressRevokeResponse, error) {
+	if err := s.k.Revoke(
+		sdk.UnwrapSDKContext(ctx),
+		msg.GetAddress(),
+		msg.MicroCoins,
+		true,
+	); err != nil {
+		return nil, err
+	}
+	return &types.MsgExpressRevokeResponse{}, nil
 }

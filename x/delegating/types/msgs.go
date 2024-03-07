@@ -109,3 +109,55 @@ func (msg MsgRevoke) GetAddress() sdk.AccAddress {
 	}
 	return addr
 }
+
+// verify interface at compile time
+var _ sdk.Msg = &MsgExpressRevoke{}
+
+// NewMsgDelegate creates a new MsgDelegate instance
+func NewMsgExpressRevoke(acc sdk.AccAddress, ucoins sdk.Int) MsgExpressRevoke {
+	return MsgExpressRevoke{
+		Address:    acc.String(),
+		MicroCoins: ucoins,
+	}
+}
+
+const ExpressRevokeConst = "revoke"
+
+// nolint
+func (msg MsgExpressRevoke) Route() string { return RouterKey }
+func (msg MsgExpressRevoke) Type() string  { return ExpressRevokeConst }
+func (msg MsgExpressRevoke) GetSigners() []sdk.AccAddress {
+	address, err := sdk.AccAddressFromBech32(msg.Address)
+	if err != nil {
+		panic(err)
+	}
+	return []sdk.AccAddress{address}
+}
+
+// GetSignBytes gets the bytes for the message signer to sign on
+func (msg MsgExpressRevoke) GetSignBytes() []byte {
+	bz, err := proto.Marshal(&msg)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+// ValidateBasic validity check for the AnteHandler
+func (msg MsgExpressRevoke) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Address); err != nil {
+		return errors.Wrap(err, "invalid account address")
+	}
+	if !msg.MicroCoins.IsPositive() {
+		return errors.New("amount must be positive")
+	}
+	return nil
+}
+
+func (msg MsgExpressRevoke) GetAddress() sdk.AccAddress {
+	addr, err := sdk.AccAddressFromBech32(msg.Address)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}

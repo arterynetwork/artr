@@ -34,6 +34,8 @@ message EventValidatorAccrue {
 }
 
 message EventMassiveRevoke {
+  option deprecated = true;
+
   string account = 1;
   uint64 ucoins = 2;
 }

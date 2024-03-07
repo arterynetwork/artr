@@ -72,7 +72,7 @@ enum ProposalType {
   // Количество блоков, которое надо пропустить чтобы заработать jail
   PROPOSAL_TYPE_JAIL_AFTER = 30;
   // Через сколько дней монеты вернутся с делегирования
-  PROPOSAL_TYPE_REVOKE_PERIOD = 31;
+  PROPOSAL_TYPE_REVOKE_PERIOD = 31 [deprecated = true];
   // Делегирование РАВНОЕ или меньше этой суммы считается принебрежимо малым
   PROPOSAL_TYPE_DUST_DELEGATION = 32;
   // Разбивка voting power по процентилям
@@ -90,7 +90,7 @@ enum ProposalType {
   // Комиссия за перевод
   PROPOSAL_TYPE_TRANSACTION_FEE = 36;
   // Процент сжигаемый при разделегировании
-  PROPOSAL_TYPE_BURN_ON_REVOKE = 37;
+  PROPOSAL_TYPE_BURN_ON_REVOKE = 37 [deprecated = true];
   // Максимальная комиссия за перевод
   PROPOSAL_TYPE_MAX_TRANSACTION_FEE = 38;
   // Пропорции в которых делится комиссия за перевод между пропозером, компанией и сжиганием
@@ -103,4 +103,8 @@ enum ProposalType {
   PROPOSAL_TYPE_BLOCKED_SENDER_ADD = 41;
   // Адреса с которых заблокированна отправка токенов (включение / исключение участника)
   PROPOSAL_TYPE_BLOCKED_SENDER_REMOVE = 42;
+  // Параметры обычного разделегирования: через сколько дней монеты вернутся с делегирования и процент сжигаемый при разделегировании
+  PROPOSAL_TYPE_REVOKE = 48;
+  // Параметры срочного разделегирования: через сколько дней монеты вернутся с делегирования и процент сжигаемый при разделегировании
+  PROPOSAL_TYPE_EXPRESS_REVOKE = 49;
 }

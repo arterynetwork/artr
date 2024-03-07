@@ -61,7 +61,7 @@ func (k Keeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
 }
 
-func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) error {
+func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int, express bool) error {
 	if uartrs.IsZero() {
 		return nil
 	}
@@ -70,9 +70,10 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		byteKey           = []byte(acc)
 		current, revoking = k.getDelegated(ctx, acc)
 
-		byteItem []byte
-		item     types.Record
-		err      error
+		byteItem     []byte
+		item         types.Record
+		err          error
+		revokeParams types.Revoke
 	)
 
 	if uartrs.GT(current) {
@@ -89,18 +90,15 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 	}
 
 	revoking = revoking.Add(uartrs)
-	if revoking.GTE(sdk.NewInt(100_000_000000)) {
-		util.EmitEvent(ctx,
-			&types.EventMassiveRevoke{
-				Account: acc.String(),
-				Ucoins:  revoking.Uint64(),
-			},
-		)
-	}
 
 	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 	k.accruePart(ctx, acc, &item, nextPayment)
-	uartrrs := uartrs.Sub(sdk.NewInt(k.GetParams(ctx).BurnOnRevoke.MulInt64(uartrs.Int64()).Int64()))
+	if !express {
+		revokeParams = k.GetParams(ctx).Revoke
+	} else {
+		revokeParams = k.GetParams(ctx).ExpressRevoke
+	}
+	uartrrs := uartrs.Sub(sdk.NewInt(revokeParams.Burn.MulInt64(uartrs.Int64()).Int64()))
 	if err = k.freeze(ctx, acc, uartrs, uartrrs); err != nil {
 		k.Logger(ctx).Error(err.Error())
 		return err
@@ -113,7 +111,7 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int) erro
 		k.scheduleKeeper.ScheduleTask(ctx, time, types.AccrueHookName, acc)
 	}
 
-	period := k.GetParams(ctx).GetRevokePeriod(k.scheduleKeeper, ctx)
+	period := revokeParams.GetPeriod(k.scheduleKeeper, ctx)
 	time := ctx.BlockTime().Add(period)
 	item.Requests = append(item.Requests, types.RevokeRequest{
 		Time:   time,
