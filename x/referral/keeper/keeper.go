@@ -307,6 +307,10 @@ func (k Keeper) Compress(ctx sdk.Context, acc string) error {
 		parent = value.Referrer
 		refsCount = value.ActiveRefCounts
 
+		if parent == "" {
+			return errors.New("must not compress: top level account")
+		}
+
 		value.Referrals = nil
 		value.ActiveReferrals = nil
 		value.ActiveRefCounts = []uint64{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -444,7 +448,7 @@ func (k Keeper) OnBalanceChanged(ctx sdk.Context, acc string) error {
 
 			if !value.Active {
 				if newDelegated.Int64() <= k.bankKeeper.GetParams(ctx).DustDelegation {
-					if !value.Banished && value.BanishmentAt == nil && (value.CompressionAt == nil || ctx.BlockTime().After(*value.CompressionAt)) {
+					if value.Referrer != "" && !value.Banished && value.BanishmentAt == nil && (value.CompressionAt == nil || ctx.BlockTime().After(*value.CompressionAt)) {
 						k.scheduleBanishment(ctx, acc, value)
 					}
 				} else {
@@ -605,17 +609,18 @@ func (k Keeper) SetActive(ctx sdk.Context, acc string, value, checkAncestorsForS
 		return nil
 	}
 
+	ancestor := parent
 	for i := 0; i < 10; i++ {
-		if parent == "" {
+		if ancestor == "" {
 			break
 		}
 
-		err = bu.update(parent, checkAncestorsForStatusUpdate, func(x *types.Info) error {
+		err = bu.update(ancestor, checkAncestorsForStatusUpdate, func(x *types.Info) error {
 			if i == 0 {
 				refDelta(&x.ActiveReferrals)
 			}
 			delta(&x.ActiveRefCounts[i+1])
-			parent = x.Referrer
+			ancestor = x.Referrer
 			return nil
 		})
 		if err != nil {
@@ -623,7 +628,7 @@ func (k Keeper) SetActive(ctx sdk.Context, acc string, value, checkAncestorsForS
 		}
 	}
 
-	if !value && !valueIsAlreadySet {
+	if parent != "" && !value && !valueIsAlreadySet {
 		k.ScheduleCompression(ctx, acc, ctx.BlockTime().Add(k.CompressionPeriod(ctx)))
 	}
 
@@ -915,6 +920,9 @@ func (k Keeper) Banish(ctx sdk.Context, acc string) error {
 		banished = value.Banished
 
 		// Double-check, just in case
+		if parent == "" {
+			return errors.New("must not banish: top level account")
+		}
 		if value.Active {
 			return errors.New("must not banish: account is active")
 		}

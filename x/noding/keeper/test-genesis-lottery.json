@@ -294,8 +294,6 @@
       "accounts": [],
       "params": {
         "min_delegate": "1000",
-        "revoke_period": 14,
-        "burn_on_revoke": "5%",
         "revoke": {
           "period": 14,
           "burn": "5%"

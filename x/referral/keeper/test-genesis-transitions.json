@@ -48112,8 +48112,6 @@
       "accounts": [],
       "params": {
         "min_delegate": "1000",
-        "revoke_period": 14,
-        "burn_on_revoke": "5%",
         "revoke": {
           "period": 14,
           "burn": "5%"
@@ -70741,12 +70739,7 @@
       "params": {
         "day_nanos": "86400000000000"
       },
-      "tasks": [
-        {
-          "handler_name": "referral/status-bonus",
-          "time": "2022-01-07T23:59:30Z"
-        }
-      ]
+      "tasks": []
     },
     "voting": {
       "params": {

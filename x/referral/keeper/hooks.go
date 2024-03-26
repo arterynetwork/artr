@@ -20,7 +20,6 @@ const (
 	CompressionHookName       = "referral/compression"
 	TransitionTimeoutHookName = "referral/transition-timeout"
 	BanishHookName            = "referral/banish"
-	StatusBonusHookName       = "referral/status-bonus"
 )
 
 // TODO: refactor x/noding too
@@ -61,9 +60,6 @@ func (k Keeper) PerformBanish(ctx sdk.Context, data []byte, _ time.Time) {
 	if err := k.Banish(ctx, string(data)); err != nil {
 		panic(err)
 	}
-}
-
-func (k Keeper) PerformStatusBonus(ctx sdk.Context, _ []byte, t time.Time) {
 }
 
 func (k Keeper) callback(eventName string, ctx sdk.Context, acc string) error {

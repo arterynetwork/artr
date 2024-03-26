@@ -60,8 +60,6 @@ var (
 // Parameter store keys
 var (
 	KeyMinDelegate           = []byte("MinDelegate")
-	KeyRevokePeriod          = []byte("RevokePeriod")
-	KeyBurnOnRevoke          = []byte("BurnOnRevoke")
 	KeyRevoke                = []byte("Revoke")
 	KeyExpressRevoke         = []byte("ExpressRevoke")
 	KeyAccruePercentageTable = []byte("AccruePercentageTable")
@@ -104,8 +102,6 @@ func (p Params) String() string {
 func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 	return paramTypes.ParamSetPairs{
 		paramTypes.NewParamSetPair(KeyMinDelegate, &p.MinDelegate, validateMinDelegate),
-		paramTypes.NewParamSetPair(KeyRevokePeriod, &p.RevokePeriod, validateRevokePeriod),
-		paramTypes.NewParamSetPair(KeyBurnOnRevoke, &p.BurnOnRevoke, validateBurnOnRevoke),
 		paramTypes.NewParamSetPair(KeyRevoke, &p.Revoke, validateRevoke),
 		paramTypes.NewParamSetPair(KeyExpressRevoke, &p.ExpressRevoke, validateRevoke),
 		paramTypes.NewParamSetPair(KeyAccruePercentageTable, &p.AccruePercentageTable, validateAccruePercentageTable),
@@ -115,12 +111,6 @@ func (p *Params) ParamSetPairs() paramTypes.ParamSetPairs {
 func (p Params) Validate() error {
 	if err := validateMinDelegate(p.MinDelegate); err != nil {
 		return errors.Wrap(err, "invalid MinDelegate")
-	}
-	if err := validateRevokePeriod(p.RevokePeriod); err != nil {
-		return errors.Wrap(err, "invalid RevokePeriod")
-	}
-	if err := validateBurnOnRevoke(p.BurnOnRevoke); err != nil {
-		return errors.Wrap(err, "invalid BurnOnRevoke")
 	}
 	if err := validateRevoke(p.Revoke); err != nil {
 		return errors.Wrap(err, "invalid Revoke")
@@ -141,31 +131,6 @@ func validateMinDelegate(i interface{}) error {
 	}
 	if md < 1 {
 		return errors.New("minimal delegation must be at least 1")
-	}
-	return nil
-}
-
-func validateRevokePeriod(i interface{}) error {
-	rp, ok := i.(uint32)
-	if !ok {
-		return errors.Errorf("invalid RevokePeriod parameter type: %T", i)
-	}
-	if rp < 1 {
-		return errors.New("RevokePeriod must be at least 1")
-	}
-	return nil
-}
-
-func validateBurnOnRevoke(i interface{}) error {
-	vb, ok := i.(util.Fraction)
-	if !ok {
-		return errors.Errorf("invalid BurnOnRevoke parameter type: %T", i)
-	}
-	if vb.GT(util.Percent(100)) {
-		return errors.New("BurnOnRevoke must be less than 100%")
-	}
-	if vb.IsNegative() {
-		return errors.New("BurnOnRevoke must be non-negative")
 	}
 	return nil
 }

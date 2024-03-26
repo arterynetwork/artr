@@ -4,6 +4,8 @@ func (EventPayTariff) XXX_MessageName() string { return "pay_tariff" }
 
 func (EventActivityChanged) XXX_MessageName() string { return "activity_changed" }
 
+func (EventUpdateLimitsResetUsed) XXX_MessageName() string { return "update_limits_reset_used" }
+
 func (EventAutoPayFailed) XXX_MessageName() string { return "auto_pay_failed" }
 
 func (EventBuyVpn) XXX_MessageName() string { return "buy_vpn" }

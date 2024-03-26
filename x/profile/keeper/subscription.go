@@ -94,8 +94,7 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	if !profile.IsActive(ctx) && !isAutoPay {
 		au := ctx.BlockTime().Add(k.scheduleKeeper.OneMonth(ctx))
 		profile.ActiveUntil = &au
-		k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
-		k.resetLimits(p, profile)
+		k.resetLimits(ctx, addr, p, profile)
 		util.EmitEvent(ctx,
 			&types.EventActivityChanged{
 				Address:   addr.String(),
@@ -105,10 +104,10 @@ func (k Keeper) PayTariff(ctx sdk.Context, addr sdk.AccAddress, storageGb uint32
 	} else {
 		*profile.ActiveUntil = profile.ActiveUntil.Add(k.scheduleKeeper.OneMonth(ctx))
 		if isAutoPay {
-			k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
-			k.resetLimits(p, profile)
+			k.resetLimits(ctx, addr, p, profile)
 		}
 	}
+	k.scheduleRenew(ctx, addr, *profile.ActiveUntil)
 	if err := k.SetProfile(ctx, addr, *profile); err != nil {
 		return errors.Wrap(err, "cannot save profile")
 	}
@@ -365,7 +364,7 @@ func (k Keeper) scheduleRenewIm(ctx sdk.Context, addr sdk.AccAddress, time time.
 	k.scheduleKeeper.ScheduleTask(ctx, time, types.RefreshImHookName, addr.Bytes())
 }
 
-func (k Keeper) resetLimits(p types.Params, profile *types.Profile) {
+func (k Keeper) resetLimits(ctx sdk.Context, addr sdk.AccAddress, p types.Params, profile *types.Profile) {
 	baseVpn := uint64(p.BaseVpnGb) * util.GBSize
 	if profile.VpnCurrent > baseVpn {
 		profile.VpnLimit -= profile.VpnCurrent - baseVpn
@@ -379,6 +378,12 @@ func (k Keeper) resetLimits(p types.Params, profile *types.Profile) {
 	if profile.StorageLimit == 0 {
 		profile.StorageLimit = uint64(p.BaseStorageGb) * util.GBSize
 	}
+
+	util.EmitEvents(ctx,
+		&types.EventUpdateLimitsResetUsed{
+			Address: addr.String(),
+		},
+	)
 }
 
 func (k Keeper) HandleRenewHook(ctx sdk.Context, data []byte, time time.Time) {
@@ -398,8 +403,7 @@ func (k Keeper) monthlyRoutine(ctx sdk.Context, addr sdk.AccAddress, time time.T
 	params := k.GetParams(ctx)
 	if profile.IsActive(ctx) {
 		// The tariff is being paid in advance
-		k.scheduleRenew(ctx, addr, time.Add(k.scheduleKeeper.OneMonth(ctx)))
-		k.resetLimits(params, profile)
+		k.resetLimits(ctx, addr, params, profile)
 		if err := k.SetProfile(ctx, addr, *profile); err != nil {
 			return errors.Wrap(err, "cannot write profile")
 		}

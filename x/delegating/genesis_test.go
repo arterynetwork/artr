@@ -81,9 +81,7 @@ func (s *Suite) TestRevokeAll() {
 
 func (s *Suite) TestParams() {
 	s.k.SetParams(s.ctx, delegating.Params{
-		MinDelegate:  123456,
-		RevokePeriod: 28,
-		BurnOnRevoke: util.Percent(50),
+		MinDelegate: 123456,
 		Revoke: delegating.Revoke{
 			Period: 28,
 			Burn:   util.Percent(50),

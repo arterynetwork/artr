@@ -8,8 +8,6 @@ func (EventStatusDowngradeCanceled) XXX_MessageName() string { return "status_do
 
 func (EventCompression) XXX_MessageName() string { return "compression" }
 
-func (EventStatusBonus) XXX_MessageName() string { return "status_bonus" }
-
 func (EventTransitionRequested) XXX_MessageName() string { return "transition_requested" }
 
 func (EventTransitionPerformed) XXX_MessageName() string { return "transition_performed" }

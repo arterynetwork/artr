@@ -22,6 +22,10 @@ message EventActivityChanged {
   bool active_now = 2;
 }
 
+message EventUpdateLimitsResetUsed {
+  string address = 1;
+}
+
 message EventAutoPayFailed {
   string address = 1;
   string error = 2;

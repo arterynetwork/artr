@@ -12,18 +12,12 @@ import (
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	cdc.RegisterConcrete(MsgSet{}, "earning/set", nil)
 	cdc.RegisterConcrete(MsgSetMultiple{}, "earning/setMultiple", nil)
-	cdc.RegisterConcrete(MsgListEarners{}, "earning/listEarners", nil)
-	cdc.RegisterConcrete(MsgRun{}, "earning/run", nil)
-	cdc.RegisterConcrete(MsgReset{}, "earning/reset", nil)
 }
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgSet{},
 		&MsgSetMultiple{},
-		&MsgListEarners{},
-		&MsgRun{},
-		&MsgReset{},
 	)
 
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)

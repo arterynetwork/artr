@@ -11,20 +11,10 @@ message Params {
   option (gogoproto.goproto_stringer) = false;
   option (gogoproto.goproto_getters)  = false;
 
-  reserved 1,4,5,7,8,9,10;
-  reserved "percentage","validator_bonus","validator","accrue_percentage_ranges","subscription_bonus","vpn_bonus","storage_bonus";
+  reserved 1,3,4,5,6,7,8,9,10;
+  reserved "percentage","revoke_period","validator_bonus","validator","burn_on_revoke","accrue_percentage_ranges","subscription_bonus","vpn_bonus","storage_bonus";
 
   int64 min_delegate  = 2;
-
-  // RevokePeriod is a number of days being undelegated funds arrive a main wallet after
-  uint32 revoke_period = 3 [deprecated = true];
-
-  // BurnOnRevoke - share of revoke amount, that burns. Must be in range [0, 1).
-  string burn_on_revoke = 6 [
-    deprecated = true,
-    (gogoproto.nullable)   = false,
-    (gogoproto.customtype) = "github.com/arterynetwork/artr/util.Fraction"
-  ];
 
   // Revoke - params of common revoke
   Revoke revoke = 12 [(gogoproto.nullable) = false];

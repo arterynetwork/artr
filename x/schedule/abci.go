@@ -14,5 +14,4 @@ func BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock, k keeper.Keeper) 
 }
 
 // EndBlocker called every block, process inflation, update validator set.
-func EndBlocker(ctx sdk.Context, k keeper.Keeper) {
-}
+func EndBlocker(ctx sdk.Context, k keeper.Keeper) {}

@@ -66,9 +66,9 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int, expr
 		return nil
 	}
 	var (
-		store             = ctx.KVStore(k.mainStoreKey)
-		byteKey           = []byte(acc)
-		current, revoking = k.getDelegated(ctx, acc)
+		store      = ctx.KVStore(k.mainStoreKey)
+		byteKey    = []byte(acc)
+		current, _ = k.getDelegated(ctx, acc)
 
 		byteItem     []byte
 		item         types.Record
@@ -88,8 +88,6 @@ func (k Keeper) Revoke(ctx sdk.Context, acc sdk.AccAddress, uartrs sdk.Int, expr
 	} else {
 		item = types.NewRecord()
 	}
-
-	revoking = revoking.Add(uartrs)
 
 	nextPayment := ctx.BlockTime().Add(k.scheduleKeeper.OneDay(ctx))
 	k.accruePart(ctx, acc, &item, nextPayment)

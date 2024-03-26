@@ -31,11 +31,6 @@ message EventCompression {
   repeated string referrals = 3;
 }
 
-message EventStatusBonus {
-  string address = 1;
-  uint64 amount = 2;
-}
-
 message EventTransitionRequested {
   string address = 1;
   string before = 2;

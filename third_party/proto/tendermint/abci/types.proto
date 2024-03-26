@@ -102,8 +102,7 @@ message RequestEndBlock {
 message RequestCommit {}
 
 // lists available snapshots
-message RequestListSnapshots {
-}
+message RequestListSnapshots {}
 
 // offers a snapshot to the application
 message RequestOfferSnapshot {

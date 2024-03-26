@@ -157,8 +157,7 @@ func (am AppModule) ExportGenesis(ctx sdk.Context, mrshl codec.JSONMarshaler) js
 }
 
 // BeginBlock returns the begin blocker for the voting module.
-func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {
-}
+func (am AppModule) BeginBlock(ctx sdk.Context, req abci.RequestBeginBlock) {}
 
 // EndBlock returns the end blocker for the voting module. It returns no validator
 // updates.

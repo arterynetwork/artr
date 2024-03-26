@@ -72,7 +72,7 @@ func (r Info) DelegatedAtLevelsUpTo(n int) sdk.Int {
 }
 
 func (r Info) RegistrationClosed(ctx sdk.Context, sk ScheduleKeeper) bool {
-	return r.Banished || !r.Active && (r.CompressionAt == nil || ctx.BlockTime().After(r.CompressionAt.Add(-sk.OneMonth(ctx))))
+	return r.Referrer != "" && (r.Banished || !r.Active && (r.CompressionAt == nil || ctx.BlockTime().After(r.CompressionAt.Add(-sk.OneMonth(ctx)))))
 }
 
 func (r Info) GetReferrer() sdk.AccAddress {

@@ -330,7 +330,6 @@ func NewArteryApp(
 	app.scheduleKeeper.AddHook(delegating.RevokeHookName, app.delegatingKeeper.MustPerformRevoking)
 	app.scheduleKeeper.AddHook(delegating.AccrueHookName, app.delegatingKeeper.MustPerformAccrue)
 	app.scheduleKeeper.AddHook(referral.BanishHookName, app.referralKeeper.PerformBanish)
-	app.scheduleKeeper.AddHook(referral.StatusBonusHookName, app.referralKeeper.PerformStatusBonus)
 
 	app.referralKeeper.AddHook(referral.StatusUpdatedCallback, app.nodingKeeper.OnStatusUpdate)
 	app.referralKeeper.AddHook(referral.StakeChangedCallback, app.nodingKeeper.OnStakeChanged)
@@ -383,7 +382,7 @@ func NewArteryApp(
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.4.3", Chain(
-		InitBurnOnRevokeParam(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitBurnOnRevokeParam(),
 		UpdateStatusDowngradeTasks(app.scheduleKeeper, keys[referral.StoreKey], keys[scheduleTypes.StoreKey], ec.Marshaler),
 	))
 
@@ -438,7 +437,12 @@ func NewArteryApp(
 	))
 
 	app.upgradeKeeper.SetUpgradeHandler("2.5.7", Chain(
-		InitRevokeAndExpressRevokeParams(*app.delegatingKeeper, app.subspaces[delegating.DefaultParamspace]),
+		InitRevokeAndExpressRevokeParams(),
+	))
+
+	app.upgradeKeeper.SetUpgradeHandler("2.5.8", Chain(
+		DeactivateTopLevelAccounts(keys[profileTypes.StoreKey], keys[referral.StoreKey], ec.Marshaler),
+		AddMissingProfileRefreshTask(app.scheduleKeeper, keys[profileTypes.StoreKey], ec.Marshaler),
 	))
 
 	// NOTE: Any module instantiated in the module manager that is later modified

@@ -23,6 +23,7 @@ import (
 	delegatingT "github.com/arterynetwork/artr/x/delegating/types"
 	"github.com/arterynetwork/artr/x/earning"
 	"github.com/arterynetwork/artr/x/noding"
+	profileT "github.com/arterynetwork/artr/x/profile/types"
 	referralK "github.com/arterynetwork/artr/x/referral/keeper"
 	referralT "github.com/arterynetwork/artr/x/referral/types"
 	scheduleK "github.com/arterynetwork/artr/x/schedule/keeper"
@@ -714,21 +715,10 @@ func RemoveLeaderBonuses() upgrade.UpgradeHandler {
 	}
 }
 
-func InitBurnOnRevokeParam(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitBurnOnRevokeParam() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitBurnOnRevokeParam ...")
-
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyBurnOnRevoke) {
-				pz.BurnOnRevoke = delegatingT.DefaultRevoke.Burn
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
-			}
-		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitBurnOnRevokeParam done!", "params", pz)
+		logger.Info("Skipping InitBurnOnRevokeParam")
 	}
 }
 
@@ -1070,28 +1060,74 @@ func InitMinCriteriaParam() upgrade.UpgradeHandler {
 	}
 }
 
-func InitRevokeAndExpressRevokeParams(k delegatingK.Keeper, paramspace params.Subspace) upgrade.UpgradeHandler {
+func InitRevokeAndExpressRevokeParams() upgrade.UpgradeHandler {
 	return func(ctx sdk.Context, _ upgrade.Plan) {
 		logger := ctx.Logger().With("module", "x/upgrade")
-		logger.Info("Starting InitRevokeAndExpressRevokeParams ...")
+		logger.Info("Skipping InitRevokeAndExpressRevokeParams")
+	}
+}
 
-		var pz delegatingT.Params
-		for _, pair := range pz.ParamSetPairs() {
-			if bytes.Equal(pair.Key, delegatingT.KeyRevoke) {
-				pz.Revoke = delegatingT.Revoke{
-					Period: pz.RevokePeriod,
-					Burn:   pz.BurnOnRevoke,
+func DeactivateTopLevelAccounts(pKey sdk.StoreKey, rKey sdk.StoreKey, cdc codec.BinaryMarshaler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting DeactivateTopLevelAccounts ...")
+
+		pStore := ctx.KVStore(pKey)
+		rStore := ctx.KVStore(rKey)
+		itr := rStore.Iterator(nil, nil)
+		defer itr.Close()
+		for ; itr.Valid(); itr.Next() {
+			var info referralT.Info
+			cdc.MustUnmarshalBinaryBare(itr.Value(), &info)
+			if info.Referrer == "" {
+				logger.Debug("... deactivate top level accounts",
+					"acc", string(itr.Key()),
+				)
+				info.Active = false
+				rStore.Set(itr.Key(), cdc.MustMarshalBinaryBare(&info))
+				addr, err := sdk.AccAddressFromBech32(string(itr.Key()))
+				if err != nil {
+					panic(err)
 				}
-			} else if bytes.Equal(pair.Key, delegatingT.KeyExpressRevoke) {
-				pz.ExpressRevoke = delegatingT.Revoke{
-					Period: 10,
-					Burn:   util.Percent(10),
-				}
-			} else {
-				paramspace.Get(ctx, pair.Key, pair.Value)
+				var profile profileT.Profile
+				cdc.MustUnmarshalBinaryBare(pStore.Get(addr), &profile)
+				profile.ActiveUntil = nil
+				pStore.Set(addr, cdc.MustMarshalBinaryBare(&profile))
 			}
 		}
-		k.SetParams(ctx, pz)
-		logger.Info("... InitRevokeAndExpressRevokeParams done!")
+
+		logger.Info("... DeactivateTopLevelAccounts done!")
+	}
+}
+
+func AddMissingProfileRefreshTask(sk scheduleK.Keeper, pKey sdk.StoreKey, cdc codec.BinaryMarshaler) upgrade.UpgradeHandler {
+	return func(ctx sdk.Context, _ upgrade.Plan) {
+		logger := ctx.Logger().With("module", "x/upgrade")
+		logger.Info("Starting AddMissingProfileRefreshTask ...")
+
+		var (
+			pStore     = ctx.KVStore(pKey)
+			pIt        = pStore.Iterator(nil, nil)
+			now        = ctx.BlockTime()
+			month      = sk.OneMonth(ctx)
+			monthLater = now.Add(month)
+		)
+		defer pIt.Close()
+		for ; pIt.Valid(); pIt.Next() {
+			var profile profileT.Profile
+			cdc.MustUnmarshalBinaryBare(pIt.Value(), &profile)
+			if profile.ActiveUntil != nil && profile.ActiveUntil.After(monthLater) {
+				var addr sdk.AccAddress = pIt.Key()
+				for t := *profile.ActiveUntil; t.After(monthLater); t = t.Add(-month) {
+					logger.Debug("... schedule missing profile/refresh task",
+						"acc", addr.String(),
+						"t", t.String(),
+					)
+					sk.ScheduleTask(ctx, t, profileT.RefreshHookName, addr)
+				}
+			}
+		}
+
+		logger.Info("... AddMissingProfileRefreshTask done!")
 	}
 }
